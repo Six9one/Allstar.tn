@@ -7,6 +7,7 @@ import InstallPrompt from './components/InstallPrompt'
 import OnboardingModal from './components/OnboardingModal'
 import AutoUpdater from './components/AutoUpdater'
 import PushNotificationBanner from './components/PushNotificationBanner'
+import { notificationService } from './services/notifications'
 import Home from './pages/Home'
 import Programs from './pages/Programs'
 import Academy from './pages/Academy'
@@ -48,6 +49,11 @@ export default function App() {
         console.error(e)
       }
     }
+
+    // Auto-request Native Phone System Notifications in background
+    if ('Notification' in window && Notification.permission === 'default') {
+      notificationService.requestPermission()
+    }
   }, [])
 
   const handleLoginSuccess = (userSession) => {
@@ -61,7 +67,6 @@ export default function App() {
     <LanguageProvider>
       <ScrollToTop />
       <Navbar onOpenOnboarding={() => setShowOnboarding(true)} currentUser={currentUser} />
-      <PushNotificationBanner />
       <main className="main-content">
         <Routes>
           <Route path="/" element={<Home currentUser={currentUser} onOpenOnboarding={() => setShowOnboarding(true)} />} />
