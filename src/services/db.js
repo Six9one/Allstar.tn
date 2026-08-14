@@ -568,7 +568,7 @@ class DBService {
     return this.getPlayers();
   }
 
-  subscribeToRealtime(onCoachChange, onPlayerChange, onSiteContentChange) {
+  subscribeToRealtime(onCoachChange, onPlayerChange, onSiteContentChange, onAccountsChange) {
     if (!supabase) return () => {};
 
     const channelId = 'allstar_realtime_' + Math.random().toString(36).substring(2, 9);
@@ -586,6 +586,10 @@ class DBService {
         const liveContent = await this.getSiteContentAsync();
         if (onSiteContentChange) onSiteContentChange(liveContent);
       })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'allstar_accounts' }, async () => {
+        const liveAccounts = await this.getAccountsAsync();
+        if (onAccountsChange) onAccountsChange(liveAccounts);
+      })
       .subscribe();
 
     return () => {
@@ -597,6 +601,7 @@ class DBService {
     await this.getCoachesAsync();
     await this.getPlayersAsync();
     await this.getSiteContentAsync();
+    await this.getAccountsAsync();
   }
 
   // ── Coaches ───────────────────────────────────────────────────────────────
@@ -1178,7 +1183,31 @@ class DBService {
     }
   }
 
-  saveAccount(accData) {
+  async getAccountsAsync() {
+    if (supabase) {
+      try {
+        const { data, error } = await supabase.from('allstar_accounts').select('*').order('created_at', { ascending: false });
+        if (!error && data && data.length > 0) {
+          const localAccounts = this.getAccounts();
+          const remoteIds = new Set(data.map(a => a.id));
+          const combined = [...data];
+          for (const la of localAccounts) {
+            if (!remoteIds.has(la.id)) {
+              combined.push(la);
+              await supabase.from('allstar_accounts').upsert([la]);
+            }
+          }
+          safeSetLocalStorage(STORAGE_KEYS.ACCOUNTS, combined);
+          return combined;
+        }
+      } catch (e) {
+        console.error('getAccountsAsync error:', e);
+      }
+    }
+    return this.getAccounts();
+  }
+
+  async saveAccount(accData) {
     const accounts = this.getAccounts();
     const newAcc = {
       id: 'ACC-' + Date.now(),
@@ -1197,20 +1226,47 @@ class DBService {
 
     accounts.unshift(newAcc);
     safeSetLocalStorage(STORAGE_KEYS.ACCOUNTS, accounts);
+
+    if (supabase) {
+      try {
+        await supabase.from('allstar_accounts').upsert([newAcc]);
+      } catch (e) {
+        console.error('Supabase saveAccount error:', e);
+      }
+    }
     return newAcc;
   }
 
-  updateAccount(id, updateData) {
+  async updateAccount(id, updateData) {
     let accounts = this.getAccounts();
     accounts = accounts.map(a => a.id === id ? { ...a, ...updateData } : a);
     safeSetLocalStorage(STORAGE_KEYS.ACCOUNTS, accounts);
+
+    if (supabase) {
+      try {
+        const targetAcc = accounts.find(a => a.id === id);
+        if (targetAcc) {
+          await supabase.from('allstar_accounts').upsert([targetAcc]);
+        }
+      } catch (e) {
+        console.error('Supabase updateAccount error:', e);
+      }
+    }
     return accounts;
   }
 
-  deleteAccount(id) {
+  async deleteAccount(id) {
     let accounts = this.getAccounts();
     accounts = accounts.filter(a => a.id !== id);
     safeSetLocalStorage(STORAGE_KEYS.ACCOUNTS, accounts);
+
+    if (supabase) {
+      try {
+        await supabase.from('allstar_accounts').delete().eq('id', id);
+      } catch (e) {
+        console.error('Supabase deleteAccount error:', e);
+      }
+    }
     return accounts;
   }
 
