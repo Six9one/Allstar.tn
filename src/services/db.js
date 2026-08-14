@@ -416,38 +416,50 @@ class DBService {
         const localContent = this.getSiteContent();
         let baseContent = { ...SEED_SITE_CONTENT, ...localContent };
 
-        // 1. Fetch live slides directly from allstar_players table (where group = 'HERO_CAROUSEL')
-        const { data: carouselRows } = await supabase.from('allstar_players').select('*').eq('group', 'HERO_CAROUSEL').order('id', { ascending: true });
-
-        // 2. Fetch main_content from allstar_site_content
+        // 1. Fetch main_content from allstar_site_content (PRIMARY source for gallery_images)
         const { data: siteData } = await supabase.from('allstar_site_content').select('*').eq('id', 'main_content').single();
         if (siteData && siteData.data) {
+          // Check if remote has gallery images with actual URLs
+          const remoteGallery = siteData.data.gallery_images;
+          const hasRemoteImages = Array.isArray(remoteGallery) && remoteGallery.length > 0 && remoteGallery.some(img => img.url && img.url.trim());
+          
+          // Apply remote data BUT preserve gallery_images separately
+          const remoteGalleryBackup = hasRemoteImages ? remoteGallery : null;
           baseContent = { ...baseContent, ...siteData.data };
+          
+          // If remote had valid gallery images, use them (they include base64 custom photos)
+          if (remoteGalleryBackup) {
+            baseContent.gallery_images = remoteGalleryBackup;
+          }
         }
 
-        // Auto-sync check: If local storage has custom uploaded base64 photos but Supabase doesn't have them yet, auto-publish to Supabase!
+        // 2. Auto-sync: If local storage has custom base64 photos that Supabase doesn't have, push them
         const hasLocalCustomPhotos = Array.isArray(localContent.gallery_images) && localContent.gallery_images.some(img => img.url && img.url.startsWith('data:image/'));
-        const supabaseHasCustomPhotos = carouselRows && carouselRows.some(r => (r.photourl && r.photourl.startsWith('data:image/')));
-
-        if (hasLocalCustomPhotos && !supabaseHasCustomPhotos) {
+        const remoteHasCustomPhotos = Array.isArray(baseContent.gallery_images) && baseContent.gallery_images.some(img => img.url && img.url.startsWith('data:image/'));
+        
+        if (hasLocalCustomPhotos && !remoteHasCustomPhotos) {
           console.log('⚡ Auto-syncing local custom admin photos to Supabase cloud...');
           await this.saveSiteContent(localContent);
           return localContent;
         }
 
-        if (carouselRows && carouselRows.length > 0) {
-          const validSlides = carouselRows.map(r => ({
-            id: r.id,
-            url: r.photourl || r.photoUrl || '',
-            caption: r.name || 'صور الأكاديمية'
-          })).filter(s => s.url && s.url.trim());
+        // 3. Fallback: If still no gallery images, try allstar_players carousel rows
+        if (!baseContent.gallery_images || !Array.isArray(baseContent.gallery_images) || baseContent.gallery_images.length === 0 || !baseContent.gallery_images.some(img => img.url && img.url.trim())) {
+          const { data: carouselRows } = await supabase.from('allstar_players').select('*').eq('group', 'HERO_CAROUSEL').order('id', { ascending: true });
+          if (carouselRows && carouselRows.length > 0) {
+            const validSlides = carouselRows.map(r => ({
+              id: r.id,
+              url: r.photourl || '',
+              caption: r.name || 'صور الأكاديمية'
+            })).filter(s => s.url && s.url.trim());
 
-          if (validSlides.length > 0) {
-            baseContent.gallery_images = validSlides;
+            if (validSlides.length > 0) {
+              baseContent.gallery_images = validSlides;
+            }
           }
         }
 
-        // Safeguard: Ensure gallery_images is never empty so installed PWA & mobile app always render slides
+        // 4. Final safeguard: Use seed data if still empty
         if (!baseContent.gallery_images || !Array.isArray(baseContent.gallery_images) || baseContent.gallery_images.length === 0) {
           baseContent.gallery_images = SEED_SITE_CONTENT.gallery_images;
         }
@@ -1015,21 +1027,26 @@ class DBService {
     const current = this.getSiteContent();
     const updated = { ...current, ...contentData };
 
-    // Optimize and compress any raw Base64 gallery images to lightweight WebP (<100KB each) to ensure instant Supabase sync across phone app & desktop
+    // Optimize and compress any raw Base64 gallery images to lightweight WebP (<100KB each)
     if (Array.isArray(updated.gallery_images)) {
       try {
         const optimized = await Promise.all(
           updated.gallery_images.map(async (img) => {
             if (img.url && img.url.startsWith('data:image/')) {
-              const optUrl = await PhotoStudioEngine.optimizePhoto(img.url, { targetSize: 900, quality: 0.75 });
-              return { ...img, url: optUrl };
+              try {
+                const optUrl = await PhotoStudioEngine.optimizePhoto(img.url, { targetSize: 900, quality: 0.75 });
+                return { ...img, url: optUrl };
+              } catch (optErr) {
+                console.warn('Single image optimization failed, using original:', optErr);
+                return img;
+              }
             }
             return img;
           })
         );
         updated.gallery_images = optimized;
       } catch (e) {
-        console.warn('Gallery image optimization error:', e);
+        console.warn('Gallery image optimization error, using originals:', e);
       }
     }
 
@@ -1040,8 +1057,15 @@ class DBService {
 
     if (supabase) {
       try {
-        await supabase.from('allstar_site_content').upsert([{ id: 'main_content', data: updated }]);
+        // 1. Save full site content (including base64 gallery_images) to allstar_site_content
+        const { error: upsertErr } = await supabase.from('allstar_site_content').upsert([{ id: 'main_content', data: updated }]);
+        if (upsertErr) {
+          console.error('❌ Supabase site_content upsert error:', upsertErr);
+        } else {
+          console.log('✅ Site content saved to allstar_site_content');
+        }
 
+        // 2. Also sync slides to allstar_players table for carousel fetching
         if (Array.isArray(updated.gallery_images) && updated.gallery_images.length > 0) {
           const carouselPlayers = updated.gallery_images
             .filter(img => img.url && img.url.trim())
@@ -1068,8 +1092,16 @@ class DBService {
           if (insertErr) {
             console.error('❌ Supabase carousel insert error:', insertErr);
           } else {
-            console.log('✅ 100% Carousel slides successfully synced to allstar_players table in Supabase!');
+            console.log('✅ Carousel slides synced to allstar_players table');
           }
+        }
+
+        // 3. VERIFY: Read back from Supabase to confirm gallery_images were saved
+        const { data: verify } = await supabase.from('allstar_site_content').select('data').eq('id', 'main_content').single();
+        if (verify && verify.data && Array.isArray(verify.data.gallery_images)) {
+          console.log('✅ VERIFIED: Supabase has', verify.data.gallery_images.length, 'gallery images');
+        } else {
+          console.error('❌ VERIFY FAILED: gallery_images not found in Supabase after save');
         }
       } catch (e) {
         console.error('Supabase site content & carousel sync error:', e);

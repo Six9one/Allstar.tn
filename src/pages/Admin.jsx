@@ -1342,11 +1342,21 @@ export default function Admin() {
   // ── Site content handler ───────────────────────────────────────────────────
   const handleSaveSiteContent = async () => {
     showSuccess('⚡ جاري ضغط ونشر الصور مباشرة إلى الهواتف والأجهزة...');
-    const updated = await db.saveSiteContent(siteForm);
-    setSiteContent(updated);
-    setSiteForm(updated);
-    const slideCount = (updated.gallery_images || []).length;
-    showSuccess(`✅ تم نشر ${slideCount} صور بنجاح على الهواتف والأجهزة المباشرة!`);
+    console.log('🚀 handleSaveSiteContent: Starting publish...', 
+      'gallery_images count:', (siteForm.gallery_images || []).length,
+      'has base64:', (siteForm.gallery_images || []).some(img => img.url && img.url.startsWith('data:'))
+    );
+    try {
+      const updated = await db.saveSiteContent(siteForm);
+      setSiteContent(updated);
+      setSiteForm(updated);
+      const slideCount = (updated.gallery_images || []).length;
+      console.log('✅ handleSaveSiteContent: Published', slideCount, 'slides');
+      showSuccess(`✅ تم نشر ${slideCount} صور بنجاح على الهواتف والأجهزة المباشرة!`);
+    } catch (e) {
+      console.error('❌ handleSaveSiteContent FAILED:', e);
+      showSuccess('❌ خطأ في النشر - حاول مرة أخرى');
+    }
   };
 
   const updateSiteForm = (key, val) => setSiteForm(f => ({ ...f, [key]: val }));
