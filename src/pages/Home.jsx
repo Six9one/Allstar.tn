@@ -155,63 +155,6 @@ export default function Home() {
             ))}
           </div>
 
-          {/* PREVIOUS & NEXT MANUAL SLIDE BUTTONS */}
-          <button
-            onClick={handlePrev}
-            aria-label="Previous Slide"
-            style={{
-              position: 'absolute',
-              top: '50%',
-              right: '16px',
-              transform: 'translateY(-50%)',
-              zIndex: 12,
-              width: '42px',
-              height: '42px',
-              borderRadius: '50%',
-              backgroundColor: 'rgba(8, 9, 12, 0.65)',
-              backdropFilter: 'blur(8px)',
-              border: '1px solid rgba(255, 255, 255, 0.2)',
-              color: '#FFF',
-              fontSize: '1.2rem',
-              fontWeight: 900,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              boxShadow: '0 4px 14px rgba(0,0,0,0.5)'
-            }}
-          >
-            ❯
-          </button>
-
-          <button
-            onClick={handleNext}
-            aria-label="Next Slide"
-            style={{
-              position: 'absolute',
-              top: '50%',
-              left: '16px',
-              transform: 'translateY(-50%)',
-              zIndex: 12,
-              width: '42px',
-              height: '42px',
-              borderRadius: '50%',
-              backgroundColor: 'rgba(8, 9, 12, 0.65)',
-              backdropFilter: 'blur(8px)',
-              border: '1px solid rgba(255, 255, 255, 0.2)',
-              color: '#FFF',
-              fontSize: '1.2rem',
-              fontWeight: 900,
-              display: 'flex',
-              alignItems: 'center',
-              justify: 'center',
-              cursor: 'pointer',
-              boxShadow: '0 4px 14px rgba(0,0,0,0.5)'
-            }}
-          >
-            ❮
-          </button>
-
           {/* SLIDE CAPTION & DOTS AT BOTTOM */}
           <div
             style={{
