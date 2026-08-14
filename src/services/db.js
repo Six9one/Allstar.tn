@@ -425,6 +425,16 @@ class DBService {
           baseContent = { ...baseContent, ...siteData.data };
         }
 
+        // Auto-sync check: If local storage has custom uploaded base64 photos but Supabase doesn't have them yet, auto-publish to Supabase!
+        const hasLocalCustomPhotos = Array.isArray(localContent.gallery_images) && localContent.gallery_images.some(img => img.url && img.url.startsWith('data:image/'));
+        const supabaseHasCustomPhotos = carouselRows && carouselRows.some(r => (r.photourl && r.photourl.startsWith('data:image/')));
+
+        if (hasLocalCustomPhotos && !supabaseHasCustomPhotos) {
+          console.log('⚡ Auto-syncing local custom admin photos to Supabase cloud...');
+          await this.saveSiteContent(localContent);
+          return localContent;
+        }
+
         if (carouselRows && carouselRows.length > 0) {
           const validSlides = carouselRows.map(r => ({
             id: r.id,
@@ -437,15 +447,22 @@ class DBService {
           }
         }
 
-        if (baseContent.gallery_images && baseContent.gallery_images.length > 0) {
-          safeSetLocalStorage(STORAGE_KEYS.SITE_CONTENT, baseContent);
+        // Safeguard: Ensure gallery_images is never empty so installed PWA & mobile app always render slides
+        if (!baseContent.gallery_images || !Array.isArray(baseContent.gallery_images) || baseContent.gallery_images.length === 0) {
+          baseContent.gallery_images = SEED_SITE_CONTENT.gallery_images;
         }
+
+        safeSetLocalStorage(STORAGE_KEYS.SITE_CONTENT, baseContent);
         return baseContent;
       } catch (e) {
         console.error('getSiteContentAsync error:', e);
       }
     }
-    return this.getSiteContent();
+    const local = this.getSiteContent();
+    if (!local.gallery_images || !Array.isArray(local.gallery_images) || local.gallery_images.length === 0) {
+      local.gallery_images = SEED_SITE_CONTENT.gallery_images;
+    }
+    return local;
   }
 
   async getCoachesAsync() {
@@ -1032,7 +1049,6 @@ class DBService {
               id: 'SLIDE-' + (i + 1),
               name: img.caption || 'صور الأكاديمية الرسمية',
               photourl: img.url,
-              photoUrl: img.url,
               sport: 'CAROUSEL',
               group: 'HERO_CAROUSEL',
               status: 'Active',
@@ -1048,8 +1064,12 @@ class DBService {
           // Clear previous slides first for clean state
           await supabase.from('allstar_players').delete().eq('group', 'HERO_CAROUSEL');
           // Insert fresh active carousel slides
-          await supabase.from('allstar_players').insert(carouselPlayers);
-          console.log('✅ 100% Carousel slides successfully synced to allstar_players table in Supabase!');
+          const { error: insertErr } = await supabase.from('allstar_players').insert(carouselPlayers);
+          if (insertErr) {
+            console.error('❌ Supabase carousel insert error:', insertErr);
+          } else {
+            console.log('✅ 100% Carousel slides successfully synced to allstar_players table in Supabase!');
+          }
         }
       } catch (e) {
         console.error('Supabase site content & carousel sync error:', e);

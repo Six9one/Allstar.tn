@@ -139,6 +139,12 @@ export default function Home() {
                 <img
                   src={slide.url}
                   alt={slide.caption || 'صور الأكاديمية'}
+                  onError={(e) => {
+                    const fallbackUrl = FALLBACK_SLIDES[idx % FALLBACK_SLIDES.length]?.url || FALLBACK_SLIDES[0].url;
+                    if (e.currentTarget.src !== fallbackUrl) {
+                      e.currentTarget.src = fallbackUrl;
+                    }
+                  }}
                   style={{
                     width: '100%',
                     height: '100%',
