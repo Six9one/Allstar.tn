@@ -414,29 +414,32 @@ class DBService {
     if (supabase) {
       try {
         const localContent = this.getSiteContent();
-        let baseContent = { ...localContent };
+        let baseContent = { ...SEED_SITE_CONTENT, ...localContent };
 
-        // 1. Try fetching main_content from allstar_site_content if table exists
+        // 1. Fetch live slides directly from allstar_players table (where group = 'HERO_CAROUSEL')
+        const { data: carouselRows } = await supabase.from('allstar_players').select('*').eq('group', 'HERO_CAROUSEL').order('id', { ascending: true });
+
+        // 2. Fetch main_content from allstar_site_content
         const { data: siteData } = await supabase.from('allstar_site_content').select('*').eq('id', 'main_content').single();
         if (siteData && siteData.data) {
-          baseContent = { ...SEED_SITE_CONTENT, ...siteData.data };
+          baseContent = { ...baseContent, ...siteData.data };
         }
 
-        // 2. Guaranteed fallback: fetch slides from allstar_players table
-        const { data: carouselRows } = await supabase.from('allstar_players').select('*').eq('group', 'HERO_CAROUSEL');
         if (carouselRows && carouselRows.length > 0) {
-          const fetchedSlides = carouselRows.map(r => ({
+          const validSlides = carouselRows.map(r => ({
             id: r.id,
             url: r.photourl || r.photoUrl || '',
             caption: r.name || 'صور الأكاديمية'
           })).filter(s => s.url && s.url.trim());
 
-          if (fetchedSlides.length > 0) {
-            baseContent.gallery_images = fetchedSlides;
+          if (validSlides.length > 0) {
+            baseContent.gallery_images = validSlides;
           }
         }
 
-        safeSetLocalStorage(STORAGE_KEYS.SITE_CONTENT, baseContent);
+        if (baseContent.gallery_images && baseContent.gallery_images.length > 0) {
+          safeSetLocalStorage(STORAGE_KEYS.SITE_CONTENT, baseContent);
+        }
         return baseContent;
       } catch (e) {
         console.error('getSiteContentAsync error:', e);
@@ -1022,24 +1025,31 @@ class DBService {
       try {
         await supabase.from('allstar_site_content').upsert([{ id: 'main_content', data: updated }]);
 
-        // 3. Guaranteed Multi-Device Carousel Sync: Save slides directly into allstar_players table
-        if (Array.isArray(updated.gallery_images)) {
+        if (Array.isArray(updated.gallery_images) && updated.gallery_images.length > 0) {
           const carouselPlayers = updated.gallery_images
             .filter(img => img.url && img.url.trim())
             .map((img, i) => ({
-              id: img.id && String(img.id).startsWith('SLIDE-') ? img.id : 'SLIDE-' + (i + 1),
+              id: 'SLIDE-' + (i + 1),
               name: img.caption || 'صور الأكاديمية الرسمية',
               photourl: img.url,
+              photoUrl: img.url,
               sport: 'CAROUSEL',
               group: 'HERO_CAROUSEL',
               status: 'Active',
-              age: 0
+              age: 0,
+              coachid: 'COACH-001',
+              teamname: 'CAROUSEL',
+              coachname: 'ALLSTAR',
+              parentname: 'ALLSTAR',
+              parentphone: '00000000',
+              qrcode: 'SLIDE-' + (i + 1)
             }));
 
-          if (carouselPlayers.length > 0) {
-            await supabase.from('allstar_players').upsert(carouselPlayers);
-            console.log('✅ Carousel slides successfully published to allstar_players table in Supabase!');
-          }
+          // Clear previous slides first for clean state
+          await supabase.from('allstar_players').delete().eq('group', 'HERO_CAROUSEL');
+          // Insert fresh active carousel slides
+          await supabase.from('allstar_players').insert(carouselPlayers);
+          console.log('✅ 100% Carousel slides successfully synced to allstar_players table in Supabase!');
         }
       } catch (e) {
         console.error('Supabase site content & carousel sync error:', e);
