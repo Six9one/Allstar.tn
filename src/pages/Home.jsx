@@ -257,33 +257,30 @@ export default function Home() {
           </div>
         </div>
 
-        {/* ⚽ REGISTER CHILD FAST-LAUNCHER BUTTON (BELOW CAROUSEL) */}
-        <div style={{ marginTop: '20px' }}>
+        {/* ⚽ REGISTER CHILD BUTTON - COMPACT & CENTERED */}
+        <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'center', width: '100%' }}>
           <button
             onClick={() => setShowPacksModal(true)}
             style={{
-              width: '100%',
-              minHeight: '52px',
-              padding: '14px 20px',
-              borderRadius: '18px',
+              padding: '12px 28px',
+              borderRadius: '9999px',
               background: 'linear-gradient(135deg, #00E676 0%, #00B0FF 100%)',
               border: 'none',
               color: '#04101A',
               fontWeight: 900,
-              fontSize: '1rem',
+              fontSize: '0.95rem',
               fontFamily: '"Cairo", "Tajawal", sans-serif',
               cursor: 'pointer',
-              boxShadow: '0 8px 25px rgba(0, 230, 118, 0.35)',
-              display: 'flex',
+              boxShadow: '0 6px 20px rgba(0, 230, 118, 0.35)',
+              display: 'inline-flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: '10px',
+              gap: '8px',
               transition: 'all 0.3s ease'
             }}
           >
-            <span style={{ fontSize: '1.3rem' }}>⚽</span>
-            <span>سجل طفلك الآن (عرض باقات الاشتراك الـ 3)</span>
-            <span style={{ fontSize: '0.9rem', opacity: 0.85 }}>➔</span>
+            <span>⚽</span>
+            <span>سجل طفلك الآن</span>
           </button>
         </div>
 
