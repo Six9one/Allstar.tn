@@ -26,7 +26,7 @@ export default function Navbar({ onOpenOnboarding, currentUser }) {
     <header
       style={{
         position: 'fixed',
-        top: '10px',
+        top: 'calc(env(safe-area-inset-top, 0px) + 8px)',
         left: '50%',
         transform: 'translateX(-50%)',
         width: 'calc(100% - 24px)',
@@ -38,7 +38,7 @@ export default function Navbar({ onOpenOnboarding, currentUser }) {
         border: '1.5px solid rgba(0, 230, 118, 0.35)',
         borderRadius: '20px',
         boxShadow: '0 12px 35px rgba(0, 0, 0, 0.85), 0 0 20px rgba(0, 230, 118, 0.15)',
-        paddingTop: 'calc(var(--safe-top, 0px) + 6px)',
+        paddingTop: '6px',
         paddingBottom: '6px',
         paddingLeft: '16px',
         paddingRight: '16px',

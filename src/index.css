@@ -120,7 +120,7 @@ img, video, canvas, svg {
 
 main {
   flex: 1;
-  padding-top: calc(76px + var(--safe-top));
+  padding-top: calc(76px + env(safe-area-inset-top, 0px));
   padding-bottom: calc(90px + var(--safe-bottom));
 }
 
