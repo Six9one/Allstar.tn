@@ -45,18 +45,18 @@ export default function Navbar({ onOpenOnboarding, currentUser }) {
           margin: '0 auto',
           display: 'flex',
           alignItems: 'center',
-          justify: 'space-between',
+          justifyContent: 'space-between',
           gap: '16px',
-          minHeight: '48px'
+          minHeight: '48px',
+          direction: 'ltr'
         }}
       >
-        {/* LEFT: LOGO & BRANDING */}
+        {/* TOP LEFT: LOGO ONLY (STRICTLY LEFT) */}
         <Link
           to="/"
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '10px',
             textDecoration: 'none',
             minHeight: '48px',
             padding: '4px 0',
@@ -67,35 +67,11 @@ export default function Navbar({ onOpenOnboarding, currentUser }) {
             src={logoMain}
             alt="All-Star Academy Logo"
             style={{
-              height: '40px',
+              height: '44px',
               width: 'auto',
               objectFit: 'contain'
             }}
           />
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <span
-              style={{
-                color: '#00E676',
-                fontWeight: 900,
-                fontSize: '1.1rem',
-                lineHeight: 1.1,
-                letterSpacing: '-0.02em',
-                fontFamily: '"Cairo", "Tajawal", sans-serif'
-              }}
-            >
-              ALL-STAR
-            </span>
-            <span
-              style={{
-                color: '#FFC107',
-                fontWeight: 700,
-                fontSize: '0.65rem',
-                letterSpacing: '0.08em'
-              }}
-            >
-              TATAOUINE ACADEMY
-            </span>
-          </div>
         </Link>
 
         {/* CENTER: DESKTOP NAVIGATION LINKS */}
@@ -105,7 +81,8 @@ export default function Navbar({ onOpenOnboarding, currentUser }) {
             display: 'flex',
             alignItems: 'center',
             gap: '6px',
-            flexWrap: 'wrap'
+            flexWrap: 'wrap',
+            direction: 'rtl'
           }}
         >
           {navLinks.map((link) => {
@@ -137,8 +114,8 @@ export default function Navbar({ onOpenOnboarding, currentUser }) {
           })}
         </nav>
 
-        {/* RIGHT: TOP RIGHT CONNECTION BUTTON */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        {/* TOP RIGHT: CONNECTION BUTTON (STRICTLY RIGHT) */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', direction: 'rtl' }}>
           {currentUser ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <button
@@ -213,7 +190,7 @@ export default function Navbar({ onOpenOnboarding, currentUser }) {
             </button>
           )}
 
-          {/* MOBILE TOGGLE BUTTON (48x48px Touch Target) */}
+          {/* MOBILE TOGGLE BUTTON */}
           <button
             className="mobile-toggle"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
