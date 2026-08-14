@@ -1,0 +1,316 @@
+/* ============================================
+   ALL-STAR SPORTS ACADEMY – ULTRA-SLEEK MOBILE THEME
+   Matte Dark Black (#08090C) + Smooth Glass Cards (24px-28px radius)
+   Royal Blue (#0D47A1) + Star Yellow (#FFC107) + Warm Amber (#FF9500)
+   ============================================ */
+
+:root {
+  /* Safe Area Insets for Notch / Dynamic Island / Bottom Home Indicator */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+
+  /* Ultra-Sleek Matte Dark Palette */
+  --bg-dark: #08090C;
+  --bg-card: #12151E;
+  --bg-card-gradient: linear-gradient(145deg, rgba(25, 29, 42, 0.95) 0%, rgba(14, 16, 24, 0.98) 100%);
+  --bg-surface: rgba(255, 255, 255, 0.05);
+
+  /* Official Brand Colors */
+  --royal-blue: #0D47A1;
+  --royal-blue-glow: rgba(13, 71, 161, 0.4);
+  --star-yellow: #FFC107;
+  --star-yellow-glow: rgba(255, 193, 7, 0.4);
+  --warm-amber: #FF9500;
+  
+  /* Stat Progress Colors */
+  --stat-speed: #00E676;
+  --stat-passing: #FFC107;
+  --stat-stamina: #FF3D00;
+  --stat-shooting: #00E5FF;
+
+  --text-main: #FFFFFF;
+  --text-muted: #8E9BAE;
+  --text-dim: #5A677B;
+
+  /* Typography */
+  --font-title: 'Cairo', 'Tajawal', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-body: 'Tajawal', 'Cairo', -apple-system, BlinkMacSystemFont, sans-serif;
+
+  /* Ultra-Smooth Border Radii */
+  --radius-card: 26px;
+  --radius-pill: 9999px;
+
+  /* Transitions */
+  --transition-smooth: 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+/* Global Reset */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  scroll-behavior: smooth;
+  direction: rtl;
+  background-color: var(--bg-dark);
+}
+
+body {
+  font-family: var(--font-body);
+  background-color: var(--bg-dark);
+  color: var(--text-main);
+  line-height: 1.6;
+  overflow-x: hidden;
+  min-height: 100vh;
+  padding-left: var(--safe-left);
+  padding-right: var(--safe-right);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Defensive Media & Overflow Prevention */
+img, video, canvas, svg {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+.text-break-safe {
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+/* Defensive Anti-Overflow Container */
+.defensive-container {
+  width: 100%;
+  max-width: 1320px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: max(16px, env(safe-area-inset-left, 16px));
+  padding-right: max(16px, env(safe-area-inset-right, 16px));
+  box-sizing: border-box;
+}
+
+/* Anti-Overflow Grid System */
+.defensive-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
+  gap: clamp(16px, 2.5vw, 28px);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.touch-target-48 {
+  min-width: 48px;
+  min-height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+main {
+  flex: 1;
+  padding-bottom: calc(90px + var(--safe-bottom));
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-title);
+  font-weight: 800;
+  color: var(--text-main);
+}
+
+/* Ultra-Smooth Cards */
+.sleek-card {
+  background: var(--bg-card-gradient);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-card);
+  padding: 22px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  transition: all var(--transition-smooth);
+}
+
+.sleek-card:hover {
+  border-color: rgba(255, 193, 7, 0.3);
+  transform: translateY(-3px);
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.7), 0 0 20px rgba(255, 193, 7, 0.15);
+}
+
+/* Sleek Buttons */
+.btn-star {
+  background: linear-gradient(135deg, #FFC107 0%, #FF9500 100%);
+  color: #08090C;
+  font-weight: 800;
+  font-size: 1rem;
+  padding: 14px 28px;
+  min-height: 48px;
+  border-radius: var(--radius-pill);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  box-shadow: 0 4px 20px rgba(255, 195, 0, 0.35);
+  transition: all var(--transition-smooth);
+}
+
+.btn-star:hover, .btn-star:active {
+  transform: scale(1.03);
+  box-shadow: 0 6px 30px rgba(255, 195, 0, 0.6);
+}
+
+.btn-royal {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-main);
+  font-weight: 700;
+  padding: 14px 26px;
+  min-height: 48px;
+  border-radius: var(--radius-pill);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  transition: all var(--transition-smooth);
+}
+
+.btn-royal:hover, .btn-royal:active {
+  background: rgba(13, 71, 161, 0.4);
+  border-color: var(--star-yellow);
+}
+
+/* Performance Stat Pill Quadrant */
+.stat-box {
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 18px;
+  padding: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.stat-progress-bar {
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+  margin-top: 8px;
+}
+
+.stat-progress-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 1s ease;
+}
+
+/* Container */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.section-title {
+  font-size: clamp(1.6rem, 4vw, 2.3rem);
+  text-align: center;
+  margin-bottom: 10px;
+}
+
+.section-subtitle {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: clamp(0.95rem, 2.5vw, 1.1rem);
+  margin-bottom: 36px;
+}
+
+.text-yellow {
+  color: var(--star-yellow);
+}
+
+.star-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 193, 7, 0.15);
+  border: 1px solid var(--star-yellow);
+  color: var(--star-yellow);
+  padding: 6px 16px;
+  border-radius: var(--radius-pill);
+  font-size: 0.85rem;
+  font-weight: 800;
+  margin-bottom: 14px;
+}
+
+/* Ultra-Smooth Floating Bottom Nav Bar */
+.mobile-bottom-bar {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .container {
+    padding: 0 16px;
+  }
+
+  .sleek-card {
+    padding: 18px;
+    border-radius: 22px;
+  }
+
+  .mobile-bottom-bar {
+    display: flex;
+    position: fixed;
+    bottom: calc(12px + var(--safe-bottom));
+    left: 16px;
+    right: 16px;
+    height: 60px;
+    background: rgba(18, 21, 30, 0.96);
+    backdrop-filter: blur(25px);
+    -webkit-backdrop-filter: blur(25px);
+    border: 1.5px solid rgba(255, 193, 7, 0.4);
+    border-radius: 32px;
+    z-index: 9999;
+    justify-content: space-around;
+    align-items: center;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.85), 0 0 20px rgba(255, 193, 7, 0.2);
+  }
+
+  .mobile-tab-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    gap: 3px;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+  }
+
+  .mobile-tab-item.active {
+    background: rgba(255, 193, 7, 0.2);
+    color: var(--star-yellow);
+    font-weight: 900;
+  }
+}
+
+@media (max-width: 900px) {
+  .desktop-nav {
+    display: none !important;
+  }
+  .mobile-toggle {
+    display: inline-flex !important;
+  }
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
