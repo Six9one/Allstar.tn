@@ -18,6 +18,7 @@ export default function Home() {
   const [isHovered, setIsHovered] = useState(false)
   const [showPacksModal, setShowPacksModal] = useState(false)
   const autoPlayRef = useRef(null)
+  const touchStartX = useRef(null)
 
   // Load and subscribe to live images from DB
   useEffect(() => {
@@ -100,10 +101,28 @@ export default function Home() {
           boxSizing: 'border-box'
         }}
       >
-        {/* CAROUSEL CARD WRAPPER - FULLY RESPONSIVE MOBILE & DESKTOP */}
+        {/* CAROUSEL CARD WRAPPER - BULLETPROOF CROSS-FADE & TOUCH SWIPE */}
         <div
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
+          onTouchStart={(e) => {
+            touchStartX.current = e.touches[0].clientX
+          }}
+          onTouchEnd={(e) => {
+            if (!touchStartX.current) return
+            const touchEndX = e.changedTouches[0].clientX
+            const diff = touchStartX.current - touchEndX
+            if (Math.abs(diff) > 40) {
+              if (diff > 0) {
+                // Swiped left
+                handleNext()
+              } else {
+                // Swiped right
+                handlePrev()
+              }
+            }
+            touchStartX.current = null
+          }}
           style={{
             position: 'relative',
             borderRadius: '24px',
@@ -113,32 +132,29 @@ export default function Home() {
             background: '#0F131C',
             border: '1.5px solid rgba(0, 230, 118, 0.35)',
             boxShadow: '0 14px 40px rgba(0, 0, 0, 0.85), 0 0 25px rgba(0, 230, 118, 0.15)',
-            boxSizing: 'border-box'
+            boxSizing: 'border-box',
+            userSelect: 'none'
           }}
         >
-          {/* SLIDES CONTAINER WITH SMOOTH SLIDE ANIMATION */}
-          <div
-            style={{
-              display: 'flex',
-              height: '100%',
-              width: `${slides.length * 100}%`,
-              transform: `translateX(${currentIndex * (100 / slides.length)}%)`,
-              transition: 'transform 0.6s cubic-bezier(0.25, 1, 0.5, 1)'
-            }}
-          >
-            {slides.map((slide, idx) => (
+          {/* STACKED CROSS-FADE SLIDES (100% RTL & MOBILE SAFE) */}
+          {slides.map((slide, idx) => {
+            const isActive = idx === currentIndex
+            return (
               <div
                 key={slide.id || idx}
                 style={{
-                  width: `${100 / slides.length}%`,
-                  height: '100%',
-                  position: 'relative',
-                  flexShrink: 0
+                  position: 'absolute',
+                  inset: 0,
+                  opacity: isActive ? 1 : 0,
+                  pointerEvents: isActive ? 'auto' : 'none',
+                  transition: 'opacity 0.7s cubic-bezier(0.4, 0, 0.2, 1)',
+                  zIndex: isActive ? 2 : 1
                 }}
               >
                 <img
                   src={slide.url}
                   alt={slide.caption || 'صور الأكاديمية'}
+                  loading={idx === 0 ? 'eager' : 'lazy'}
                   onError={(e) => {
                     const fallbackUrl = FALLBACK_SLIDES[idx % FALLBACK_SLIDES.length]?.url || FALLBACK_SLIDES[0].url;
                     if (e.currentTarget.src !== fallbackUrl) {
@@ -153,17 +169,75 @@ export default function Home() {
                     display: 'block'
                   }}
                 />
-                {/* DARK GRADIENT OVERLAY FOR TEXT READABILITY */}
+                {/* DARK GRADIENT OVERLAY */}
                 <div
                   style={{
                     position: 'absolute',
                     inset: 0,
-                    background: 'linear-gradient(180deg, rgba(8,9,12,0.1) 0%, rgba(8,9,12,0.85) 100%)'
+                    background: 'linear-gradient(180deg, rgba(8,9,12,0.15) 0%, rgba(8,9,12,0.4) 50%, rgba(8,9,12,0.9) 100%)'
                   }}
                 />
               </div>
-            ))}
-          </div>
+            )
+          })}
+
+          {/* PREV / NEXT ARROW BUTTONS */}
+          {slides.length > 1 && (
+            <>
+              <button
+                onClick={(e) => { e.stopPropagation(); handlePrev(); }}
+                aria-label="Previous Slide"
+                style={{
+                  position: 'absolute',
+                  top: '50%',
+                  right: '12px',
+                  transform: 'translateY(-50%)',
+                  zIndex: 15,
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '50%',
+                  backgroundColor: 'rgba(0, 0, 0, 0.6)',
+                  border: '1px solid rgba(255, 255, 255, 0.25)',
+                  color: '#FFFFFF',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  fontSize: '18px',
+                  backdropFilter: 'blur(4px)',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                ›
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); handleNext(); }}
+                aria-label="Next Slide"
+                style={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: '12px',
+                  transform: 'translateY(-50%)',
+                  zIndex: 15,
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '50%',
+                  backgroundColor: 'rgba(0, 0, 0, 0.6)',
+                  border: '1px solid rgba(255, 255, 255, 0.25)',
+                  color: '#FFFFFF',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  fontSize: '18px',
+                  backdropFilter: 'blur(4px)',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                ‹
+              </button>
+            </>
+          )}
 
           {/* SLIDE CAPTION & DOTS AT BOTTOM */}
           <div
