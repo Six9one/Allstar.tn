@@ -301,6 +301,24 @@ h1, h2, h3, h4, h5, h6 {
   }
 }
 
+@media (max-width: 640px) {
+  .btn-label-desktop {
+    display: none !important;
+  }
+  .btn-label-mobile {
+    display: inline !important;
+  }
+}
+
+@media (min-width: 641px) {
+  .btn-label-desktop {
+    display: inline !important;
+  }
+  .btn-label-mobile {
+    display: none !important;
+  }
+}
+
 @media (max-width: 900px) {
   .desktop-nav {
     display: none !important;
@@ -308,6 +326,12 @@ h1, h2, h3, h4, h5, h6 {
   .mobile-toggle {
     display: inline-flex !important;
   }
+}
+
+/* Global Anti-Overflow Guard */
+body, #root, header, main, footer {
+  max-width: 100vw !important;
+  overflow-x: hidden !important;
 }
 
 @keyframes spin {

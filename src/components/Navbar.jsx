@@ -168,7 +168,7 @@ export default function Navbar({ onOpenOnboarding, currentUser }) {
               onClick={onOpenOnboarding}
               style={{
                 minHeight: '48px',
-                padding: '0 20px',
+                padding: '0 16px',
                 borderRadius: '14px',
                 background: 'linear-gradient(135deg, #00E676 0%, #00B0FF 100%)',
                 border: 'none',
@@ -186,7 +186,9 @@ export default function Navbar({ onOpenOnboarding, currentUser }) {
                 flexShrink: 0
               }}
             >
-              <span>🔐</span> تسجيل الدخول (مدرب / ولي أمر)
+              <span>🔐</span>
+              <span className="btn-label-desktop">تسجيل الدخول (مدرب / ولي أمر)</span>
+              <span className="btn-label-mobile">تسجيل الدخول</span>
             </button>
           )}
 
