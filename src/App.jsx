@@ -90,7 +90,6 @@ export default function App() {
         </Routes>
       </main>
       <Footer />
-      <InstallPrompt />
       <AutoUpdater />
 
       {/* FIRST OPENING ONBOARDING MODAL MATCHING SCREENSHOT */}

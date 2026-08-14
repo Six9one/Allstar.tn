@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 
 export default function InstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] = useState(null)
-  const [showPrompt, setShowPrompt] = useState(true)
+  const [showPrompt, setShowPrompt] = useState(false)
   const [isIOS, setIsIOS] = useState(false)
   const [showInstructionsModal, setShowInstructionsModal] = useState(false)
 
