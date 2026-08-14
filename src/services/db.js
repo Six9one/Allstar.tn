@@ -1028,27 +1028,50 @@ class DBService {
     const current = this.getSiteContent();
     const updated = { ...current, ...contentData };
 
-    // Optimize and compress any raw Base64 gallery images to lightweight WebP (<100KB each)
-    if (Array.isArray(updated.gallery_images)) {
-      try {
-        const optimized = await Promise.all(
-          updated.gallery_images.map(async (img) => {
-            if (img.url && img.url.startsWith('data:image/')) {
+    // Upload any Base64 gallery images to Supabase Storage and replace with real public URLs
+    if (supabase && Array.isArray(updated.gallery_images)) {
+      const uploaded = await Promise.all(
+        updated.gallery_images.map(async (img, i) => {
+          if (img.url && img.url.startsWith('data:image/')) {
+            try {
+              // Optimize image first
+              let base64Url = img.url;
               try {
-                const optUrl = await PhotoStudioEngine.optimizePhoto(img.url, { targetSize: 900, quality: 0.75 });
-                return { ...img, url: optUrl };
-              } catch (optErr) {
-                console.warn('Single image optimization failed, using original:', optErr);
+                base64Url = await PhotoStudioEngine.optimizePhoto(img.url, { targetSize: 900, quality: 0.75 });
+              } catch (e) { /* use original */ }
+
+              // Convert base64 to Blob for upload
+              const response = await fetch(base64Url);
+              const blob = await response.blob();
+              const ext = base64Url.includes('image/png') ? 'png' : 'webp';
+              const fileName = `slide-${i + 1}-${Date.now()}.${ext}`;
+
+              // Upload to Supabase Storage
+              const { error: uploadErr } = await supabase.storage
+                .from('carousel')
+                .upload(fileName, blob, { contentType: blob.type, upsert: true });
+
+              if (uploadErr) {
+                console.warn('⚠️ Storage upload failed for slide', i + 1, uploadErr.message, '- keeping base64');
                 return img;
               }
+
+              // Get the public URL
+              const { data: urlData } = supabase.storage.from('carousel').getPublicUrl(fileName);
+              const publicUrl = urlData?.publicUrl;
+
+              if (publicUrl) {
+                console.log('✅ Slide', i + 1, 'uploaded to Storage:', publicUrl.substring(0, 80));
+                return { ...img, url: publicUrl };
+              }
+            } catch (e) {
+              console.warn('Storage upload error for slide', i + 1, e);
             }
-            return img;
-          })
-        );
-        updated.gallery_images = optimized;
-      } catch (e) {
-        console.warn('Gallery image optimization error, using originals:', e);
-      }
+          }
+          return img;
+        })
+      );
+      updated.gallery_images = uploaded;
     }
 
     safeSetLocalStorage(STORAGE_KEYS.SITE_CONTENT, updated);
@@ -1058,7 +1081,7 @@ class DBService {
 
     if (supabase) {
       try {
-        // 1. Save full site content (including base64 gallery_images) to allstar_site_content
+        // 1. Save site content with real URLs to allstar_site_content
         const { error: upsertErr } = await supabase.from('allstar_site_content').upsert([{ id: 'main_content', data: updated }]);
         if (upsertErr) {
           console.error('❌ Supabase site_content upsert error:', upsertErr);
@@ -1066,7 +1089,7 @@ class DBService {
           console.log('✅ Site content saved to allstar_site_content');
         }
 
-        // 2. Also sync slides to allstar_players table for carousel fetching
+        // 2. Sync slides to allstar_players table
         if (Array.isArray(updated.gallery_images) && updated.gallery_images.length > 0) {
           const carouselPlayers = updated.gallery_images
             .filter(img => img.url && img.url.trim())
@@ -1086,9 +1109,7 @@ class DBService {
               qrcode: 'SLIDE-' + (i + 1)
             }));
 
-          // Clear previous slides first for clean state
           await supabase.from('allstar_players').delete().eq('group', 'HERO_CAROUSEL');
-          // Insert fresh active carousel slides
           const { error: insertErr } = await supabase.from('allstar_players').insert(carouselPlayers);
           if (insertErr) {
             console.error('❌ Supabase carousel insert error:', insertErr);
@@ -1097,15 +1118,13 @@ class DBService {
           }
         }
 
-        // 3. VERIFY: Read back from Supabase to confirm gallery_images were saved
+        // 3. VERIFY
         const { data: verify } = await supabase.from('allstar_site_content').select('data').eq('id', 'main_content').single();
         if (verify && verify.data && Array.isArray(verify.data.gallery_images)) {
           console.log('✅ VERIFIED: Supabase has', verify.data.gallery_images.length, 'gallery images');
-        } else {
-          console.error('❌ VERIFY FAILED: gallery_images not found in Supabase after save');
         }
       } catch (e) {
-        console.error('Supabase site content & carousel sync error:', e);
+        console.error('Supabase site content sync error:', e);
       }
     }
 

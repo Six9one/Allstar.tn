@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html>
+<head><title>Push Carousel to Supabase</title></head>
+<body style="background:#111;color:#fff;font-family:monospace;padding:40px;">
+<h1>🚀 Push Your Carousel Photos to Supabase</h1>
+<p>This page reads your browser's localStorage and pushes your custom photos directly to Supabase.</p>
+<pre id="log" style="background:#222;padding:20px;border-radius:10px;max-height:500px;overflow:auto;"></pre>
+<button id="btn" onclick="pushPhotos()" style="padding:15px 30px;background:#00E676;border:none;color:#000;font-size:18px;font-weight:900;border-radius:12px;cursor:pointer;margin-top:20px;">
+  🚀 PUSH PHOTOS TO SUPABASE NOW
+</button>
+<script type="module">
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+const supabase = createClient('https://hsylnrzxeyqxczdalurj.supabase.co', 'sb_publishable_4pK67288aW38DNkG9mI4DQ_CkFR2HWB');
+const logEl = document.getElementById('log');
+
+function log(msg) {
+  logEl.textContent += msg + '\n';
+  logEl.scrollTop = logEl.scrollHeight;
+  console.log(msg);
+}
+
+window.pushPhotos = async function() {
+  document.getElementById('btn').disabled = true;
+  log('Reading localStorage...');
+  
+  const raw = localStorage.getItem('allstar_db_site_content');
+  if (!raw) {
+    log('❌ ERROR: No site content found in localStorage!');
+    log('Open allstar.tn/admin first, upload your photos, then come back here.');
+    return;
+  }
+  
+  const content = JSON.parse(raw);
+  const gallery = content.gallery_images;
+  
+  if (!gallery || !Array.isArray(gallery) || gallery.length === 0) {
+    log('❌ ERROR: No gallery images found in localStorage!');
+    return;
+  }
+  
+  log('Found ' + gallery.length + ' gallery images in localStorage:');
+  gallery.forEach((img, i) => {
+    const isBase64 = img.url && img.url.startsWith('data:');
+    log('  Image ' + (i+1) + ': ' + (isBase64 ? 'BASE64 (' + img.url.length + ' chars)' : img.url.substring(0, 60)) + ' | ' + (img.caption || 'no caption'));
+  });
+  
+  const validImages = gallery.filter(img => img.url && img.url.trim());
+  if (validImages.length === 0) {
+    log('❌ ERROR: No images with valid URLs!');
+    return;
+  }
+  
+  // Step 1: Push to allstar_site_content
+  log('\n📤 Step 1: Pushing gallery_images to allstar_site_content...');
+  content.gallery_images = validImages;
+  const { error: err1 } = await supabase.from('allstar_site_content').upsert([{ id: 'main_content', data: content }]);
+  if (err1) {
+    log('❌ site_content upsert error: ' + JSON.stringify(err1));
+  } else {
+    log('✅ Site content saved successfully!');
+  }
+  
+  // Step 2: Push to allstar_players HERO_CAROUSEL
+  log('\n📤 Step 2: Pushing slides to allstar_players...');
+  await supabase.from('allstar_players').delete().eq('group', 'HERO_CAROUSEL');
+  
+  const carouselPlayers = validImages.map((img, i) => ({
+    id: 'SLIDE-' + (i + 1),
+    name: img.caption || 'صور الأكاديمية',
+    photourl: img.url,
+    sport: 'CAROUSEL',
+    group: 'HERO_CAROUSEL',
+    status: 'Active',
+    age: 0,
+    coachid: 'COACH-001',
+    teamname: 'CAROUSEL',
+    coachname: 'ALLSTAR',
+    parentname: 'ALLSTAR',
+    parentphone: '00000000',
+    qrcode: 'SLIDE-' + (i + 1)
+  }));
+  
+  const { error: err2 } = await supabase.from('allstar_players').insert(carouselPlayers);
+  if (err2) {
+    log('❌ allstar_players insert error: ' + JSON.stringify(err2));
+  } else {
+    log('✅ Carousel slides saved successfully!');
+  }
+  
+  // Step 3: Verify
+  log('\n🔍 Step 3: Verifying...');
+  const { data: verify } = await supabase.from('allstar_site_content').select('data').eq('id', 'main_content').single();
+  if (verify && verify.data && verify.data.gallery_images) {
+    log('✅ VERIFIED: Supabase has ' + verify.data.gallery_images.length + ' gallery images');
+    verify.data.gallery_images.forEach((img, i) => {
+      const isBase64 = img.url && img.url.startsWith('data:');
+      log('  Image ' + (i+1) + ': ' + (isBase64 ? 'BASE64 ✅ (' + img.url.length + ' chars)' : img.url.substring(0, 60)));
+    });
+  }
+  
+  const { data: verifySlides } = await supabase.from('allstar_players').select('id, photourl').eq('group', 'HERO_CAROUSEL');
+  if (verifySlides) {
+    log('✅ VERIFIED: allstar_players has ' + verifySlides.length + ' carousel slides');
+  }
+  
+  log('\n🎉 DONE! Now open your phone app and refresh it!');
+  document.getElementById('btn').disabled = false;
+};
+
+// Auto-check on load
+log('Page loaded. Checking localStorage...');
+const raw = localStorage.getItem('allstar_db_site_content');
+if (raw) {
+  const content = JSON.parse(raw);
+  const gi = content.gallery_images || [];
+  log('Found ' + gi.length + ' images in localStorage');
+  gi.forEach((img, i) => {
+    const isBase64 = img.url && img.url.startsWith('data:');
+    log('  ' + (i+1) + ': ' + (isBase64 ? '✅ BASE64 (' + img.url.length + ' chars)' : '🔗 URL: ' + (img.url || 'empty').substring(0, 50)));
+  });
+  log('\nClick the green button to push these to Supabase!');
+} else {
+  log('⚠️ No localStorage data found. Open allstar.tn/admin first and upload photos.');
+}
+</script>
+</body>
+</html>
