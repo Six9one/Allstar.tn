@@ -1154,6 +1154,14 @@ export default function Admin() {
     showSuccess(`🗑️ تم حذف الحساب بنجاح`);
   };
 
+  const filteredPlayers = players.filter(p => {
+    const matchesSearch = !searchQuery.trim() ||
+      (p.name && p.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (p.id && p.id.toLowerCase().includes(searchQuery.toLowerCase()));
+    const matchesSport = selectedSport === 'all' || p.sport === selectedSport;
+    return matchesSearch && matchesSport;
+  });
+
   const tabs = [
     { id: 'overview', label: '📊 Dashboard Overview', color: '#FFC107' },
     { id: 'carousel', label: `🖼️ Hero Carousel (${(siteForm.gallery_images || []).length})`, color: '#E040FB' },
