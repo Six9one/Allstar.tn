@@ -978,6 +978,25 @@ class DBService {
   async saveSiteContent(contentData) {
     const current = this.getSiteContent();
     const updated = { ...current, ...contentData };
+
+    // Optimize and compress any raw Base64 gallery images to lightweight WebP (<100KB each) to ensure instant Supabase sync across phone app & desktop
+    if (Array.isArray(updated.gallery_images)) {
+      try {
+        const optimized = await Promise.all(
+          updated.gallery_images.map(async (img) => {
+            if (img.url && img.url.startsWith('data:image/')) {
+              const optUrl = await PhotoStudioEngine.optimizePhoto(img.url, { targetSize: 900, quality: 0.75 });
+              return { ...img, url: optUrl };
+            }
+            return img;
+          })
+        );
+        updated.gallery_images = optimized;
+      } catch (e) {
+        console.warn('Gallery image optimization error:', e);
+      }
+    }
+
     safeSetLocalStorage(STORAGE_KEYS.SITE_CONTENT, updated);
     if (contentData.hero_title) safeSetLocalStorage('allstar_hero_title', contentData.hero_title);
     if (contentData.hero_subtitle) safeSetLocalStorage('allstar_hero_subtitle', contentData.hero_subtitle);
@@ -985,7 +1004,12 @@ class DBService {
 
     if (supabase) {
       try {
-        await supabase.from('allstar_site_content').upsert([{ id: 'main_content', data: updated }]);
+        const { error } = await supabase.from('allstar_site_content').upsert([{ id: 'main_content', data: updated }]);
+        if (error) {
+          console.error('Supabase site content save error details:', error);
+        } else {
+          console.log('✅ Live site content & carousel synced to Supabase for all devices!');
+        }
       } catch (e) {
         console.error('Supabase site content save error:', e);
       }

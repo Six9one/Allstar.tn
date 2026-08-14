@@ -6,10 +6,22 @@ export default function Gallery() {
   const [siteGallery, setSiteGallery] = useState([]);
 
   useEffect(() => {
-    const content = db.getSiteContent();
-    if (content.gallery_images && content.gallery_images.length > 0) {
-      setSiteGallery(content.gallery_images);
-    }
+    const loadContent = (content) => {
+      if (content && Array.isArray(content.gallery_images) && content.gallery_images.length > 0) {
+        setSiteGallery(content.gallery_images);
+      }
+    };
+
+    loadContent(db.getSiteContent());
+    db.getSiteContentAsync().then(c => c && loadContent(c));
+
+    const unsub = db.subscribeToRealtime(null, null, (liveContent) => {
+      if (liveContent) loadContent(liveContent);
+    });
+
+    return () => {
+      if (unsub) unsub();
+    };
   }, []);
 
   const filters = [
