@@ -186,15 +186,39 @@ function ImageUploader({ label = 'Image Photo', value, onChange, size = 75 }) {
 function PlayerEditModal({ player, coaches, onSave, onClose }) {
   const [form, setForm] = useState({
     name: player.name || '',
+    gender: player.gender || 'ذكر',
     age: player.age || 10,
+    grade: player.grade || '',
     sport: player.sport || 'Football',
     group: player.group || 'U12',
     coachId: player.coachId || player.coachid || '',
     teamName: player.teamName || player.teamname || '',
     parentName: player.parentName || player.parentname || '',
+    parentRelation: player.parentRelation || 'أب',
+    parentPhone: player.parentPhone || player.phone || '',
+    parentEmail: player.parentEmail || player.email || '',
+    createAccount: true,
     photoUrl: player.photoUrl || player.photourl || '',
     photourl: player.photoUrl || player.photourl || '',
     status: player.status || 'Active',
+    preferredTime: player.preferredTime || 'مسائي',
+    
+    // Subscription & Abonnement
+    pack: player.pack || 'Basic Pack (شهر 60DT)',
+    subscriptionFee: player.subscriptionFee || '60 DT',
+    paymentStatus: player.paymentStatus || 'Paid',
+    expiryDate: player.expiryDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+
+    // Kit & T-Shirt Order
+    tshirtSize: player.tshirtSize || '10-12 سنة',
+    tshirtNumber: player.tshirtNumber || '10',
+    tshirtName: player.tshirtName || (player.name ? player.name.split(' ')[0].toUpperCase() : 'ALLSTAR'),
+    kitStatus: player.kitStatus || 'Delivered',
+
+    // Notes
+    medicalNotes: player.medicalNotes || '',
+    adminNotes: player.adminNotes || '',
+
     stats: {
       speed: 80, puissance: 80, stamina: 78, shooting: 80,
       passing: 80, technique: 78, defense: 72, mental: 80,
@@ -221,111 +245,303 @@ function PlayerEditModal({ player, coaches, onSave, onClose }) {
     { key: 'mental', label: 'ذهني / Mental', color: '#4DB6AC' },
   ];
 
-  // Overall rating
   const overallRating = Math.round(Object.values(form.stats).reduce((a, b) => a + b, 0) / statLabels.length);
 
   return (
     <div style={{
-      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 9999,
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.88)', zIndex: 9999,
       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px',
-      backdropFilter: 'blur(8px)'
+      backdropFilter: 'blur(10px)'
     }}>
       <div style={{
-        background: 'linear-gradient(145deg, #0D1B2A, #0A1628)',
-        border: '1px solid rgba(255,193,7,0.3)', borderRadius: '24px',
-        width: '100%', maxWidth: '800px', maxHeight: '90vh', overflowY: 'auto',
-        padding: '32px', position: 'relative'
+        background: 'linear-gradient(145deg, #090E17, #0D1626)',
+        border: '1.5px solid rgba(255,193,7,0.35)', borderRadius: '28px',
+        width: '100%', maxWidth: '960px', maxHeight: '92vh', overflowY: 'auto',
+        padding: '28px', position: 'relative', boxShadow: '0 25px 60px rgba(0,0,0,0.7)'
       }}>
-        {/* Close */}
+        {/* Close Button */}
         <button onClick={onClose} style={{
           position: 'absolute', top: '16px', left: '16px',
           background: 'rgba(255,61,0,0.2)', border: '1px solid #FF3D00', color: '#FF3D00',
-          borderRadius: '50%', width: '36px', height: '36px', cursor: 'pointer',
+          borderRadius: '50%', width: '38px', height: '38px', cursor: 'pointer',
           fontSize: '1.1rem', fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center'
         }}>✕</button>
 
-        <div style={{ textAlign: 'center', marginBottom: '28px' }}>
-          {/* Player Photo */}
-          <div style={{ position: 'relative', display: 'inline-block', marginBottom: '12px' }}>
-            <img src={form.photoUrl || 'https://images.unsplash.com/photo-1543351611-58f69d7c1781?w=200&auto=format&fit=crop&q=80'}
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '24px', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '20px' }}>
+          <div style={{ position: 'relative' }}>
+            <img
+              src={form.photoUrl || 'https://images.unsplash.com/photo-1543351611-58f69d7c1781?w=200&auto=format&fit=crop&q=80'}
               alt={form.name}
-              style={{ width: '90px', height: '90px', borderRadius: '50%', objectFit: 'cover', border: '3px solid #FFC107' }}
+              style={{ width: '85px', height: '85px', borderRadius: '50%', objectFit: 'cover', border: '3.5px solid #FFC107', boxShadow: '0 8px 20px rgba(0,0,0,0.5)' }}
             />
-            {/* Overall badge */}
             <div style={{
               position: 'absolute', bottom: '-4px', right: '-4px',
               background: 'linear-gradient(135deg, #FFC107, #FF9500)',
               color: '#000', fontWeight: 900, fontSize: '0.85rem',
-              borderRadius: '50%', width: '32px', height: '32px',
+              borderRadius: '50%', width: '30px', height: '30px',
               display: 'flex', alignItems: 'center', justifyContent: 'center'
             }}>{overallRating}</div>
           </div>
-          <h2 style={{ color: '#FFF', fontSize: '1.3rem', fontWeight: 900, margin: '0 0 4px 0' }}>{form.name}</h2>
-          <span style={{ color: '#FFC107', fontWeight: 700, fontSize: '0.85rem' }}>{player.id}</span>
+
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <h2 style={{ color: '#FFF', fontSize: '1.5rem', fontWeight: 900, margin: 0 }}>{form.name || 'ملف اللاعب'}</h2>
+              <span style={{ background: 'rgba(255,193,7,0.15)', color: '#FFC107', border: '1px solid #FFC107', padding: '2px 10px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 800 }}>
+                {player.id}
+              </span>
+            </div>
+            <p style={{ color: '#8E9BAE', fontSize: '0.85rem', margin: '4px 0 0 0' }}>
+              📁 الملف الشامل للاعب — الاشتراكات، زي الأكاديمية، بيانات التواصل والإحصائيات
+            </p>
+          </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '28px' }}>
-          {/* LEFT: INFO */}
-          <div>
-            <h3 style={{ color: '#FFC107', fontSize: '1rem', fontWeight: 900, marginBottom: '16px', borderBottom: '1px solid rgba(255,193,7,0.2)', paddingBottom: '8px' }}>
-              📋 البيانات الأساسية
+        {/* MAIN DOSSIER FORM GRID */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px', marginBottom: '24px' }}>
+
+          {/* 1. CHILD PERSONAL & PHOTO */}
+          <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '20px', padding: '18px' }}>
+            <h3 style={{ color: '#FFC107', fontSize: '0.98rem', fontWeight: 900, marginBottom: '14px', borderBottom: '1px solid rgba(255,193,7,0.2)', paddingBottom: '6px' }}>
+              👶 البيانات الشخصية للطفل
             </h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <div>
-                <label style={labelStyle}>الاسم الكامل</label>
-                <input style={inputStyle} value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
+                <label style={labelStyle}>اسم الطفل الكامل *</label>
+                <input style={inputStyle} value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="الاسم واللقب" />
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                 <div>
-                  <label style={labelStyle}>العمر</label>
-                  <input style={inputStyle} type="number" min="5" max="20" value={form.age} onChange={e => setForm(f => ({ ...f, age: Number(e.target.value) }))} />
+                  <label style={labelStyle}>الجنس</label>
+                  <select style={inputStyle} value={form.gender} onChange={e => setForm(f => ({ ...f, gender: e.target.value }))}>
+                    <option value="ذكر" style={{ color: '#000' }}>ذكر 👦</option>
+                    <option value="أنثى" style={{ color: '#000' }}>أنثى 👧</option>
+                  </select>
                 </div>
                 <div>
-                  <label style={labelStyle}>الفئة</label>
+                  <label style={labelStyle}>العمر (سنوات)</label>
+                  <input style={inputStyle} type="number" min="5" max="20" value={form.age} onChange={e => setForm(f => ({ ...f, age: Number(e.target.value) }))} />
+                </div>
+              </div>
+              <div>
+                <label style={labelStyle}>المستوى الدراسي</label>
+                <input style={inputStyle} value={form.grade} onChange={e => setForm(f => ({ ...f, grade: e.target.value }))} placeholder="مثال: سنة سادسة أساسي" />
+              </div>
+              <ImageUploader
+                label="📸 صورة الشخصية وبطاقة اللاعب (Original HD / AI Studio)"
+                value={form.photoUrl || form.photourl}
+                onChange={val => setForm(f => ({ ...f, photoUrl: val, photourl: val }))}
+              />
+            </div>
+          </div>
+
+          {/* 2. PARENT & CONTACT INFO */}
+          <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '20px', padding: '18px' }}>
+            <h3 style={{ color: '#00E5FF', fontSize: '0.98rem', fontWeight: 900, marginBottom: '14px', borderBottom: '1px solid rgba(0,229,255,0.2)', paddingBottom: '6px' }}>
+              👨‍👩‍👧‍👦 بيانات ولي الأمر والتواصل
+            </h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div>
+                <label style={labelStyle}>اسم ولي الأمر</label>
+                <input style={inputStyle} value={form.parentName} onChange={e => setForm(f => ({ ...f, parentName: e.target.value }))} placeholder="اسم ولي الأمر" />
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <div>
+                  <label style={labelStyle}>الصلة</label>
+                  <select style={inputStyle} value={form.parentRelation} onChange={e => setForm(f => ({ ...f, parentRelation: e.target.value }))}>
+                    <option value="أب" style={{ color: '#000' }}>أب 👨</option>
+                    <option value="أم" style={{ color: '#000' }}>أم 👩</option>
+                    <option value="ولي أمر" style={{ color: '#000' }}>ولي أمر 👤</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={labelStyle}>رقم الهاتف المسجل *</label>
+                  <input style={inputStyle} value={form.parentPhone} onChange={e => setForm(f => ({ ...f, parentPhone: e.target.value }))} placeholder="97 123 456" />
+                </div>
+              </div>
+              <div>
+                <label style={labelStyle}>البريد الإلكتروني</label>
+                <input style={inputStyle} value={form.parentEmail} onChange={e => setForm(f => ({ ...f, parentEmail: e.target.value }))} placeholder="email@example.com" />
+              </div>
+
+              <div style={{ background: 'rgba(0,230,118,0.08)', border: '1px solid rgba(0,230,118,0.25)', borderRadius: '14px', padding: '12px', marginTop: '4px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', color: '#00E676', fontWeight: 800, fontSize: '0.85rem' }}>
+                  <input
+                    type="checkbox"
+                    checked={form.createAccount}
+                    onChange={e => setForm(f => ({ ...f, createAccount: e.target.checked }))}
+                    style={{ width: '18px', height: '18px', accentColor: '#00E676' }}
+                  />
+                  <span>🔑 إنشاء حساب دخول لولي الأمر (PIN: 1234)</span>
+                </label>
+                <div style={{ fontSize: '0.75rem', color: '#8E9BAE', marginTop: '4px', paddingRight: '28px' }}>
+                  يتيح لولي الأمر الدخول عبر رقم هاتفه لمتابعة الطفل وبطاقته
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 3. SPORT & COACH ASSIGNMENT */}
+          <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '20px', padding: '18px' }}>
+            <h3 style={{ color: '#00E676', fontSize: '0.98rem', fontWeight: 900, marginBottom: '14px', borderBottom: '1px solid rgba(0,230,118,0.2)', paddingBottom: '6px' }}>
+              ⚽ الرياضة والمدرب المسؤول
+            </h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <div>
+                  <label style={labelStyle}>الرياضة المختارة</label>
+                  <select style={inputStyle} value={form.sport} onChange={e => setForm(f => ({ ...f, sport: e.target.value }))}>
+                    {SPORTS.map(s => <option key={s} value={s} style={{ color: '#000' }}>{SPORT_ICONS[s]} {s}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label style={labelStyle}>الفئة العمرية</label>
                   <select style={inputStyle} value={form.group} onChange={e => setForm(f => ({ ...f, group: e.target.value }))}>
                     {GROUPS.map(g => <option key={g} value={g} style={{ color: '#000' }}>{g}</option>)}
                   </select>
                 </div>
               </div>
+
               <div>
-                <label style={labelStyle}>الرياضة</label>
-                <select style={inputStyle} value={form.sport} onChange={e => setForm(f => ({ ...f, sport: e.target.value }))}>
-                  {SPORTS.map(s => <option key={s} value={s} style={{ color: '#000' }}>{SPORT_ICONS[s]} {s}</option>)}
-                </select>
-              </div>
-              <div>
-                <label style={labelStyle}>المدرب المسؤول</label>
+                <label style={labelStyle}>المدرب المسؤول *</label>
                 <select style={inputStyle} value={form.coachId} onChange={e => setForm(f => ({ ...f, coachId: e.target.value }))}>
-                  <option value="" style={{ color: '#000' }}>-- اختر المدرب --</option>
-                  {coaches.map(c => <option key={c.id} value={c.id} style={{ color: '#000' }}>{c.nickname || c.name} ({c.sport})</option>)}
-                </select>
-              </div>
-              <div>
-                <label style={labelStyle}>اسم الفريق</label>
-                <input style={inputStyle} value={form.teamName} onChange={e => setForm(f => ({ ...f, teamName: e.target.value }))} />
-              </div>
-              <div>
-                <label style={labelStyle}>ولي الأمر + الهاتف</label>
-                <input style={inputStyle} value={form.parentName} onChange={e => setForm(f => ({ ...f, parentName: e.target.value }))} />
-              </div>
-              <ImageUploader
-                label="صورة اللاعب (رفع ملف أو رابط)"
-                value={form.photoUrl || form.photourl}
-                onChange={val => setForm(f => ({ ...f, photoUrl: val, photourl: val }))}
-              />
-              <div>
-                <label style={labelStyle}>الحالة</label>
-                <select style={inputStyle} value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))}>
-                  <option value="Active" style={{ color: '#000' }}>✅ نشط</option>
-                  <option value="Inactive" style={{ color: '#000' }}>⏸ غير نشط</option>
-                  <option value="Injured" style={{ color: '#000' }}>🤕 مصاب</option>
+                  <option value="" style={{ color: '#000' }}>-- اختر المدرب المسؤول --</option>
+                  {coaches.map(c => <option key={c.id} value={c.id} style={{ color: '#000' }}>🏅 {c.nickname || c.name} ({c.sport})</option>)}
                 </select>
               </div>
 
-              {/* Match Stats */}
-              <h3 style={{ color: '#00E5FF', fontSize: '1rem', fontWeight: 900, marginTop: '8px', marginBottom: '12px', borderBottom: '1px solid rgba(0,229,255,0.2)', paddingBottom: '8px' }}>
-                📊 إحصائيات المباريات
-              </h3>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <div>
+                  <label style={labelStyle}>اسم الفريق</label>
+                  <input style={inputStyle} value={form.teamName} onChange={e => setForm(f => ({ ...f, teamName: e.target.value }))} placeholder="فريق U12 A" />
+                </div>
+                <div>
+                  <label style={labelStyle}>التوقيت المفضل</label>
+                  <select style={inputStyle} value={form.preferredTime} onChange={e => setForm(f => ({ ...f, preferredTime: e.target.value }))}>
+                    <option value="صباحي" style={{ color: '#000' }}>🌅 صباحي</option>
+                    <option value="مسائي" style={{ color: '#000' }}>🌆 مسائي</option>
+                    <option value="نهاية الأسبوع" style={{ color: '#000' }}>🗓 نهاية الأسبوع</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label style={labelStyle}>حالة التسجيل بالنظام</label>
+                <select style={inputStyle} value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))}>
+                  <option value="Active" style={{ color: '#000' }}>✅ نشط ومسجل رسمي (Active)</option>
+                  <option value="Pending" style={{ color: '#000' }}>⏳ قيد الإنتظار (Pending)</option>
+                  <option value="Inactive" style={{ color: '#000' }}>⏸ غير نشط (Inactive)</option>
+                  <option value="Injured" style={{ color: '#000' }}>🤕 مصاب (Injured)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* 4. SUBSCRIPTION & ABONNEMENT */}
+          <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '20px', padding: '18px' }}>
+            <h3 style={{ color: '#FF9500', fontSize: '0.98rem', fontWeight: 900, marginBottom: '14px', borderBottom: '1px solid rgba(255,149,0,0.2)', paddingBottom: '6px' }}>
+              💳 الاشتراك والباك (Abonnement & Pack)
+            </h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div>
+                <label style={labelStyle}>نوع الباك (Pack Selection)</label>
+                <select style={inputStyle} value={form.pack} onChange={e => setForm(f => ({ ...f, pack: e.target.value }))}>
+                  <option value="Basic Pack (شهر 60DT)" style={{ color: '#000' }}>🥉 Basic Pack — 60 DT / شهر</option>
+                  <option value="Pro Pack (ثلاثي 150DT)" style={{ color: '#000' }}>🥈 Pro Pack — 150 DT / 3 أشهر</option>
+                  <option value="VIP All-Star Pack (سنوي 500DT)" style={{ color: '#000' }}>🥇 VIP All-Star — 500 DT / سنوي</option>
+                </select>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <div>
+                  <label style={labelStyle}>معلوم الاشتراك (DT)</label>
+                  <input style={inputStyle} value={form.subscriptionFee} onChange={e => setForm(f => ({ ...f, subscriptionFee: e.target.value }))} placeholder="60 DT" />
+                </div>
+                <div>
+                  <label style={labelStyle}>حالة الخلاص (Payment)</label>
+                  <select style={inputStyle} value={form.paymentStatus} onChange={e => setForm(f => ({ ...f, paymentStatus: e.target.value }))}>
+                    <option value="Paid" style={{ color: '#000' }}>🟢 خالص (Paid)</option>
+                    <option value="Pending" style={{ color: '#000' }}>🟡 قيد الخلاص (Pending)</option>
+                    <option value="Unpaid" style={{ color: '#000' }}>🔴 غير خالص (Unpaid)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label style={labelStyle}>تاريخ انتهاء الاشتراك / التجديد</label>
+                <input type="date" style={inputStyle} value={form.expiryDate} onChange={e => setForm(f => ({ ...f, expiryDate: e.target.value }))} />
+              </div>
+            </div>
+          </div>
+
+          {/* 5. ACADEMY UNIFORM & T-SHIRT ORDER */}
+          <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '20px', padding: '18px' }}>
+            <h3 style={{ color: '#E040FB', fontSize: '0.98rem', fontWeight: 900, marginBottom: '14px', borderBottom: '1px solid rgba(224,64,251,0.2)', paddingBottom: '6px' }}>
+              👕 زي الأكاديمية والقميص (T-Shirt & Kit)
+            </h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <div>
+                  <label style={labelStyle}>مقاس القميص (Size)</label>
+                  <select style={inputStyle} value={form.tshirtSize} onChange={e => setForm(f => ({ ...f, tshirtSize: e.target.value }))}>
+                    <option value="6-8 سنة" style={{ color: '#000' }}>6 - 8 سنة</option>
+                    <option value="8-10 سنة" style={{ color: '#000' }}>8 - 10 سنة</option>
+                    <option value="10-12 سنة" style={{ color: '#000' }}>10 - 12 سنة</option>
+                    <option value="12-14 سنة" style={{ color: '#000' }}>12 - 14 سنة</option>
+                    <option value="XS" style={{ color: '#000' }}>XS</option>
+                    <option value="S" style={{ color: '#000' }}>S</option>
+                    <option value="M" style={{ color: '#000' }}>M</option>
+                    <option value="L" style={{ color: '#000' }}>L</option>
+                    <option value="XL" style={{ color: '#000' }}>XL</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={labelStyle}>رقم القميص (#)</label>
+                  <input style={inputStyle} value={form.tshirtNumber} onChange={e => setForm(f => ({ ...f, tshirtNumber: e.target.value }))} placeholder="#10" />
+                </div>
+              </div>
+
+              <div>
+                <label style={labelStyle}>الاسم المطبوع خلف القميص</label>
+                <input style={inputStyle} value={form.tshirtName} onChange={e => setForm(f => ({ ...f, tshirtName: e.target.value }))} placeholder="ZAKARIYA" />
+              </div>
+
+              <div>
+                <label style={labelStyle}>حالة التسليم (Kit Status)</label>
+                <select style={inputStyle} value={form.kitStatus} onChange={e => setForm(f => ({ ...f, kitStatus: e.target.value }))}>
+                  <option value="Delivered" style={{ color: '#000' }}>👕 تم تسليم الزي (Delivered)</option>
+                  <option value="Ordered" style={{ color: '#000' }}>📦 تم طلب القميص (Ordered)</option>
+                  <option value="Not Ordered" style={{ color: '#000' }}>❌ لم يطلب بعد (Not Ordered)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* 6. MEDICAL NOTES & ADMIN NOTES */}
+          <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '20px', padding: '18px' }}>
+            <h3 style={{ color: '#FF5252', fontSize: '0.98rem', fontWeight: 900, marginBottom: '14px', borderBottom: '1px solid rgba(255,82,82,0.2)', paddingBottom: '6px' }}>
+              📝 الملاحظات الطبية والإدارية
+            </h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div>
+                <label style={labelStyle}>الملاحظات الطبية / الحساسية</label>
+                <textarea style={{ ...inputStyle, resize: 'none' }} rows={2} value={form.medicalNotes} onChange={e => setForm(f => ({ ...f, medicalNotes: e.target.value }))} placeholder="لا توجد ملاحظات صحية" />
+              </div>
+              <div>
+                <label style={labelStyle}>ملاحظات خاصة بالإدارة</label>
+                <textarea style={{ ...inputStyle, resize: 'none' }} rows={2} value={form.adminNotes} onChange={e => setForm(f => ({ ...f, adminNotes: e.target.value }))} placeholder="ملاحظات سرية للإدارة..." />
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        {/* STATS & MATCH STATS TAB / ACCORDION */}
+        <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '20px', padding: '20px', marginBottom: '24px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+            {/* Match Stats */}
+            <div>
+              <h4 style={{ color: '#00E5FF', fontSize: '0.95rem', fontWeight: 900, marginBottom: '14px' }}>📊 إحصائيات المباريات الرسمية</h4>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
                 {[
                   { key: 'goals', label: '⚽ أهداف', color: '#00E676' },
@@ -336,7 +552,7 @@ function PlayerEditModal({ player, coaches, onSave, onClose }) {
                   { key: 'redCards', label: '🔴 حمراء', color: '#FF3D00' },
                 ].map(({ key, label, color }) => (
                   <div key={key}>
-                    <label style={{ ...labelStyle, color, fontSize: '0.75rem' }}>{label}</label>
+                    <label style={{ ...labelStyle, color, fontSize: '0.72rem' }}>{label}</label>
                     <input
                       type="number" min="0" style={{ ...inputStyle, textAlign: 'center', padding: '8px', fontSize: '1rem', fontWeight: 900, color }}
                       value={form.matchStats[key]}
@@ -346,44 +562,33 @@ function PlayerEditModal({ player, coaches, onSave, onClose }) {
                 ))}
               </div>
             </div>
-          </div>
 
-          {/* RIGHT: STATS */}
-          <div>
-            <h3 style={{ color: '#FF9500', fontSize: '1rem', fontWeight: 900, marginBottom: '16px', borderBottom: '1px solid rgba(255,149,0,0.2)', paddingBottom: '8px' }}>
-              ⚡ قدرات اللاعب (Puissance & Stats)
-            </h3>
-
-            {/* Overall big rating */}
-            <div style={{
-              background: 'linear-gradient(135deg, rgba(255,193,7,0.12), rgba(255,149,0,0.08))',
-              border: '1px solid rgba(255,193,7,0.3)', borderRadius: '16px',
-              padding: '16px', textAlign: 'center', marginBottom: '20px'
-            }}>
-              <div style={{ fontSize: '0.8rem', color: '#B0BEC5', marginBottom: '4px' }}>التقييم العام</div>
-              <div style={{ fontSize: '3rem', fontWeight: 900, color: '#FFC107', lineHeight: 1 }}>{overallRating}</div>
-              <div style={{ fontSize: '0.75rem', color: '#8E9BAE', marginTop: '4px' }}>OVR</div>
+            {/* OVR Player Skills */}
+            <div>
+              <h4 style={{ color: '#FF9500', fontSize: '0.95rem', fontWeight: 900, marginBottom: '14px' }}>⚡ قدرات اللاعب وإحصائيات الـ OVR</h4>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                {statLabels.map(({ key, label, color }) => (
+                  <StatSlider key={key} label={label} value={form.stats[key]} color={color} onChange={val => updateStat(key, val)} />
+                ))}
+              </div>
             </div>
-
-            {statLabels.map(({ key, label, color }) => (
-              <StatSlider key={key} label={label} value={form.stats[key]} color={color}
-                onChange={val => updateStat(key, val)} />
-            ))}
           </div>
         </div>
 
-        {/* SAVE BUTTON */}
+        {/* SAVE DOSSIER BUTTON */}
         <button
           onClick={() => onSave(player.id, form)}
           style={{
-            width: '100%', padding: '16px', marginTop: '28px',
-            background: 'linear-gradient(135deg, #FFC107, #FF9500)',
-            border: 'none', borderRadius: '16px', color: '#000',
-            fontWeight: 900, fontSize: '1rem', cursor: 'pointer',
-            fontFamily: '"Cairo", "Tajawal", sans-serif'
+            width: '100%', padding: '18px',
+            background: 'linear-gradient(135deg, #00E676 0%, #00B0FF 100%)',
+            border: 'none', borderRadius: '18px', color: '#000',
+            fontWeight: 900, fontSize: '1.1rem', cursor: 'pointer',
+            fontFamily: '"Cairo", "Tajawal", sans-serif',
+            boxShadow: '0 8px 25px rgba(0, 230, 118, 0.4)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px'
           }}
         >
-          💾 حفظ جميع البيانات والإحصائيات
+          <span>🚀</span> حفظ واعتمد ملف اللاعب والبطاقة بالنظام
         </button>
       </div>
     </div>
@@ -983,11 +1188,25 @@ export default function Admin() {
         console.warn('Photo compression fallback:', e);
       }
     }
-    const cleanForm = { ...formData, photoUrl: photo, photourl: photo };
+    const cleanForm = { ...formData, photoUrl: photo, photourl: photo, status: formData.status || 'Active' };
+
+    // Auto-create parent login account if requested
+    if (cleanForm.createAccount && cleanForm.parentPhone) {
+      db.saveAccount({
+        role: 'parent',
+        name: cleanForm.parentName || cleanForm.name + ' (ولي أمر)',
+        phone: cleanForm.parentPhone,
+        pin: '1234',
+        playerIds: [id],
+        sport: cleanForm.sport,
+        group: cleanForm.group
+      });
+      setAccounts(db.getAccounts());
+    }
 
     setPlayers(prev => prev.map(p => p.id === id ? { ...p, ...cleanForm } : p));
     setEditingPlayer(null);
-    showSuccess(`✅ تم تحديث بيانات اللاعب بنجاح!`);
+    showSuccess(`✅ تم اعتماد وتحديث الملف الشامل للاعب ${cleanForm.name} بنجاح!`);
 
     const updated = await db.updatePlayer(id, cleanForm);
     if (updated && updated.length > 0) setPlayers(updated);
