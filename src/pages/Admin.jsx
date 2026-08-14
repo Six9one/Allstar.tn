@@ -1144,7 +1144,12 @@ export default function Admin() {
     db.getSiteContentAsync().then(c => {
       if (c) {
         setSiteContent(c);
-        setSiteForm(c);
+        setSiteForm(f => {
+          const hasLocalCustom = Array.isArray(f.gallery_images) && f.gallery_images.some(img => img.url && img.url.startsWith('data:'));
+          const remoteHasCustom = Array.isArray(c.gallery_images) && c.gallery_images.some(img => img.url && img.url.startsWith('data:'));
+          if (hasLocalCustom && !remoteHasCustom) return f;
+          return c;
+        });
       }
     });
 
@@ -1154,7 +1159,12 @@ export default function Admin() {
       (livePlayers) => setPlayers(livePlayers),
       (liveContent) => {
         setSiteContent(liveContent);
-        setSiteForm(liveContent);
+        setSiteForm(f => {
+          const hasLocalCustom = Array.isArray(f.gallery_images) && f.gallery_images.some(img => img.url && img.url.startsWith('data:'));
+          const liveHasCustom = Array.isArray(liveContent.gallery_images) && liveContent.gallery_images.some(img => img.url && img.url.startsWith('data:'));
+          if (hasLocalCustom && !liveHasCustom) return f;
+          return liveContent;
+        });
       }
     );
 

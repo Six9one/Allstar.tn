@@ -79,7 +79,9 @@ export class PhotoStudioEngine {
 
     return new Promise((resolve) => {
       const img = new Image();
-      img.crossOrigin = 'anonymous';
+      if (typeof baseDataUrl === 'string' && baseDataUrl.startsWith('http')) {
+        img.crossOrigin = 'anonymous';
+      }
 
       img.onload = () => {
         try {
