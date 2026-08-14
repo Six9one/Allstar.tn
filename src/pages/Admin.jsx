@@ -1331,9 +1331,12 @@ export default function Admin() {
 
   // ── Site content handler ───────────────────────────────────────────────────
   const handleSaveSiteContent = async () => {
+    showSuccess('⚡ جاري ضغط ونشر الصور مباشرة إلى الهواتف والأجهزة...');
     const updated = await db.saveSiteContent(siteForm);
     setSiteContent(updated);
-    showSuccess('✅ تم حفظ وتحديث محتوى الموقع بنجاح! يظهر التغيير فوراً لجميع الزوار عبر الأجهزة');
+    setSiteForm(updated);
+    const slideCount = (updated.gallery_images || []).length;
+    showSuccess(`✅ تم نشر ${slideCount} صور بنجاح على الهواتف والأجهزة المباشرة!`);
   };
 
   const updateSiteForm = (key, val) => setSiteForm(f => ({ ...f, [key]: val }));
