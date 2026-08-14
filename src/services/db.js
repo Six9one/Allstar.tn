@@ -2,6 +2,7 @@
 // Supports live Supabase integration + offline-first LocalStorage sync fallback
 
 import { createClient } from '@supabase/supabase-js';
+import { PhotoStudioEngine } from './photoStudio';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || '';
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
