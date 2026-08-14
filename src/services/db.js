@@ -1054,6 +1054,29 @@ class DBService {
     }
   }
 
+  async getRegistrationsAsync() {
+    if (supabase) {
+      try {
+        const { data, error } = await supabase.from('allstar_registrations').select('*').order('created_at', { ascending: false });
+        if (!error && data) {
+          const localRegs = this.getRegistrations();
+          const remoteIds = new Set(data.map(r => r.id));
+          const combined = [...data];
+          for (const lr of localRegs) {
+            if (!remoteIds.has(lr.id)) {
+              combined.push(lr);
+            }
+          }
+          localStorage.setItem(STORAGE_KEYS.REGISTRATIONS, JSON.stringify(combined));
+          return combined;
+        }
+      } catch (e) {
+        console.error('getRegistrationsAsync error:', e);
+      }
+    }
+    return this.getRegistrations();
+  }
+
   // ── Attendance ────────────────────────────────────────────────────────────
   async recordAttendance(playerId, status = 'Present') {
     const player = this.getPlayerById(playerId);

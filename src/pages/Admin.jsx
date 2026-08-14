@@ -918,6 +918,7 @@ export default function Admin() {
   // Announcements
   const [announcementTitle, setAnnouncementTitle] = useState('');
   const [announcementText, setAnnouncementText] = useState('');
+  const [registrations, setRegistrations] = useState(() => db.getRegistrations());
 
   // Customizer / Website Editor
   const [siteForm, setSiteForm] = useState({});
@@ -926,6 +927,7 @@ export default function Admin() {
     // Initial sync load
     setPlayers(db.getPlayers());
     setCoaches(db.getCoaches());
+    setRegistrations(db.getRegistrations());
     const content = db.getSiteContent();
     setSiteContent(content);
     setSiteForm(content);
@@ -933,6 +935,7 @@ export default function Admin() {
     // Async fetch from Supabase
     db.getPlayersAsync().then(setPlayers);
     db.getCoachesAsync().then(setCoaches);
+    db.getRegistrationsAsync().then(regs => { if (regs) setRegistrations(regs); });
     db.getSiteContentAsync().then(c => {
       if (c) {
         setSiteContent(c);
@@ -1154,7 +1157,31 @@ export default function Admin() {
     showSuccess(`🗑️ تم حذف الحساب بنجاح`);
   };
 
-  const pendingPlayers = players.filter(p => p.status === 'Pending' || p.group === 'Pending Dossier');
+  const pendingPlayers = [
+    ...players.filter(p => p.status === 'Pending' || p.group === 'Pending Dossier'),
+    ...registrations.map(r => {
+      const rawSport = (r.selectedSports && r.selectedSports[0]) || r.sport || 'football';
+      const sportName = rawSport === 'football' || rawSport === 'Football' ? 'Football' : (rawSport === 'basketball' || rawSport === 'Basketball' ? 'Basketball' : 'Handball');
+      return {
+        id: r.id || 'REG-' + Math.floor(1000 + Math.random() * 9000),
+        name: r.childName || r.name || 'طفل جديد',
+        age: Number(r.childAge || r.age) || 10,
+        sport: sportName,
+        group: 'Pending Dossier',
+        parentName: `${r.parentName || ''} (${r.relation || 'ولي أمر'})`,
+        parentPhone: r.parentPhone || r.phone || '',
+        parentEmail: r.parentEmail || r.email || '',
+        gender: r.gender || 'ذكر',
+        grade: r.grade || '',
+        medicalNotes: r.medicalNotes || '',
+        preferredTime: r.preferredTime || '',
+        status: 'Pending',
+        photoUrl: r.photoUrl || 'https://images.unsplash.com/photo-1543351611-58f69d7c1781?w=200&auto=format&fit=crop&q=80',
+        stats: { speed: 75, puissance: 75, stamina: 75, shooting: 75, passing: 75, technique: 75, defense: 75, mental: 75 },
+        matchStats: { goals: 0, assists: 0, points: 0 }
+      };
+    })
+  ].filter((p, index, self) => index === self.findIndex(t => t.id === p.id || t.name === p.name));
 
   const filteredPlayers = players.filter(p => {
     const matchesSearch = !searchQuery.trim() ||
