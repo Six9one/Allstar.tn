@@ -414,14 +414,36 @@ class DBService {
     if (supabase) {
       try {
         const { data, error } = await supabase.from('allstar_site_content').select('*').eq('id', 'main_content').single();
+        let siteData = null;
         if (!error && data && data.data) {
-          const merged = { ...SEED_SITE_CONTENT, ...data.data };
-          safeSetLocalStorage(STORAGE_KEYS.SITE_CONTENT, merged);
-          return merged;
-        } else if (!error && (!data || !data.data)) {
-          const localContent = this.getSiteContent();
-          await supabase.from('allstar_site_content').upsert([{ id: 'main_content', data: localContent }]);
+          siteData = data.data;
         }
+
+        // Fetch from allstar_media to guarantee mobile PWA carousel slide sync
+        const { data: mediaData } = await supabase.from('allstar_media').select('*').order('created_at', { ascending: false });
+
+        const localContent = this.getSiteContent();
+        const baseContent = siteData ? { ...SEED_SITE_CONTENT, ...siteData } : localContent;
+
+        if (mediaData && mediaData.length > 0) {
+          const mediaSlides = mediaData.filter(m => m.url && m.url.trim()).map(m => ({
+            id: m.id,
+            url: m.url,
+            caption: m.caption || 'صور الأكاديمية'
+          }));
+
+          const existingUrls = new Set((baseContent.gallery_images || []).map(g => g.url));
+          const mergedImages = [...(baseContent.gallery_images || [])];
+          for (const ms of mediaSlides) {
+            if (!existingUrls.has(ms.url)) {
+              mergedImages.push(ms);
+            }
+          }
+          baseContent.gallery_images = mergedImages;
+        }
+
+        safeSetLocalStorage(STORAGE_KEYS.SITE_CONTENT, baseContent);
+        return baseContent;
       } catch (e) {
         console.error('getSiteContentAsync error:', e);
       }
@@ -1009,6 +1031,21 @@ class DBService {
           console.error('Supabase site content save error details:', error);
         } else {
           console.log('✅ Live site content & carousel synced to Supabase for all devices!');
+        }
+
+        // Also upsert individual carousel slides into allstar_media for guaranteed PWA mobile app sync
+        if (Array.isArray(updated.gallery_images)) {
+          const mediaRows = updated.gallery_images
+            .filter(img => img.url && img.url.trim())
+            .map((img, i) => ({
+              id: img.id || 'CAROUSEL-' + i + '-' + Date.now(),
+              url: img.url,
+              caption: img.caption || 'صور الأكاديمية',
+              created_at: new Date().toISOString()
+            }));
+          if (mediaRows.length > 0) {
+            await supabase.from('allstar_media').upsert(mediaRows);
+          }
         }
       } catch (e) {
         console.error('Supabase site content save error:', e);

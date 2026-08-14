@@ -21,31 +21,35 @@ export default function Home() {
 
   // Load and subscribe to live images from DB
   useEffect(() => {
-    const loadImages = (content) => {
+    const loadImages = async (syncContent) => {
+      let combined = [];
+      const content = syncContent || (await db.getSiteContentAsync());
       if (content && Array.isArray(content.gallery_images) && content.gallery_images.length > 0) {
-        const valid = content.gallery_images.filter(img => img.url && img.url.trim())
-        if (valid.length > 0) {
-          setSlides(valid)
-          return
-        }
+        combined = content.gallery_images.filter(img => img.url && img.url.trim());
       }
-      setSlides(FALLBACK_SLIDES)
-    }
 
-    const currentContent = db.getSiteContent()
-    loadImages(currentContent)
+      if (combined.length > 0) {
+        setSlides(combined);
+      } else {
+        setSlides(FALLBACK_SLIDES);
+      }
+    };
 
-    db.getSiteContentAsync().then(c => c && loadImages(c))
+    // 1. Instant local load
+    loadImages(db.getSiteContent());
 
-    // Realtime Supabase Sync
+    // 2. Cloud async fetch with cache-busting
+    db.getSiteContentAsync().then(c => c && loadImages(c));
+
+    // 3. Realtime Supabase Sync
     const unsub = db.subscribeToRealtime(null, null, (liveContent) => {
-      if (liveContent) loadImages(liveContent)
-    })
+      if (liveContent) loadImages(liveContent);
+    });
 
     return () => {
-      if (unsub) unsub()
-    }
-  }, [])
+      if (unsub) unsub();
+    };
+  }, []);
 
   // Auto-Glide Carousel Timer (Glides every 4 seconds)
   useEffect(() => {
