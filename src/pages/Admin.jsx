@@ -1739,10 +1739,12 @@ export default function Admin() {
               </div>
               <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                 <button
-                  onClick={() => {
+                  onClick={async () => {
                     const gi = [...(siteForm.gallery_images || [])];
-                    gi.push({ id: 'GAL-' + Date.now(), url: '', caption: '⚽ صور الأكاديمية الجديدة' });
-                    updateSiteForm('gallery_images', gi);
+                    gi.push({ id: 'SLIDE-' + Date.now(), url: '', caption: '⚽ صور الأكاديمية الجديدة' });
+                    setSiteForm(f => ({ ...f, gallery_images: gi }));
+                    await db.saveSiteContent({ ...siteForm, gallery_images: gi });
+                    showSuccess('➕ تم إضافة شريحة جديدة وتحديث البث المباشر');
                   }}
                   style={{
                     background: 'linear-gradient(135deg, #E040FB, #7B1FA2)',
@@ -1781,9 +1783,11 @@ export default function Admin() {
                       Slide #{idx + 1}
                     </span>
                     <button
-                      onClick={() => {
+                      onClick={async () => {
                         const gi = siteForm.gallery_images.filter((_, i) => i !== idx);
-                        updateSiteForm('gallery_images', gi);
+                        setSiteForm(f => ({ ...f, gallery_images: gi }));
+                        await db.saveSiteContent({ ...siteForm, gallery_images: gi });
+                        showSuccess(`🗑️ تم حذف الصورة #${idx + 1} وتحديث الكاروسيل على الهواتف`);
                       }}
                       style={{
                         background: 'rgba(255,61,0,0.2)', border: '1px solid #FF3D00', color: '#FF3D00',
@@ -1808,14 +1812,16 @@ export default function Admin() {
                     </div>
                   )}
 
-                  {/* FILE UPLOADER CONTROL */}
+                  {/* FILE UPLOADER CONTROL - AUTO SAVES & PUBLISHES TO CLOUD IMMEDIATELY */}
                   <ImageUploader
-                    label="Upload Image File (Local Photo)"
+                    label="Upload Image File (Auto-Syncs Live to Phones)"
                     value={img.url}
-                    onChange={val => {
+                    onChange={async (val) => {
                       const g = [...siteForm.gallery_images];
                       g[idx] = { ...img, url: val };
-                      updateSiteForm('gallery_images', g);
+                      setSiteForm(f => ({ ...f, gallery_images: g }));
+                      await db.saveSiteContent({ ...siteForm, gallery_images: g });
+                      showSuccess(`🚀 تم رفع ونشر الصورة #${idx + 1} بنجاح على جميع الهواتف!`);
                     }}
                     size={50}
                   />
@@ -1826,10 +1832,12 @@ export default function Admin() {
                       style={inputStyle}
                       value={img.caption || ''}
                       placeholder="e.g. ⚽ All-Star U12 Match Photos"
-                      onChange={e => {
+                      onChange={async (e) => {
+                        const newCap = e.target.value;
                         const g = [...siteForm.gallery_images];
-                        g[idx] = { ...img, caption: e.target.value };
-                        updateSiteForm('gallery_images', g);
+                        g[idx] = { ...img, caption: newCap };
+                        setSiteForm(f => ({ ...f, gallery_images: g }));
+                        await db.saveSiteContent({ ...siteForm, gallery_images: g });
                       }}
                     />
                   </div>
