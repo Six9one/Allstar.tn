@@ -1157,20 +1157,21 @@ export default function Admin() {
   };
 
   const tabs = [
-    { id: 'overview', label: '📊 نظرة عامة', color: '#FFC107' },
-    { id: 'accounts', label: `🔐 إدارة الحسابات (${accounts.length})`, color: '#00E676' },
-    { id: 'coaches', label: '🏅 المدربون', color: '#FF9500' },
-    { id: 'players', label: `⚽ اللاعبون (${players.length})`, color: '#00E676' },
-    { id: 'siteeditor', label: '🌐 محرر الموقع', color: '#00E5FF' },
-    { id: 'qrscanner', label: '📱 ماسح QR', color: '#E040FB' },
-    { id: 'announcements', label: '📢 إعلانات', color: '#FF3D00' },
+    { id: 'overview', label: '📊 Dashboard Overview', color: '#FFC107' },
+    { id: 'carousel', label: `🖼️ Hero Carousel (${(siteForm.gallery_images || []).length})`, color: '#E040FB' },
+    { id: 'accounts', label: `🔐 Account Credentials (${accounts.length})`, color: '#00E676' },
+    { id: 'coaches', label: `🏅 Coaches (${coaches.length})`, color: '#FF9500' },
+    { id: 'players', label: `⚽ Players (${players.length})`, color: '#00E676' },
+    { id: 'siteeditor', label: '🌐 Website Content', color: '#00E5FF' },
+    { id: 'qrscanner', label: '📱 QR Scanner', color: '#E040FB' },
+    { id: 'announcements', label: '📢 Broadcast Push', color: '#FF3D00' },
   ];
 
   return (
     <div style={{
       paddingTop: '95px', paddingBottom: '90px', minHeight: '100vh',
       background: 'linear-gradient(180deg, #060912 0%, #0A1628 100%)',
-      color: '#FFF', fontFamily: '"Cairo", "Tajawal", sans-serif', direction: 'rtl'
+      color: '#FFF', fontFamily: '"Cairo", "Tajawal", sans-serif', direction: 'ltr'
     }}>
 
       {/* Player Edit Modal */}
@@ -1334,6 +1335,136 @@ export default function Admin() {
                   })}
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* ═══════════════════════════════════════════════════════════════════ */}
+        {/* TAB: HERO CAROUSEL & PHOTO GALLERY MANAGER                         */}
+        {/* ═══════════════════════════════════════════════════════════════════ */}
+        {activeTab === 'carousel' && (
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
+              <div>
+                <h2 style={{ color: '#E040FB', fontSize: '1.5rem', fontWeight: 900, margin: 0 }}>
+                  🖼️ Hero Carousel & Photo Gallery Manager
+                </h2>
+                <p style={{ color: '#8E9BAE', fontSize: '0.88rem', margin: '4px 0 0 0' }}>
+                  Upload local images, edit slide captions, and control the main homepage photo carousel in real-time
+                </p>
+              </div>
+              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                <button
+                  onClick={() => {
+                    const gi = [...(siteForm.gallery_images || [])];
+                    gi.push({ id: 'GAL-' + Date.now(), url: '', caption: '⚽ صور الأكاديمية الجديدة' });
+                    updateSiteForm('gallery_images', gi);
+                  }}
+                  style={{
+                    background: 'linear-gradient(135deg, #E040FB, #7B1FA2)',
+                    border: 'none', color: '#FFF', padding: '12px 22px', borderRadius: '14px',
+                    fontWeight: 900, cursor: 'pointer', fontSize: '0.9rem',
+                    boxShadow: '0 4px 15px rgba(224, 64, 251, 0.35)'
+                  }}
+                >
+                  ➕ Add New Carousel Slide
+                </button>
+                <button
+                  onClick={handleSaveSiteContent}
+                  style={{
+                    background: 'linear-gradient(135deg, #00E676, #00B0FF)',
+                    border: 'none', color: '#000', padding: '12px 24px', borderRadius: '14px',
+                    fontWeight: 900, cursor: 'pointer', fontSize: '0.9rem',
+                    boxShadow: '0 4px 15px rgba(0, 230, 118, 0.35)'
+                  }}
+                >
+                  💾 Save & Publish Live Carousel
+                </button>
+              </div>
+            </div>
+
+            {/* UPLOAD & CAROUSEL CARDS GRID */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px' }}>
+              {(siteForm.gallery_images || []).map((img, idx) => (
+                <div key={img.id || idx} style={{
+                  background: 'rgba(20, 26, 40, 0.85)',
+                  border: '1.5px solid rgba(224, 64, 251, 0.35)',
+                  borderRadius: '20px', padding: '18px', display: 'flex', flexDirection: 'column', gap: '12px',
+                  position: 'relative', boxShadow: '0 10px 30px rgba(0,0,0,0.4)'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ background: 'rgba(224,64,251,0.2)', color: '#E040FB', padding: '3px 12px', borderRadius: '10px', fontSize: '0.78rem', fontWeight: 900 }}>
+                      Slide #{idx + 1}
+                    </span>
+                    <button
+                      onClick={() => {
+                        const gi = siteForm.gallery_images.filter((_, i) => i !== idx);
+                        updateSiteForm('gallery_images', gi);
+                      }}
+                      style={{
+                        background: 'rgba(255,61,0,0.2)', border: '1px solid #FF3D00', color: '#FF3D00',
+                        borderRadius: '8px', padding: '4px 10px', cursor: 'pointer', fontWeight: 800, fontSize: '0.78rem'
+                      }}
+                    >
+                      🗑️ Delete
+                    </button>
+                  </div>
+
+                  {/* IMAGE PREVIEW */}
+                  {img.url ? (
+                    <img
+                      src={img.url}
+                      alt={img.caption || 'Carousel slide'}
+                      style={{ width: '100%', height: '180px', borderRadius: '14px', objectFit: 'cover', border: '1.5px solid rgba(255,255,255,0.1)' }}
+                    />
+                  ) : (
+                    <div style={{ width: '100%', height: '180px', borderRadius: '14px', background: 'rgba(255,255,255,0.04)', border: '2px dashed rgba(224,64,251,0.4)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#8E9BAE' }}>
+                      <span style={{ fontSize: '2rem' }}>📷</span>
+                      <span style={{ fontSize: '0.8rem', marginTop: '6px' }}>Upload Image or Paste URL</span>
+                    </div>
+                  )}
+
+                  {/* FILE UPLOADER CONTROL */}
+                  <ImageUploader
+                    label="Upload Image File (Local Photo)"
+                    value={img.url}
+                    onChange={val => {
+                      const g = [...siteForm.gallery_images];
+                      g[idx] = { ...img, url: val };
+                      updateSiteForm('gallery_images', g);
+                    }}
+                    size={50}
+                  />
+
+                  <div>
+                    <label style={labelStyle}>Slide Caption / Title</label>
+                    <input
+                      style={inputStyle}
+                      value={img.caption || ''}
+                      placeholder="e.g. ⚽ All-Star U12 Match Photos"
+                      onChange={e => {
+                        const g = [...siteForm.gallery_images];
+                        g[idx] = { ...img, caption: e.target.value };
+                        updateSiteForm('gallery_images', g);
+                      }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ marginTop: '24px' }}>
+              <button
+                onClick={handleSaveSiteContent}
+                style={{
+                  width: '100%', padding: '16px', borderRadius: '16px',
+                  background: 'linear-gradient(135deg, #00E676 0%, #00B0FF 100%)',
+                  border: 'none', color: '#000', fontWeight: 900, fontSize: '1rem',
+                  cursor: 'pointer', boxShadow: '0 6px 20px rgba(0,230,118,0.35)'
+                }}
+              >
+                🚀 Publish All Carousel Slides Live to Homepage
+              </button>
             </div>
           </div>
         )}
