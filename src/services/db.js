@@ -328,12 +328,8 @@ const SEED_SITE_CONTENT = {
     { day: 'السبت', time: '09:00 - 12:00', group: 'All', sport: 'Multi-Sport', coach: 'جميع المدربين' }
   ],
   gallery_images: [
-    { id: 'GAL-1', url: 'https://images.unsplash.com/photo-1551958219-acbc27eb9b0c?w=600&auto=format&fit=crop&q=80', caption: 'تدريب U12 - كرة القدم' },
-    { id: 'GAL-2', url: 'https://images.unsplash.com/photo-1546519638-68e109498ffc?w=600&auto=format&fit=crop&q=80', caption: 'حصة كرة السلة' },
-    { id: 'GAL-3', url: 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=600&auto=format&fit=crop&q=80', caption: 'أبطال U16' },
-    { id: 'GAL-4', url: 'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=600&auto=format&fit=crop&q=80', caption: 'تمارين اللياقة' },
-    { id: 'GAL-5', url: 'https://images.unsplash.com/photo-1543286386-713bdd548da4?w=600&auto=format&fit=crop&q=80', caption: 'مباراة ودية' },
-    { id: 'GAL-6', url: 'https://images.unsplash.com/photo-1526232761682-d26e03ac148e?w=600&auto=format&fit=crop&q=80', caption: 'تدريب U14' }
+    { id: 'GAL-1', url: 'https://hsylnrzxeyqxczdalurj.supabase.co/storage/v1/object/public/carousel/live-slide-1-1786751135590.webp', caption: '⚽ تدريبات وبطولات أكاديمية أولستار الرياضية' },
+    { id: 'GAL-2', url: 'https://hsylnrzxeyqxczdalurj.supabase.co/storage/v1/object/public/carousel/live-slide-2-1786751135909.webp', caption: '🏆 افتتاح التسجيل ومشاريع التميز الرياضي والدراسي' }
   ],
   shop_products: [
     { id: 'SHOP-1', name: 'قميص أولستار الرسمي', price: '45 DT', description: 'قميص رياضي بألوان الأكاديمية', inStock: true },

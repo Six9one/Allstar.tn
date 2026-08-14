@@ -4,11 +4,8 @@ import logoMain from '../assets/logo-light.png'
 import { db } from '../services/db'
 
 const FALLBACK_SLIDES = [
-  { id: 'SL-1', url: 'https://images.unsplash.com/photo-1551958219-acbc27eb9b0c?w=1200&auto=format&fit=crop&q=80', caption: '⚽ تدريبات فريق أولستار U12 - كرة القدم' },
-  { id: 'SL-2', url: 'https://images.unsplash.com/photo-1546519638-68e109498ffc?w=1200&auto=format&fit=crop&q=80', caption: '🏀 حصص كرة السلة التكتيكية للأشبال' },
-  { id: 'SL-3', url: 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=1200&auto=format&fit=crop&q=80', caption: '🏆 أبطال أولستار بتطاوين - لحظة التتويج' },
-  { id: 'SL-4', url: 'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=1200&auto=format&fit=crop&q=80', caption: ' تمارينات اللياقة البدنية والسرعة' },
-  { id: 'SL-5', url: 'https://images.unsplash.com/photo-1543286386-713bdd548da4?w=1200&auto=format&fit=crop&q=80', caption: '📸 صور المباراة الودية الكبرى' }
+  { id: 'SL-1', url: 'https://hsylnrzxeyqxczdalurj.supabase.co/storage/v1/object/public/carousel/live-slide-1-1786751135590.webp', caption: '⚽ تدريبات وبطولات أكاديمية أولستار الرياضية' },
+  { id: 'SL-2', url: 'https://hsylnrzxeyqxczdalurj.supabase.co/storage/v1/object/public/carousel/live-slide-2-1786751135909.webp', caption: '🏆 افتتاح التسجيل ومشاريع التميز الرياضي والدراسي' }
 ]
 
 export default function Home() {
