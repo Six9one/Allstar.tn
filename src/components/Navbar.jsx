@@ -27,7 +27,7 @@ export default function Navbar({ onOpenOnboarding, currentUser }) {
       style={{
         position: 'sticky',
         top: 0,
-        zIndex: 1000,
+        zIndex: 999999,
         backgroundColor: 'rgba(8, 9, 12, 0.94)',
         backdropFilter: 'blur(12px)',
         WebkitBackdropFilter: 'blur(12px)',
@@ -116,26 +116,40 @@ export default function Navbar({ onOpenOnboarding, currentUser }) {
 
         {/* TOP RIGHT: CONNECTION BUTTON & MOBILE TOGGLE */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', direction: 'rtl' }}>
-          {/* MOBILE TOGGLE BUTTON (3 LINES MENU ICON - FAR RIGHT) */}
+          {/* MOBILE TOGGLE BUTTON (3 LINES MENU ICON - PERFECTLY CENTERED & ALIGNED) */}
           <button
             className="mobile-toggle"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             aria-label="Toggle Navigation Menu"
             style={{
-              minWidth: '48px',
-              minHeight: '48px',
+              width: '42px',
+              height: '42px',
+              minWidth: '42px',
+              minHeight: '42px',
               borderRadius: '12px',
               backgroundColor: 'rgba(255, 255, 255, 0.08)',
               border: '1px solid rgba(255, 255, 255, 0.15)',
               color: '#FFF',
-              fontSize: '1.4rem',
               display: 'none',
               alignItems: 'center',
-              justify: 'center',
-              cursor: 'pointer'
+              justifyContent: 'center',
+              cursor: 'pointer',
+              direction: 'ltr',
+              padding: 0,
+              lineHeight: 1,
+              boxSizing: 'border-box',
+              flexShrink: 0
             }}
           >
-            {mobileMenuOpen ? '✕' : '☰'}
+            {mobileMenuOpen ? (
+              <span style={{ fontSize: '1.2rem', fontWeight: 900, lineHeight: 1 }}>✕</span>
+            ) : (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'block', margin: '0 auto' }}>
+                <line x1="4" y1="6" x2="20" y2="6"></line>
+                <line x1="4" y1="12" x2="20" y2="12"></line>
+                <line x1="4" y1="18" x2="20" y2="18"></line>
+              </svg>
+            )}
           </button>
 
           {currentUser ? (
