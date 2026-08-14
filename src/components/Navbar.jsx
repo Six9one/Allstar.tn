@@ -210,17 +210,17 @@ export default function Navbar({ onOpenOnboarding, currentUser }) {
             <button
               onClick={onOpenOnboarding}
               style={{
-                minHeight: '48px',
+                minHeight: '44px',
                 padding: '0 16px',
                 borderRadius: '14px',
-                background: 'linear-gradient(135deg, #00E676 0%, #00B0FF 100%)',
+                background: 'linear-gradient(135deg, #FFC107 0%, #FF9500 100%)',
                 border: 'none',
-                color: '#04101A',
+                color: '#08090C',
                 fontWeight: 900,
                 fontSize: '0.88rem',
                 cursor: 'pointer',
                 fontFamily: '"Cairo", "Tajawal", sans-serif',
-                boxShadow: '0 4px 14px rgba(0, 230, 118, 0.3)',
+                boxShadow: '0 4px 16px rgba(255, 193, 7, 0.4)',
                 display: 'inline-flex',
                 alignItems: 'center',
                 justify: 'center',
