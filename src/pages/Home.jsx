@@ -93,19 +93,19 @@ export default function Home() {
           boxSizing: 'border-box'
         }}
       >
-        {/* CAROUSEL CARD WRAPPER */}
+        {/* CAROUSEL CARD WRAPPER - FULLY RESPONSIVE MOBILE & DESKTOP */}
         <div
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
           style={{
             position: 'relative',
-            borderRadius: '22px',
+            borderRadius: '24px',
             overflow: 'hidden',
-            height: 'clamp(170px, 28vh, 280px)',
+            height: 'clamp(220px, 42vh, 480px)',
             width: '100%',
             background: '#0F131C',
             border: '1.5px solid rgba(0, 230, 118, 0.35)',
-            boxShadow: '0 12px 35px rgba(0, 0, 0, 0.85), 0 0 20px rgba(0, 230, 118, 0.12)',
+            boxShadow: '0 14px 40px rgba(0, 0, 0, 0.85), 0 0 25px rgba(0, 230, 118, 0.15)',
             boxSizing: 'border-box'
           }}
         >
@@ -136,7 +136,7 @@ export default function Home() {
                     width: '100%',
                     height: '100%',
                     objectFit: 'cover',
-                    objectPosition: 'center',
+                    objectPosition: 'center center',
                     display: 'block'
                   }}
                 />
@@ -145,46 +145,103 @@ export default function Home() {
                   style={{
                     position: 'absolute',
                     inset: 0,
-                    background: 'linear-gradient(180deg, rgba(8,9,12,0.15) 0%, rgba(8,9,12,0.85) 100%)'
+                    background: 'linear-gradient(180deg, rgba(8,9,12,0.1) 0%, rgba(8,9,12,0.85) 100%)'
                   }}
                 />
               </div>
             ))}
           </div>
 
+          {/* PREVIOUS & NEXT MANUAL SLIDE BUTTONS */}
+          <button
+            onClick={handlePrev}
+            aria-label="Previous Slide"
+            style={{
+              position: 'absolute',
+              top: '50%',
+              right: '16px',
+              transform: 'translateY(-50%)',
+              zIndex: 12,
+              width: '42px',
+              height: '42px',
+              borderRadius: '50%',
+              backgroundColor: 'rgba(8, 9, 12, 0.65)',
+              backdropFilter: 'blur(8px)',
+              border: '1px solid rgba(255, 255, 255, 0.2)',
+              color: '#FFF',
+              fontSize: '1.2rem',
+              fontWeight: 900,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              boxShadow: '0 4px 14px rgba(0,0,0,0.5)'
+            }}
+          >
+            ❯
+          </button>
+
+          <button
+            onClick={handleNext}
+            aria-label="Next Slide"
+            style={{
+              position: 'absolute',
+              top: '50%',
+              left: '16px',
+              transform: 'translateY(-50%)',
+              zIndex: 12,
+              width: '42px',
+              height: '42px',
+              borderRadius: '50%',
+              backgroundColor: 'rgba(8, 9, 12, 0.65)',
+              backdropFilter: 'blur(8px)',
+              border: '1px solid rgba(255, 255, 255, 0.2)',
+              color: '#FFF',
+              fontSize: '1.2rem',
+              fontWeight: 900,
+              display: 'flex',
+              alignItems: 'center',
+              justify: 'center',
+              cursor: 'pointer',
+              boxShadow: '0 4px 14px rgba(0,0,0,0.5)'
+            }}
+          >
+            ❮
+          </button>
+
           {/* SLIDE CAPTION & DOTS AT BOTTOM */}
           <div
             style={{
               position: 'absolute',
-              bottom: '14px',
-              right: '16px',
-              left: '16px',
+              bottom: '16px',
+              right: '18px',
+              left: '18px',
               zIndex: 10,
               color: '#FFFFFF'
             }}
           >
             <div
               style={{
-                fontSize: 'clamp(0.82rem, 1.8vw, 1.15rem)',
+                fontSize: 'clamp(0.85rem, 2vw, 1.25rem)',
                 fontWeight: 900,
-                textShadow: '0 2px 8px rgba(0,0,0,0.9)',
-                lineHeight: 1.25
+                textShadow: '0 2px 10px rgba(0,0,0,0.95)',
+                lineHeight: 1.3
               }}
             >
               {currentSlide?.caption || '📸 ألبوم الصور الرسمية لأكاديمية أولستار بتطاوين'}
             </div>
 
             {/* INDICATOR DOTS */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '10px' }}>
               {slides.map((_, i) => (
                 <button
                   key={i}
                   onClick={() => setCurrentIndex(i)}
                   aria-label={`Go to slide ${i + 1}`}
                   style={{
-                    height: '6px',
-                    width: i === currentIndex ? '18px' : '6px',
-                    borderRadius: '3px',
+                    height: '8px',
+                    width: i === currentIndex ? '24px' : '8px',
+                    borderRadius: '4px',
                     backgroundColor: i === currentIndex ? '#00E676' : 'rgba(255, 255, 255, 0.4)',
                     border: 'none',
                     cursor: 'pointer',
