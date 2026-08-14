@@ -1003,6 +1003,7 @@ class DBService {
     const newReg = {
       id: 'REG-' + Date.now(),
       created_at: new Date().toISOString(),
+      status: 'Pending',
       ...formData
     };
 
@@ -1017,6 +1018,31 @@ class DBService {
     const registrations = this.getRegistrations();
     registrations.unshift(newReg);
     localStorage.setItem(STORAGE_KEYS.REGISTRATIONS, JSON.stringify(registrations));
+
+    // Automatically create a Pending Player record with complete dossier data
+    const rawSport = (formData.selectedSports && formData.selectedSports[0]) || 'football';
+    const sportName = rawSport === 'football' ? 'Football' : rawSport === 'basketball' ? 'Basketball' : 'Handball';
+
+    const pendingPlayer = {
+      id: 'PEND-' + Math.floor(1000 + Math.random() * 9000),
+      name: formData.childName || 'طفل جديد',
+      age: Number(formData.childAge) || 10,
+      sport: sportName,
+      group: 'Pending Dossier',
+      parentName: `${formData.parentName || ''} (${formData.parentPhone || ''})`,
+      parentPhone: formData.parentPhone || '',
+      parentEmail: formData.parentEmail || '',
+      gender: formData.gender || 'ذكر',
+      grade: formData.grade || '',
+      medicalNotes: formData.medicalNotes || '',
+      preferredTime: formData.preferredTime || '',
+      status: 'Pending',
+      photoUrl: 'https://images.unsplash.com/photo-1543351611-58f69d7c1781?w=200&auto=format&fit=crop&q=80',
+      stats: { speed: 75, puissance: 75, stamina: 75, shooting: 75, passing: 75, technique: 75, defense: 75, mental: 75 },
+      matchStats: { goals: 0, assists: 0, points: 0 }
+    };
+
+    await this.addPlayer(pendingPlayer);
     return newReg;
   }
 

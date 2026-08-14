@@ -1154,6 +1154,8 @@ export default function Admin() {
     showSuccess(`🗑️ تم حذف الحساب بنجاح`);
   };
 
+  const pendingPlayers = players.filter(p => p.status === 'Pending' || p.group === 'Pending Dossier');
+
   const filteredPlayers = players.filter(p => {
     const matchesSearch = !searchQuery.trim() ||
       (p.name && p.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
@@ -1164,6 +1166,7 @@ export default function Admin() {
 
   const tabs = [
     { id: 'overview', label: '📊 Dashboard Overview', color: '#FFC107' },
+    { id: 'registrations', label: `⏳ Pending Dossiers (${pendingPlayers.length})`, color: '#FF9500' },
     { id: 'carousel', label: `🖼️ Hero Carousel (${(siteForm.gallery_images || []).length})`, color: '#E040FB' },
     { id: 'accounts', label: `🔐 Account Credentials (${accounts.length})`, color: '#00E676' },
     { id: 'coaches', label: `🏅 Coaches (${coaches.length})`, color: '#FF9500' },
@@ -1342,6 +1345,106 @@ export default function Admin() {
                 </div>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* ═══════════════════════════════════════════════════════════════════ */}
+        {/* TAB: PENDING REGISTRATIONS & NEW DOSSIERS                           */}
+        {/* ═══════════════════════════════════════════════════════════════════ */}
+        {activeTab === 'registrations' && (
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
+              <div>
+                <h2 style={{ color: '#FF9500', fontSize: '1.5rem', fontWeight: 900, margin: 0 }}>
+                  ⏳ Pending Online Registrations ({pendingPlayers.length})
+                </h2>
+                <p style={{ color: '#8E9BAE', fontSize: '0.88rem', margin: '4px 0 0 0' }}>
+                  Review new child dossiers submitted by parents online. Approve to complete their official profile, assign a coach, and create their login credentials.
+                </p>
+              </div>
+            </div>
+
+            {pendingPlayers.length === 0 ? (
+              <div style={{ ...cardStyle, textAlign: 'center', padding: '40px 20px', color: '#8E9BAE' }}>
+                <span style={{ fontSize: '3rem', display: 'block', marginBottom: '10px' }}>🎉</span>
+                <h3 style={{ color: '#FFF', fontSize: '1.2rem', margin: '0 0 6px 0' }}>No Pending Registrations</h3>
+                <p style={{ margin: 0, fontSize: '0.85rem' }}>All submitted child dossiers have been processed and enrolled!</p>
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '20px' }}>
+                {pendingPlayers.map((p) => (
+                  <div key={p.id} style={{
+                    background: 'linear-gradient(145deg, rgba(25,32,48,0.9), rgba(12,18,30,0.95))',
+                    border: '1.5px solid rgba(255,149,0,0.4)',
+                    borderRadius: '22px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px',
+                    boxShadow: '0 10px 30px rgba(0,0,0,0.4)'
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ background: 'rgba(255,149,0,0.2)', color: '#FF9500', padding: '4px 12px', borderRadius: '10px', fontSize: '0.78rem', fontWeight: 900, border: '1px solid #FF9500' }}>
+                        ⏳ Pending Dossier ({p.id})
+                      </span>
+                      <span style={{ fontSize: '0.75rem', color: '#8E9BAE' }}>
+                        {SPORT_ICONS[p.sport]} {p.sport}
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                      <img
+                        src={p.photoUrl || 'https://images.unsplash.com/photo-1543351611-58f69d7c1781?w=150&auto=format&fit=crop&q=80'}
+                        alt={p.name}
+                        style={{ width: '60px', height: '60px', borderRadius: '50%', objectFit: 'cover', border: '2.5px solid #FF9500' }}
+                      />
+                      <div>
+                        <h3 style={{ color: '#FFF', fontSize: '1.1rem', fontWeight: 900, margin: '0 0 2px 0' }}>{p.name}</h3>
+                        <div style={{ color: '#FFC107', fontSize: '0.82rem', fontWeight: 800 }}>
+                          Age: {p.age} years | Gender: {p.gender || 'ذكر'}
+                        </div>
+                        {p.grade && <div style={{ color: '#8E9BAE', fontSize: '0.78rem' }}>Grade: {p.grade}</div>}
+                      </div>
+                    </div>
+
+                    <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '14px', padding: '12px', fontSize: '0.82rem', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      <div>👨‍👩‍👧‍👦 <strong style={{ color: '#FFF' }}>Parent:</strong> {p.parentName}</div>
+                      {p.parentPhone && <div>📞 <strong style={{ color: '#00E5FF' }}>Phone:</strong> <span style={{ direction: 'ltr' }}>{p.parentPhone}</span></div>}
+                      {p.parentEmail && <div>📧 <strong style={{ color: '#8E9BAE' }}>Email:</strong> {p.parentEmail}</div>}
+                      {p.preferredTime && <div>⏰ <strong style={{ color: '#FFC107' }}>Preferred Time:</strong> {p.preferredTime}</div>}
+                      {p.medicalNotes && <div>📝 <strong style={{ color: '#FF5252' }}>Medical Notes:</strong> {p.medicalNotes}</div>}
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '4px' }}>
+                      <button
+                        onClick={() => {
+                          setEditingPlayer({
+                            ...p,
+                            status: 'Active',
+                            group: 'U12',
+                            stats: { speed: 80, puissance: 80, stamina: 80, shooting: 80, passing: 80, technique: 80, defense: 75, mental: 80 }
+                          });
+                        }}
+                        style={{
+                          padding: '10px', borderRadius: '12px',
+                          background: 'linear-gradient(135deg, #00E676, #00B0FF)',
+                          border: 'none', color: '#000', fontWeight: 900, fontSize: '0.82rem', cursor: 'pointer'
+                        }}
+                      >
+                        ✅ Complete & Enroll
+                      </button>
+
+                      <button
+                        onClick={() => handleDeletePlayer(p.id)}
+                        style={{
+                          padding: '10px', borderRadius: '12px',
+                          background: 'rgba(255,61,0,0.15)',
+                          border: '1px solid #FF3D00', color: '#FF3D00', fontWeight: 900, fontSize: '0.82rem', cursor: 'pointer'
+                        }}
+                      >
+                        🗑 Reject Request
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
