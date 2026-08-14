@@ -25,18 +25,22 @@ export default function Navbar({ onOpenOnboarding, currentUser }) {
   return (
     <header
       style={{
-        position: 'sticky',
+        position: 'fixed',
         top: 0,
+        left: 0,
+        right: 0,
+        width: '100%',
         zIndex: 999999,
-        backgroundColor: 'rgba(8, 9, 12, 0.94)',
-        backdropFilter: 'blur(12px)',
-        WebkitBackdropFilter: 'blur(12px)',
-        borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+        backgroundColor: 'rgba(8, 9, 12, 0.96)',
+        backdropFilter: 'blur(16px)',
+        WebkitBackdropFilter: 'blur(16px)',
+        borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
         paddingTop: 'calc(var(--safe-top, 0px) + 8px)',
         paddingBottom: '8px',
         paddingLeft: 'max(16px, var(--safe-left, 0px))',
         paddingRight: 'max(16px, var(--safe-right, 0px))',
-        transition: 'all 0.3s ease'
+        transition: 'all 0.3s ease',
+        boxSizing: 'border-box'
       }}
     >
       <div
