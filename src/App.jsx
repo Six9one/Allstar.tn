@@ -2,7 +2,6 @@ import { Routes, Route, useLocation } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { LanguageProvider } from './context/LanguageContext'
 import Navbar from './components/Navbar'
-import Footer from './components/Footer'
 import InstallPrompt from './components/InstallPrompt'
 import OnboardingModal from './components/OnboardingModal'
 import AutoUpdater from './components/AutoUpdater'
@@ -89,7 +88,6 @@ export default function App() {
           <Route path="/certificates" element={<Certificates />} />
         </Routes>
       </main>
-      <Footer />
       <AutoUpdater />
 
       {/* FIRST OPENING ONBOARDING MODAL MATCHING SCREENSHOT */}
