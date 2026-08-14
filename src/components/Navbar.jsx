@@ -114,8 +114,30 @@ export default function Navbar({ onOpenOnboarding, currentUser }) {
           })}
         </nav>
 
-        {/* TOP RIGHT: CONNECTION BUTTON (STRICTLY RIGHT) */}
+        {/* TOP RIGHT: CONNECTION BUTTON & MOBILE TOGGLE */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', direction: 'rtl' }}>
+          {/* MOBILE TOGGLE BUTTON (3 LINES MENU ICON - FAR RIGHT) */}
+          <button
+            className="mobile-toggle"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            aria-label="Toggle Navigation Menu"
+            style={{
+              minWidth: '48px',
+              minHeight: '48px',
+              borderRadius: '12px',
+              backgroundColor: 'rgba(255, 255, 255, 0.08)',
+              border: '1px solid rgba(255, 255, 255, 0.15)',
+              color: '#FFF',
+              fontSize: '1.4rem',
+              display: 'none',
+              alignItems: 'center',
+              justify: 'center',
+              cursor: 'pointer'
+            }}
+          >
+            {mobileMenuOpen ? '✕' : '☰'}
+          </button>
+
           {currentUser ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <button
@@ -191,28 +213,6 @@ export default function Navbar({ onOpenOnboarding, currentUser }) {
               <span className="btn-label-mobile">تسجيل الدخول</span>
             </button>
           )}
-
-          {/* MOBILE TOGGLE BUTTON */}
-          <button
-            className="mobile-toggle"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            aria-label="Toggle Navigation Menu"
-            style={{
-              minWidth: '48px',
-              minHeight: '48px',
-              borderRadius: '12px',
-              backgroundColor: 'rgba(255, 255, 255, 0.08)',
-              border: '1px solid rgba(255, 255, 255, 0.15)',
-              color: '#FFF',
-              fontSize: '1.4rem',
-              display: 'none',
-              alignItems: 'center',
-              justify: 'center',
-              cursor: 'pointer'
-            }}
-          >
-            {mobileMenuOpen ? '✕' : '☰'}
-          </button>
         </div>
       </div>
 
