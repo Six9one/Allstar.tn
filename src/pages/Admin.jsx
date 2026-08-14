@@ -44,17 +44,17 @@ function StatSlider({ label, value, onChange, color = '#FFC107' }) {
   );
 }
 
-function ImageUploader({ label = 'صورة الشخص', value, onChange, size = 75 }) {
+function ImageUploader({ label = 'Image Photo', value, onChange, size = 75 }) {
   const fileInputRef = useRef(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [statusMsg, setStatusMsg] = useState('معالجة الصور...');
-  const [selectedBackdrop, setSelectedBackdrop] = useState('blue');
+  const [statusMsg, setStatusMsg] = useState('Processing Image...');
+  const [selectedBackdrop, setSelectedBackdrop] = useState(null); // DEFAULT TO NULL (Original HD Photo without AI removal)
 
   const processAndSetImage = async (input, backdropId = selectedBackdrop) => {
     if (!input) return;
-    const activeBd = backdropId !== undefined ? backdropId : (selectedBackdrop || 'blue');
+    const activeBd = backdropId !== undefined ? backdropId : selectedBackdrop;
     setIsProcessing(true);
-    setStatusMsg(activeBd ? '⚡ إزالة الخلفية بالذكاء الاصطناعي...' : 'تحسين وتصغير الصورة HD...');
+    setStatusMsg(activeBd ? '⚡ AI Background Removal...' : 'Optimizing HD Image...');
     try {
       if (activeBd) {
         const res = await PhotoStudioEngine.processPhoto(input, {
@@ -77,14 +77,13 @@ function ImageUploader({ label = 'صورة الشخص', value, onChange, size = 
   const handleFileChange = async (e) => {
     const file = e.target.files && e.target.files[0];
     if (file) {
-      const activeBd = selectedBackdrop !== null ? selectedBackdrop : 'blue';
-      await processAndSetImage(file, activeBd);
+      await processAndSetImage(file, selectedBackdrop);
     }
   };
 
   return (
     <div style={{ marginBottom: '16px', background: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.08)' }}>
-      <label style={labelStyle}>{label} (✨ إزالة الخلفية التلقائية بالذكاء الاصطناعي)</label>
+      <label style={labelStyle}>{label}</label>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
         {isProcessing ? (
@@ -93,9 +92,9 @@ function ImageUploader({ label = 'صورة الشخص', value, onChange, size = 
             <span style={{ fontSize: '0.58rem', fontWeight: 800 }}>{statusMsg}</span>
           </div>
         ) : value ? (
-          <img src={value} alt="Preview" style={{ width: `${size}px`, height: `${size}px`, borderRadius: '50%', objectFit: 'cover', border: '2.5px solid #00E676', flexShrink: 0, boxShadow: '0 4px 14px rgba(0,0,0,0.4)' }} />
+          <img src={value} alt="Preview" style={{ width: `${size}px`, height: `${size}px`, borderRadius: '14px', objectFit: 'cover', border: '2.5px solid #00E676', flexShrink: 0, boxShadow: '0 4px 14px rgba(0,0,0,0.4)' }} />
         ) : (
-          <div style={{ width: `${size}px`, height: `${size}px`, borderRadius: '50%', background: 'rgba(255,255,255,0.06)', border: '1.5px dashed #00E676', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem', flexShrink: 0 }}>
+          <div style={{ width: `${size}px`, height: `${size}px`, borderRadius: '14px', background: 'rgba(255,255,255,0.06)', border: '1.5px dashed #00E676', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem', flexShrink: 0 }}>
             📷
           </div>
         )}
@@ -114,7 +113,7 @@ function ImageUploader({ label = 'صورة الشخص', value, onChange, size = 
               boxShadow: '0 4px 12px rgba(255,193,7,0.3)'
             }}
           >
-            📁 رفع صورة HD (تلقائي وسريع)
+            📁 Select HD Image File
           </button>
           <input
             type="file"
@@ -133,19 +132,18 @@ function ImageUploader({ label = 'صورة الشخص', value, onChange, size = 
             }}
             onBlur={(e) => {
               if (e.target.value && e.target.value.startsWith('http')) {
-                const activeBd = selectedBackdrop !== null ? selectedBackdrop : 'blue';
-                processAndSetImage(e.target.value, activeBd);
+                processAndSetImage(e.target.value, selectedBackdrop);
               }
             }}
-            placeholder="أو ادخل رابط الصورة (URL)..."
+            placeholder="Or paste direct Image URL..."
             style={{ ...inputStyle, fontSize: '0.78rem', padding: '8px' }}
           />
         </div>
       </div>
 
-      {/* Backdrop Selector Palette */}
+      {/* Optional AI Studio Backdrop Selector Palette */}
       <div style={{ marginTop: '10px', display: 'flex', alignItems: 'center', gap: '8px', overflowX: 'auto', paddingTop: '4px' }}>
-        <span style={{ fontSize: '0.7rem', color: '#8E9BAE', fontWeight: 700 }}>خلفية الستوديو:</span>
+        <span style={{ fontSize: '0.7rem', color: '#8E9BAE', fontWeight: 700 }}>Optional AI Studio Filter:</span>
         <button
           type="button"
           onClick={() => {
@@ -159,7 +157,7 @@ function ImageUploader({ label = 'صورة الشخص', value, onChange, size = 
             border: 'none', fontSize: '0.68rem', fontWeight: 800, cursor: 'pointer'
           }}
         >
-          📷 الصورة الأصلية
+          📷 Original Photo (Default)
         </button>
         {ALLSTAR_BACKDROPS.map((bd) => (
           <button
@@ -176,7 +174,7 @@ function ImageUploader({ label = 'صورة الشخص', value, onChange, size = 
               cursor: 'pointer', outline: 'none', flexShrink: 0,
               boxShadow: selectedBackdrop === bd.id ? `0 0 10px ${bd.colors[0]}` : 'none'
             }}
-            title={bd.name}
+            title={`AI Background Removal (${bd.name})`}
           />
         ))}
       </div>
