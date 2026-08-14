@@ -1190,6 +1190,13 @@ export default function Admin() {
     }
     const cleanForm = { ...formData, photoUrl: photo, photourl: photo, status: formData.status || 'Active' };
 
+    const isPendingReg = String(id).startsWith('REG-') || !players.some(p => p.id === id);
+    let finalPlayerId = id;
+    if (isPendingReg) {
+      finalPlayerId = 'PL-' + Date.now();
+      cleanForm.id = finalPlayerId;
+    }
+
     // Auto-create parent login account if requested
     if (cleanForm.createAccount && cleanForm.parentPhone) {
       db.saveAccount({
@@ -1197,29 +1204,48 @@ export default function Admin() {
         name: cleanForm.parentName || cleanForm.name + ' (ولي أمر)',
         phone: cleanForm.parentPhone,
         pin: '1234',
-        playerIds: [id],
+        playerIds: [finalPlayerId],
         sport: cleanForm.sport,
         group: cleanForm.group
       });
       setAccounts(db.getAccounts());
     }
 
-    setPlayers(prev => prev.map(p => p.id === id ? { ...p, ...cleanForm } : p));
+    if (isPendingReg) {
+      // Remove from pending registrations
+      await db.deleteRegistration(id);
+      setRegistrations(prev => prev.filter(r => r.id !== id));
+
+      // Add to official academy players list
+      const updatedPlayers = await db.addPlayer(cleanForm);
+      if (updatedPlayers && updatedPlayers.length > 0) {
+        setPlayers(updatedPlayers);
+      } else {
+        setPlayers(prev => [cleanForm, ...prev.filter(p => p.id !== id)]);
+      }
+    } else {
+      setPlayers(prev => prev.map(p => p.id === id ? { ...p, ...cleanForm } : p));
+      const updated = await db.updatePlayer(id, cleanForm);
+      if (updated && updated.length > 0) setPlayers(updated);
+    }
+
     setEditingPlayer(null);
     showSuccess(`✅ تم اعتماد وتحديث الملف الشامل للاعب ${cleanForm.name} بنجاح!`);
-
-    const updated = await db.updatePlayer(id, cleanForm);
-    if (updated && updated.length > 0) setPlayers(updated);
   };
 
-  const handleDeletePlayer = (id) => {
-    if (!window.confirm('هل أنت متأكد من حذف هذا اللاعب؟')) return;
-    setPlayers(prev => prev.filter(p => p.id !== id));
-    showSuccess('🗑 تم حذف اللاعب من قاعدة البيانات');
-
-    db.deletePlayer(id).then(updated => {
+  const handleDeletePlayer = async (id) => {
+    if (!window.confirm('هل أنت متأكد من حذف هذا السجل؟')) return;
+    
+    if (String(id).startsWith('REG-')) {
+      await db.deleteRegistration(id);
+      setRegistrations(prev => prev.filter(r => r.id !== id));
+      setPlayers(prev => prev.filter(p => p.id !== id));
+    } else {
+      setPlayers(prev => prev.filter(p => p.id !== id));
+      const updated = await db.deletePlayer(id);
       if (updated) setPlayers(updated);
-    });
+    }
+    showSuccess('🗑 تم حذف السجل بنجاح');
   };
 
   const handleAddPlayer = (e) => {

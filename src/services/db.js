@@ -1077,6 +1077,21 @@ class DBService {
     return this.getRegistrations();
   }
 
+  async deleteRegistration(id) {
+    let regs = this.getRegistrations();
+    regs = regs.filter(r => r.id !== id);
+    localStorage.setItem(STORAGE_KEYS.REGISTRATIONS, JSON.stringify(regs));
+
+    if (supabase) {
+      try {
+        await supabase.from('allstar_registrations').delete().eq('id', id);
+      } catch (e) {
+        console.error('Supabase deleteRegistration error:', e);
+      }
+    }
+    return regs;
+  }
+
   // ── Attendance ────────────────────────────────────────────────────────────
   async recordAttendance(playerId, status = 'Present') {
     const player = this.getPlayerById(playerId);
