@@ -403,40 +403,57 @@ export default function PlayerCards(props) {
 
         {/* Team Cards Grid */}
         <div style={{ marginBottom: '32px' }}>
-          <h3 style={{ fontSize: '16px', margin: '0 0 12px 0', color: '#FFFFFF' }}>بطاقات فريقك</h3>
+          <h3 style={{ fontSize: '16px', margin: '0 0 12px 0', color: '#FFFFFF' }}>
+            بطاقات أبطال الأكاديمية ({players.length}) ⚽
+          </h3>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-            {[
-              { name: 'عمر بن علي', sport: 'كرة قدم ⚽', tier: 'SILVER 🥈', color: '#E0E0E0' },
-              { name: 'سارة الطرابلسي', sport: 'كرة سلة 🏀', tier: 'GOLD 🥇', color: '#FFC107' },
-              { name: 'أحمد محمود', sport: 'كرة يد 🤾', tier: 'BRONZE 🥉', color: '#CD7F32' },
-              { name: 'لينا محمد', sport: 'كرة قدم ⚽', tier: 'SILVER 🥈', color: '#E0E0E0' }
-            ].map((p, idx) => (
-              <div key={idx} style={{
-                background: 'linear-gradient(145deg, rgba(25,29,42,0.95), rgba(14,16,24,0.98))',
-                border: '1px solid rgba(255,255,255,0.08)',
-                borderRadius: '16px',
-                padding: '12px',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                textAlign: 'center'
-              }}>
-                <div style={{ fontSize: '32px', marginBottom: '8px' }}>👤</div>
-                <div style={{ fontWeight: 'bold', fontSize: '14px', marginBottom: '4px' }}>{p.name}</div>
-                <div style={{ fontSize: '12px', color: '#8E9BAE', marginBottom: '8px' }}>{p.sport}</div>
-                <div style={{
-                  background: 'rgba(255,255,255,0.05)',
-                  color: p.color,
-                  fontSize: '11px',
-                  fontWeight: 'bold',
-                  padding: '4px 8px',
-                  borderRadius: '9999px',
-                  border: `1px solid ${p.color}40`
-                }}>
-                  {p.tier}
+            {players.map((p) => {
+              const pStats = p.stats || { speed: 80, puissance: 80, stamina: 80 };
+              const pOvr = Math.round(Object.values(pStats).reduce((a, b) => a + b, 0) / Object.values(pStats).length);
+              const pTier = pOvr >= 85 ? { name: 'GOLD 🥇', color: '#FFC107' } : pOvr >= 75 ? { name: 'SILVER 🥈', color: '#E0E0E0' } : { name: 'BRONZE 🥉', color: '#CD7F32' };
+
+              return (
+                <div
+                  key={p.id}
+                  onClick={() => setSelectedPlayerId(p.id)}
+                  style={{
+                    background: selectedPlayerId === p.id ? 'linear-gradient(145deg, rgba(255,193,7,0.15), rgba(14,16,24,0.98))' : 'linear-gradient(145deg, rgba(25,29,42,0.95), rgba(14,16,24,0.98))',
+                    border: selectedPlayerId === p.id ? '2px solid #FFC107' : '1px solid rgba(255,255,255,0.08)',
+                    borderRadius: '16px',
+                    padding: '12px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    textAlign: 'center',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  <img
+                    src={p.photoUrl || p.photourl || 'https://images.unsplash.com/photo-1543351611-58f69d7c1781?w=120&auto=format&fit=crop&q=80'}
+                    alt={p.name}
+                    style={{ width: '48px', height: '48px', borderRadius: '50%', objectFit: 'cover', marginBottom: '8px', border: `2px solid ${pTier.color}` }}
+                  />
+                  <div style={{ fontWeight: 'bold', fontSize: '14px', marginBottom: '2px', color: '#FFF' }}>
+                    {p.name.split('(')[0].trim()}
+                  </div>
+                  <div style={{ fontSize: '12px', color: '#8E9BAE', marginBottom: '8px' }}>
+                    {p.sport} — {p.group}
+                  </div>
+                  <div style={{
+                    background: 'rgba(255,255,255,0.05)',
+                    color: pTier.color,
+                    fontSize: '11px',
+                    fontWeight: 'bold',
+                    padding: '4px 10px',
+                    borderRadius: '9999px',
+                    border: `1px solid ${pTier.color}40`
+                  }}>
+                    OVR {pOvr} • {pTier.name}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
