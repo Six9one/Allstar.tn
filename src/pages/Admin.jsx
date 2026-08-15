@@ -1545,7 +1545,7 @@ export default function Admin() {
       minHeight: '100vh',
       background: 'linear-gradient(160deg, #060912 0%, #0A1628 100%)',
       color: '#FFF', fontFamily: '"Cairo", "Tajawal", sans-serif', direction: 'ltr',
-      display: 'flex', paddingTop: '72px'
+      display: 'flex',
     }}>
 
       {/* ══════════════════════════════════════════════════════════════════════ */}
@@ -1608,7 +1608,7 @@ export default function Admin() {
       <aside
         className={`admin-sidebar${sidebarOpen ? ' open' : ''}`}
         style={{
-          position: 'fixed', top: '72px', left: 0, bottom: 0, width: '248px',
+          position: 'fixed', top: 0, left: 0, bottom: 0, width: '248px',
           background: '#080D1A',
           borderRight: '1px solid rgba(255,255,255,0.07)',
           zIndex: 999, display: 'flex', flexDirection: 'column',
