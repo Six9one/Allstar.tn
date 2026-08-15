@@ -123,12 +123,13 @@ function TikTokPlayer({ videoId, isActive, isMuted, posterUrl, onReady, onError 
           }
           break;
         case 'onPlayerError':
-          console.error('TikTok Player error:', data.value);
-          // If error is autoplay error (3002), retry play muted then unMute
-          if (data.value === 3002) {
+          console.warn('TikTok Player notice/error:', data.value);
+          // If error is autoplay restriction (3001, 3002, etc.), do NOT show error modal
+          // Just ensure player is muted and retry play
+          if (data.value === 3002 || data.value === 3001 || data.value === -1) {
             sendPlayerMessage('mute');
             sendPlayerMessage('play');
-          } else {
+          } else if (data.value === 1001 || data.value === 2001) {
             setPlayerError(data.value);
             if (onError) onError(data.value);
           }
