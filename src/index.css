@@ -339,3 +339,13 @@ body, #root, header, main, footer {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
 }
+
+/* Fullscreen Reels Feed */
+.reels-fullscreen-main {
+  padding: 0 !important;
+  margin: 0 !important;
+  height: 100dvh !important;
+  max-height: 100dvh !important;
+  overflow: hidden !important;
+  background: #000000 !important;
+}

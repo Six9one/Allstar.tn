@@ -63,12 +63,15 @@ export default function App() {
 
   const location = useLocation()
   const isHomePage = location.pathname === '/'
+  const isReelsPage = location.pathname === '/reels'
 
   return (
     <LanguageProvider>
       <ScrollToTop />
-      <Navbar onOpenOnboarding={() => setShowOnboarding(true)} currentUser={currentUser} />
-      <main className="main-content">
+      {!isReelsPage && (
+        <Navbar onOpenOnboarding={() => setShowOnboarding(true)} currentUser={currentUser} />
+      )}
+      <main className={isReelsPage ? 'reels-fullscreen-main' : 'main-content'}>
         <Routes>
           <Route path="/" element={<Home currentUser={currentUser} onOpenOnboarding={() => setShowOnboarding(true)} />} />
           <Route path="/programs" element={<Programs />} />
