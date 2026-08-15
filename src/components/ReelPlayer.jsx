@@ -82,13 +82,12 @@ function TikTokPlayer({ videoId, isActive, isMuted, posterUrl, onReady, onError 
   const playerUrl = buildTikTokPlayerUrl(videoId);
 
   // postMessage sender with origin validation
-  const sendPlayerMessage = useCallback((type) => {
+  const sendPlayerMessage = useCallback((type, value) => {
     if (!iframeRef.current?.contentWindow) return;
     try {
-      iframeRef.current.contentWindow.postMessage(
-        { 'x-tiktok-player': true, type },
-        'https://www.tiktok.com'
-      );
+      const msg = { 'x-tiktok-player': true, type };
+      if (value !== undefined) msg.value = value;
+      iframeRef.current.contentWindow.postMessage(msg, 'https://www.tiktok.com');
     } catch (e) {
       console.warn('TikTok postMessage failed:', e);
     }
@@ -106,12 +105,20 @@ function TikTokPlayer({ videoId, isActive, isMuted, posterUrl, onReady, onError 
         case 'onPlayerReady':
           setPlayerReady(true);
           setShowPoster(false);
+          // Send unMute immediately when player is ready
+          if (!isMuted) {
+            sendPlayerMessage('unMute');
+            sendPlayerMessage('setVolume', 1);
+          }
           if (onReady) onReady();
           break;
         case 'onStateChange':
           // state: -1 unstarted, 0 ended, 1 playing, 2 paused, 3 buffering
           if (data.value === 1) {
             setShowPoster(false);
+            if (!isMuted) {
+              sendPlayerMessage('unMute');
+            }
           }
           break;
         case 'onPlayerError':
@@ -126,23 +133,40 @@ function TikTokPlayer({ videoId, isActive, isMuted, posterUrl, onReady, onError 
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [onReady, onError]);
+  }, [onReady, onError, isMuted, sendPlayerMessage]);
 
   // Sync play/pause with active state
   useEffect(() => {
     if (!playerReady) return;
     if (isActive) {
       sendPlayerMessage('play');
+      if (!isMuted) {
+        sendPlayerMessage('unMute');
+        sendPlayerMessage('setVolume', 1);
+      }
     } else {
       sendPlayerMessage('pause');
     }
-  }, [isActive, playerReady, sendPlayerMessage]);
+  }, [isActive, playerReady, isMuted, sendPlayerMessage]);
 
   // Sync mute state
   useEffect(() => {
     if (!playerReady) return;
-    sendPlayerMessage(isMuted ? 'mute' : 'unMute');
+    if (isMuted) {
+      sendPlayerMessage('mute');
+    } else {
+      sendPlayerMessage('unMute');
+      sendPlayerMessage('setVolume', 1);
+    }
   }, [isMuted, playerReady, sendPlayerMessage]);
+
+  // Tap on player directly toggles sound or ensures unMute
+  const handleTap = () => {
+    if (isMuted) {
+      sendPlayerMessage('unMute');
+      sendPlayerMessage('setVolume', 1);
+    }
+  };
 
   const errorMessages = {
     1001: 'فيديو غير صالح',
@@ -152,12 +176,15 @@ function TikTokPlayer({ videoId, isActive, isMuted, posterUrl, onReady, onError 
   };
 
   return (
-    <div style={{ position: 'relative', width: '100%', height: '100%', background: '#000' }}>
+    <div
+      onClick={handleTap}
+      style={{ position: 'relative', width: '100%', height: '100%', background: '#000' }}
+    >
       {/* TikTok Player iframe — treated as pure video layer */}
       <iframe
         ref={iframeRef}
         src={playerUrl}
-        allow="autoplay; fullscreen"
+        allow="autoplay *; fullscreen *; encrypted-media *"
         allowFullScreen
         style={{
           position: 'absolute',
