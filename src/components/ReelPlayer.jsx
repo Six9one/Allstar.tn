@@ -1,9 +1,18 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
+import ReactPlayer from 'react-player';
 
-// ─── ROBUST VIDEO PARSER ───────────────────────────────────────────────────────
-export function parseVideoUrl(rawUrl = '') {
-  const url = (rawUrl || '').trim();
-  if (!url) return { type: 'unknown', embedUrl: '', thumbnailUrl: '', directUrl: '', rawUrl: '', platformName: 'فيديو' };
+// ─── ROBUST URL CLEANER ───────────────────────────────────────────────────────
+export function parseVideoUrl(rawInput = '') {
+  let url = (rawInput || '').trim();
+  if (!url) return { type: 'unknown', url: '', thumbnailUrl: '', platformName: 'فيديو' };
+
+  // 0. Auto-extract src if user pasted an entire <iframe> code snippet
+  if (url.includes('<iframe') || url.includes('src=')) {
+    const srcMatch = url.match(/src=["']([^"']+)["']/i);
+    if (srcMatch && srcMatch[1]) {
+      url = srcMatch[1].replace(/&amp;/g, '&');
+    }
+  }
 
   // 1. YouTube & YouTube Shorts
   const ytMatch = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=|shorts\/))([A-Za-z0-9_-]{11})/i);
@@ -11,76 +20,55 @@ export function parseVideoUrl(rawUrl = '') {
     const videoId = ytMatch[1];
     return {
       type: 'youtube',
-      videoId,
-      embedUrl: `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&playsinline=1&modestbranding=1`,
+      url: `https://www.youtube.com/watch?v=${videoId}`,
       thumbnailUrl: `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
-      rawUrl: url,
       platformName: 'YouTube'
     };
   }
 
-  // 2. Instagram Reels / Posts
-  const igMatch = url.match(/instagram\.com\/(?:p|reel|reels)\/([A-Za-z0-9_-]+)/i);
-  if (igMatch) {
-    const code = igMatch[1];
-    return {
-      type: 'instagram',
-      code,
-      embedUrl: `https://www.instagram.com/reel/${code}/embed/`,
-      thumbnailUrl: '',
-      rawUrl: url,
-      platformName: 'Instagram'
-    };
-  }
-
-  // 3. TikTok
-  const ttMatch = url.match(/tiktok\.com\/(?:@[\w.-]+\/video\/|v\/|embed\/v2\/)(\d+)/i);
-  if (ttMatch) {
-    const videoId = ttMatch[1];
-    return {
-      type: 'tiktok',
-      videoId,
-      embedUrl: `https://www.tiktok.com/embed/v2/${videoId}`,
-      thumbnailUrl: '',
-      rawUrl: url,
-      platformName: 'TikTok'
-    };
-  } else if (/tiktok\.com/i.test(url)) {
-    return {
-      type: 'tiktok',
-      embedUrl: url,
-      thumbnailUrl: '',
-      rawUrl: url,
-      platformName: 'TikTok'
-    };
-  }
-
-  // 4. Facebook Reels / Videos
+  // 2. Facebook
   if (/facebook\.com|fb\.watch|fb\.com/i.test(url)) {
     return {
       type: 'facebook',
-      embedUrl: `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(url)}&show_text=false&autoplay=true&mute=0`,
+      url,
       thumbnailUrl: '',
-      rawUrl: url,
       platformName: 'Facebook'
     };
   }
 
-  // 5. Direct Video (MP4 / WebM / Supabase Storage)
+  // 3. Instagram
+  if (/instagram\.com/i.test(url)) {
+    return {
+      type: 'instagram',
+      url,
+      thumbnailUrl: '',
+      platformName: 'Instagram'
+    };
+  }
+
+  // 4. TikTok
+  if (/tiktok\.com/i.test(url)) {
+    return {
+      type: 'tiktok',
+      url,
+      thumbnailUrl: '',
+      platformName: 'TikTok'
+    };
+  }
+
+  // 5. Direct / Other
   return {
     type: 'direct',
-    directUrl: url,
-    embedUrl: url,
+    url,
     thumbnailUrl: '',
-    rawUrl: url,
     platformName: 'فيديو مباشر MP4'
   };
 }
 
-// ─── REEL PLAYER COMPONENT ────────────────────────────────────────────────────
-export default function ReelPlayer({ url, autoPlay = true, title = '', style = {} }) {
-  const videoRef = useRef(null);
-  const [iframeError, setIframeError] = useState(false);
+// ─── REEL PLAYER COMPONENT (POWERED BY REACT-PLAYER) ──────────────────────────
+export default function ReelPlayer({ url, autoPlay = true, style = {} }) {
+  const [hasError, setHasError] = useState(false);
+  const [isReady, setIsReady] = useState(false);
   const parsed = parseVideoUrl(url);
 
   if (!url) {
@@ -95,78 +83,77 @@ export default function ReelPlayer({ url, autoPlay = true, title = '', style = {
     );
   }
 
-  // Native MP4 / Direct Video File
-  if (parsed.type === 'direct') {
-    return (
-      <video
-        ref={videoRef}
-        src={parsed.directUrl || url}
-        controls
-        autoPlay={autoPlay}
-        playsInline
-        style={{
-          width: '100%', height: '100%', objectFit: 'contain',
-          background: '#000', borderRadius: '12px', ...style
-        }}
-      />
-    );
-  }
-
-  // YouTube Embed
-  if (parsed.type === 'youtube') {
-    return (
-      <iframe
-        src={parsed.embedUrl}
-        title={title || 'YouTube Video'}
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-        allowFullScreen
-        style={{
-          width: '100%', height: '100%', border: 'none',
-          background: '#000', borderRadius: '12px', display: 'block', ...style
-        }}
-      />
-    );
-  }
-
-  // Social Embed with smart fallback overlay (Facebook / TikTok / Instagram)
   return (
-    <div style={{ position: 'relative', width: '100%', height: '100%', borderRadius: '12px', overflow: 'hidden', background: '#000', ...style }}>
-      {!iframeError && (
-        <iframe
-          src={parsed.embedUrl}
-          title={title || `${parsed.platformName} Video`}
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-          allowFullScreen
-          onError={() => setIframeError(true)}
-          style={{
-            width: '100%', height: '100%', border: 'none',
-            background: '#000', display: 'block'
-          }}
-        />
+    <div style={{
+      position: 'relative', width: '100%', height: '100%',
+      borderRadius: '14px', overflow: 'hidden', background: '#000',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      ...style
+    }}>
+      {/* Loading Skeleton */}
+      {!isReady && !hasError && (
+        <div style={{
+          position: 'absolute', inset: 0,
+          background: 'linear-gradient(145deg, #090E18, #141C30)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          color: '#FFC107', fontSize: '0.85rem', fontWeight: 800, zIndex: 1
+        }}>
+          ⏳ جاري تحميل الفيديو...
+        </div>
       )}
 
-      {/* Floating Direct Play Button (if browser/adblocker blocks social embed) */}
-      <div style={{
-        position: 'absolute', bottom: '8px', left: '8px', right: '8px',
-        display: 'flex', justifyContent: 'center', zIndex: 10
-      }}>
-        <a
-          href={url}
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{
-            display: 'inline-flex', alignItems: 'center', gap: '6px',
-            padding: '6px 14px', borderRadius: '20px',
-            background: 'rgba(0, 0, 0, 0.8)', border: '1px solid rgba(255,255,255,0.25)',
-            color: '#FFF', fontSize: '0.74rem', fontWeight: 800,
-            textDecoration: 'none', backdropFilter: 'blur(8px)',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.5)'
-          }}
-        >
-          <span>▶</span>
-          <span>تشغيل عبر {parsed.platformName}</span>
-        </a>
-      </div>
+      {/* ReactPlayer Engine */}
+      <ReactPlayer
+        url={parsed.url || url}
+        playing={autoPlay}
+        controls={true}
+        playsinline={true}
+        width="100%"
+        height="100%"
+        onReady={() => setIsReady(true)}
+        onError={() => setHasError(true)}
+        config={{
+          youtube: {
+            playerVars: { showinfo: 0, rel: 0, modestbranding: 1, playsinline: 1 }
+          },
+          facebook: {
+            appId: '100000000000000'
+          },
+          file: {
+            attributes: {
+              controlsList: 'nodownload',
+              playsInline: true
+            }
+          }
+        }}
+        style={{ position: 'absolute', top: 0, left: 0 }}
+      />
+
+      {/* Fallback open button if adblocker or cookie policies block third-party widgets */}
+      {hasError && (
+        <div style={{
+          position: 'absolute', inset: 0, background: 'rgba(8, 12, 20, 0.95)',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          padding: '20px', textAlign: 'center', gap: '12px', zIndex: 10
+        }}>
+          <span style={{ fontSize: '2rem' }}>⚠️</span>
+          <div style={{ fontSize: '0.84rem', color: '#FFF', fontWeight: 700 }}>
+            تم حظر مشغل الطرف الثالث بواسطة متصفحك أو مانع الإعلانات
+          </div>
+          <a
+            href={url}
+            target="_blank"
+            rel="noreferrer"
+            style={{
+              padding: '10px 20px', borderRadius: '999px',
+              background: 'linear-gradient(135deg, #FFC107, #FF9500)',
+              color: '#000', fontWeight: 900, fontSize: '0.82rem', textDecoration: 'none'
+            }}
+          >
+            ▶ فتح الفيديو مباشرة في {parsed.platformName}
+          </a>
+        </div>
+      )}
     </div>
   );
 }

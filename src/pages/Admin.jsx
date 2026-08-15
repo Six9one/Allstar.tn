@@ -3394,15 +3394,19 @@ export default function Admin() {
                     type="url"
                     value={newReelUrl}
                     onChange={e => {
-                      const val = e.target.value;
+                      let val = e.target.value;
+                      if (val.includes('<iframe') || val.includes('src=')) {
+                        const m = val.match(/src=["']([^"']+)["']/i);
+                        if (m && m[1]) val = m[1].replace(/&amp;/g, '&');
+                      }
                       setNewReelUrl(val);
-                      const parsed = parseVideoInfo(val);
+                      const parsed = parseVideoUrl(val);
                       setNewReelType(parsed.type);
                       if (parsed.thumbnailUrl && !newReelThumb) {
                         setNewReelThumb(parsed.thumbnailUrl);
                       }
                     }}
-                    placeholder="https://www.youtube.com/shorts/... أو https://www.tiktok.com/... أو https://fb.watch/..."
+                    placeholder="الصق رابط الفيديو أو كود التضمين (iframe) من YouTube / Facebook / TikTok / Instagram"
                     style={inputStyle}
                   />
 
