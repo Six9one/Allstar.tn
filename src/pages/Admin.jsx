@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { db } from '../services/db';
 import { notificationService } from '../services/notifications';
 import { PhotoStudioEngine, ALLSTAR_BACKDROPS } from '../services/photoStudio';
-import { parseVideoInfo } from './Reels';
+import ReelPlayer, { parseVideoUrl } from '../components/ReelPlayer';
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
 const SPORT_ICONS = { Football: '⚽', Basketball: '🏀', Handball: '🤾', 'Multi-Sport': '🏆' };
@@ -1394,7 +1394,7 @@ export default function Admin() {
 
   const handleAddReel = async () => {
     if (!newReelUrl.trim()) return;
-    const parsed = parseVideoInfo(newReelUrl);
+    const parsed = parseVideoUrl(newReelUrl);
     const thumb = newReelThumb || parsed.thumbnailUrl || '';
     const newReel = {
       id: 'REEL-' + Date.now(),
@@ -3407,35 +3407,51 @@ export default function Admin() {
                   />
 
                   {newReelUrl && (
-                    <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                      {(() => {
-                        const parsed = parseVideoInfo(newReelUrl);
-                        return (
-                          <span style={{
-                            padding: '4px 12px', borderRadius: '8px', fontSize: '0.74rem', fontWeight: 800,
-                            background: parsed.type === 'youtube' ? 'rgba(255,0,0,0.15)' :
-                                        parsed.type === 'tiktok'  ? 'rgba(0,0,0,0.4)' :
-                                        parsed.type === 'facebook'? 'rgba(24,119,242,0.2)' :
-                                        parsed.type === 'instagram'? 'rgba(225,48,108,0.2)' :
-                                        'rgba(0,230,118,0.15)',
-                            color: parsed.type === 'youtube' ? '#FF4444' :
-                                   parsed.type === 'tiktok'  ? '#FFF' :
-                                   parsed.type === 'facebook'? '#4A9BFF' :
-                                   parsed.type === 'instagram'? '#FF6EA7' :
-                                   '#00E676',
-                            border: '1px solid currentColor',
-                          }}>
-                            {parsed.type === 'youtube'   ? '▶ YouTube Video/Shorts' :
-                             parsed.type === 'tiktok'    ? '🎵 TikTok' :
-                             parsed.type === 'facebook'  ? '📘 Facebook Reel/Video' :
-                             parsed.type === 'instagram' ? '📷 Instagram Reel' :
-                             '🎥 MP4 مباشر'}
-                          </span>
-                        );
-                      })()}
-                      <span style={{ fontSize: '0.74rem', color: '#00E676', fontWeight: 700 }}>
-                        ✓ تم التعرف على الفيديو وجاهز للنشر
-                      </span>
+                    <div style={{ marginTop: '12px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '10px' }}>
+                        {(() => {
+                          const parsed = parseVideoUrl(newReelUrl);
+                          return (
+                            <span style={{
+                              padding: '4px 12px', borderRadius: '8px', fontSize: '0.74rem', fontWeight: 800,
+                              background: parsed.type === 'youtube' ? 'rgba(255,0,0,0.15)' :
+                                          parsed.type === 'tiktok'  ? 'rgba(0,0,0,0.4)' :
+                                          parsed.type === 'facebook'? 'rgba(24,119,242,0.2)' :
+                                          parsed.type === 'instagram'? 'rgba(225,48,108,0.2)' :
+                                          'rgba(0,230,118,0.15)',
+                              color: parsed.type === 'youtube' ? '#FF4444' :
+                                     parsed.type === 'tiktok'  ? '#FFF' :
+                                     parsed.type === 'facebook'? '#4A9BFF' :
+                                     parsed.type === 'instagram'? '#FF6EA7' :
+                                     '#00E676',
+                              border: '1px solid currentColor',
+                            }}>
+                              {parsed.type === 'youtube'   ? '▶ YouTube Video/Shorts' :
+                               parsed.type === 'tiktok'    ? '🎵 TikTok' :
+                               parsed.type === 'facebook'  ? '📘 Facebook Reel/Video' :
+                               parsed.type === 'instagram' ? '📷 Instagram Reel' :
+                               '🎥 MP4 مباشر'}
+                            </span>
+                          );
+                        })()}
+                        <span style={{ fontSize: '0.74rem', color: '#00E676', fontWeight: 700 }}>
+                          ✓ تم التعرف على الفيديو وجاهز للنشر
+                        </span>
+                      </div>
+
+                      {/* LIVE EMBED PREVIEW */}
+                      <div style={{
+                        borderRadius: '14px', overflow: 'hidden',
+                        background: '#070A10', border: '1px solid rgba(255,255,255,0.12)',
+                        padding: '10px', display: 'flex', flexDirection: 'column', alignItems: 'center'
+                      }}>
+                        <div style={{ fontSize: '0.75rem', color: '#FFC107', fontWeight: 800, marginBottom: '8px' }}>
+                          👁️ معاينة مباشرة لتشغيل الفيديو:
+                        </div>
+                        <div style={{ width: '100%', maxWidth: '280px', height: '320px', borderRadius: '10px', overflow: 'hidden' }}>
+                          <ReelPlayer url={newReelUrl} autoPlay={false} />
+                        </div>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -3541,7 +3557,7 @@ export default function Admin() {
                 </div>
 
                 {reels.map((reel, idx) => {
-                  const parsed = parseVideoInfo(reel.url);
+                  const parsed = parseVideoUrl(reel.url);
                   const thumb = reel.thumbnailUrl || parsed.thumbnailUrl;
                   return (
                     <div

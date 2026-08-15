@@ -1,91 +1,15 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { db } from '../services/db';
+import ReelPlayer, { parseVideoUrl } from '../components/ReelPlayer';
 
 // ─── SPORT CONFIG ──────────────────────────────────────────────────────────────
 const SPORT_ICONS  = { Football: '⚽', Basketball: '🏀', Handball: '🤾', General: '🎬', Event: '🏆', Training: '💪' };
 const SPORT_COLORS = { Football: '#00E676', Basketball: '#FF9500', Handball: '#00E5FF', General: '#FFC107', Event: '#FF9500', Training: '#E040FB' };
 
-// ─── ROBUST URL PARSER ────────────────────────────────────────────────────────
-export function parseVideoInfo(rawUrl = '') {
-  const url = (rawUrl || '').trim();
-  if (!url) return { type: 'unknown', embedUrl: '', thumbnailUrl: '', directUrl: '', rawUrl: '', platformName: 'فيديو' };
-
-  // 1. YouTube (Shorts, Standard, youtu.be, mobile, embed)
-  const ytMatch = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=|shorts\/))([A-Za-z0-9_-]{11})/i);
-  if (ytMatch) {
-    const videoId = ytMatch[1];
-    return {
-      type: 'youtube',
-      videoId,
-      embedUrl: `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&playsinline=1&modestbranding=1`,
-      thumbnailUrl: `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
-      rawUrl: url,
-      platformName: 'YouTube'
-    };
-  }
-
-  // 2. Instagram Reels & Posts
-  const igMatch = url.match(/instagram\.com\/(?:p|reel|reels)\/([A-Za-z0-9_-]+)/i);
-  if (igMatch) {
-    const code = igMatch[1];
-    return {
-      type: 'instagram',
-      code,
-      embedUrl: `https://www.instagram.com/reel/${code}/embed/`,
-      thumbnailUrl: '',
-      rawUrl: url,
-      platformName: 'Instagram'
-    };
-  }
-
-  // 3. TikTok
-  const ttMatch = url.match(/tiktok\.com\/(?:@[\w.-]+\/video\/|v\/|embed\/v2\/)(\d+)/i);
-  if (ttMatch) {
-    const videoId = ttMatch[1];
-    return {
-      type: 'tiktok',
-      videoId,
-      embedUrl: `https://www.tiktok.com/embed/v2/${videoId}`,
-      thumbnailUrl: '',
-      rawUrl: url,
-      platformName: 'TikTok'
-    };
-  } else if (/tiktok\.com/i.test(url)) {
-    return {
-      type: 'tiktok',
-      embedUrl: url,
-      thumbnailUrl: '',
-      rawUrl: url,
-      platformName: 'TikTok'
-    };
-  }
-
-  // 4. Facebook Reels & Videos
-  if (/facebook\.com|fb\.watch|fb\.com/i.test(url)) {
-    return {
-      type: 'facebook',
-      embedUrl: `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(url)}&show_text=false&autoplay=true&mute=0`,
-      thumbnailUrl: '',
-      rawUrl: url,
-      platformName: 'Facebook'
-    };
-  }
-
-  // 5. Direct Video File (MP4, WebM, MOV, storage)
-  return {
-    type: 'direct',
-    directUrl: url,
-    embedUrl: url,
-    thumbnailUrl: '',
-    rawUrl: url,
-    platformName: 'فيديو مباشر'
-  };
-}
-
 // ─── REEL CARD ─────────────────────────────────────────────────────────────────
 function ReelCard({ reel, onClick }) {
   const [imgError, setImgError] = useState(false);
-  const parsed = parseVideoInfo(reel.url);
+  const parsed = parseVideoUrl(reel.url);
   const sportColor = SPORT_COLORS[reel.sport] || '#FFC107';
   const sportIcon  = SPORT_ICONS[reel.sport]  || '🎬';
   const thumb = !imgError && (reel.thumbnailUrl || parsed.thumbnailUrl);
@@ -134,8 +58,8 @@ function ReelCard({ reel, onClick }) {
             {sportIcon}
           </span>
           <span style={{
-            fontSize: '0.7rem', color: '#8E9BAE', fontWeight: 700,
-            background: 'rgba(0,0,0,0.4)', padding: '2px 8px', borderRadius: '12px'
+            fontSize: '0.72rem', color: '#8E9BAE', fontWeight: 700,
+            background: 'rgba(0,0,0,0.5)', padding: '3px 8px', borderRadius: '12px'
           }}>
             {parsed.platformName}
           </span>
@@ -207,8 +131,7 @@ function ReelCard({ reel, onClick }) {
 
 // ─── LIGHTBOX ──────────────────────────────────────────────────────────────────
 function Lightbox({ reel, onClose }) {
-  const videoRef = useRef(null);
-  const parsed = parseVideoInfo(reel.url);
+  const parsed = parseVideoUrl(reel.url);
   const sportColor = SPORT_COLORS[reel.sport] || '#FFC107';
   const sportIcon  = SPORT_ICONS[reel.sport]  || '🎬';
   const isDirect = parsed.type === 'direct';
@@ -280,26 +203,7 @@ function Lightbox({ reel, onClose }) {
         boxShadow: '0 20px 50px rgba(0,0,0,0.9), 0 0 0 1px rgba(255,255,255,0.1)',
         display: 'flex', alignItems: 'center', justifyContent: 'center'
       }}>
-        {isDirect ? (
-          <video
-            ref={videoRef}
-            src={parsed.directUrl || reel.url}
-            controls
-            autoPlay
-            playsInline
-            style={{ width: '100%', height: '100%', objectFit: 'contain', background: '#000' }}
-          />
-        ) : (
-          <iframe
-            src={parsed.embedUrl}
-            title={reel.title || 'Reel Video'}
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-            allowFullScreen
-            style={{
-              width: '100%', height: '100%', border: 'none', background: '#000'
-            }}
-          />
-        )}
+        <ReelPlayer url={reel.url} autoPlay={true} title={reel.title} />
       </div>
 
       {/* Action buttons bar */}

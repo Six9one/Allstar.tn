@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import logoMain from '../assets/logo-light.png'
 import { db } from '../services/db'
+import ReelPlayer, { parseVideoUrl } from '../components/ReelPlayer'
 
 const FALLBACK_SLIDES = [
   { id: 'SL-1', url: 'https://hsylnrzxeyqxczdalurj.supabase.co/storage/v1/object/public/carousel/live-slide-1-1786751135590.webp', caption: '⚽ تدريبات وبطولات أكاديمية أولستار الرياضية' },
@@ -23,6 +24,8 @@ export default function Home() {
   const [isHovered, setIsHovered] = useState(false)
   const [isTouching, setIsTouching] = useState(false)
   const [showPacksModal, setShowPacksModal] = useState(false)
+  const [reels, setReels] = useState(() => db.getReels())
+  const [activeReel, setActiveReel] = useState(null)
   const autoPlayRef = useRef(null)
   const touchStartRef = useRef(null)
 
@@ -34,6 +37,9 @@ export default function Home() {
       const finalSlides = nextSlides.length > 0 ? nextSlides : FALLBACK_SLIDES;
       setSlides(finalSlides);
       setCurrentIndex((previous) => Math.min(previous, Math.max(finalSlides.length, 1) - 1));
+      if (Array.isArray(content?.reels)) {
+        setReels(content.reels.filter(r => r && r.url));
+      }
     };
 
     // 1. Instant local load
@@ -347,6 +353,165 @@ export default function Home() {
             </div>
           </div>
         </div>
+
+        {/* 🎬 REELS SHOWCASE ROW (HOME PAGE) */}
+        {reels.length > 0 && (
+          <div style={{ marginTop: '28px', width: '100%' }}>
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              marginBottom: '14px', padding: '0 4px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '1.4rem' }}>🎬</span>
+                <h2 style={{ fontSize: '1.15rem', fontWeight: 900, margin: 0, color: '#FFF' }}>
+                  أبرز اللحظات (Reels)
+                </h2>
+              </div>
+              <Link
+                to="/reels"
+                style={{
+                  color: '#FFC107', fontSize: '0.8rem', fontWeight: 800,
+                  textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px'
+                }}
+              >
+                <span>مشاهدة الكل</span>
+                <span>‹</span>
+              </Link>
+            </div>
+
+            {/* Horizontal scrollable reels cards */}
+            <div style={{
+              display: 'flex', gap: '14px', overflowX: 'auto',
+              paddingBottom: '10px', scrollSnapType: 'x mandatory',
+              WebkitOverflowScrolling: 'touch'
+            }}>
+              {reels.map((reel) => {
+                const parsed = parseVideoUrl(reel.url);
+                const thumb = reel.thumbnailUrl || parsed.thumbnailUrl;
+                return (
+                  <div
+                    key={reel.id}
+                    onClick={() => setActiveReel(reel)}
+                    style={{
+                      flex: '0 0 135px',
+                      aspectRatio: '9/16',
+                      borderRadius: '16px',
+                      overflow: 'hidden',
+                      position: 'relative',
+                      background: '#0F131C',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      boxShadow: '0 8px 20px rgba(0,0,0,0.6)',
+                      cursor: 'pointer',
+                      scrollSnapAlign: 'start',
+                      transition: 'transform 0.2s ease',
+                    }}
+                  >
+                    {thumb ? (
+                      <img
+                        src={thumb}
+                        alt={reel.title || 'Reel'}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      />
+                    ) : (
+                      <div style={{
+                        width: '100%', height: '100%',
+                        background: 'linear-gradient(145deg, #090E18, #141C30)',
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '6px'
+                      }}>
+                        <span style={{ fontSize: '2rem' }}>🎬</span>
+                        <span style={{ fontSize: '0.65rem', color: '#8E9BAE', fontWeight: 700 }}>
+                          {parsed.platformName}
+                        </span>
+                      </div>
+                    )}
+
+                    <div style={{
+                      position: 'absolute', inset: 0,
+                      background: 'linear-gradient(180deg, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.8) 100%)'
+                    }} />
+
+                    {/* Play button */}
+                    <div style={{
+                      position: 'absolute', top: '50%', left: '50%',
+                      transform: 'translate(-50%, -50%)',
+                      width: '38px', height: '38px', borderRadius: '50%',
+                      background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(6px)',
+                      border: '1.5px solid rgba(255,255,255,0.4)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: '1rem', color: '#FFF'
+                    }}>
+                      ▶
+                    </div>
+
+                    {reel.title && (
+                      <div style={{
+                        position: 'absolute', bottom: '8px', left: '8px', right: '8px',
+                        color: '#FFF', fontSize: '0.72rem', fontWeight: 800,
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
+                      }}>
+                        {reel.title}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* REELS LIGHTBOX ON HOME */}
+        {activeReel && (
+          <div
+            onClick={(e) => { if (e.target === e.currentTarget) setActiveReel(null); }}
+            style={{
+              position: 'fixed', inset: 0, zIndex: 9999999,
+              background: 'rgba(0,0,0,0.95)', backdropFilter: 'blur(12px)',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+              padding: '16px', boxSizing: 'border-box'
+            }}
+          >
+            <div style={{
+              position: 'absolute', top: 0, left: 0, right: 0, padding: '16px 20px',
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between', zIndex: 10
+            }}>
+              <span style={{ color: '#FFF', fontWeight: 800, fontSize: '0.95rem' }}>
+                {activeReel.title || 'ريل الأكاديمية'}
+              </span>
+              <button
+                onClick={() => setActiveReel(null)}
+                style={{
+                  width: '40px', height: '40px', borderRadius: '50%',
+                  background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.25)',
+                  color: '#FFF', fontSize: '1.2rem', cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }}
+              >✕</button>
+            </div>
+
+            <div style={{
+              width: '100%', maxWidth: '420px', height: '75vh', maxHeight: '720px',
+              borderRadius: '16px', overflow: 'hidden', background: '#000',
+              boxShadow: '0 20px 50px rgba(0,0,0,0.9)'
+            }}>
+              <ReelPlayer url={activeReel.url} autoPlay={true} title={activeReel.title} />
+            </div>
+
+            <div style={{ marginTop: '16px', display: 'flex', gap: '12px' }}>
+              <a
+                href={`https://wa.me/?text=${encodeURIComponent(`🎬 شاهد هذا الريل من أكاديمية أولستار الرياضية!\n${activeReel.url}`)}`}
+                target="_blank"
+                rel="noreferrer"
+                style={{
+                  padding: '10px 22px', borderRadius: '999px',
+                  background: 'linear-gradient(135deg, #25D366, #128C7E)',
+                  color: '#FFF', fontWeight: 900, fontSize: '0.84rem', textDecoration: 'none'
+                }}
+              >
+                📤 مشاركة على واتساب
+              </a>
+            </div>
+          </div>
+        )}
 
         {/* ⚽ REGISTER CHILD BUTTON - COMPACT & CENTERED */}
         <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'center', width: '100%' }}>
