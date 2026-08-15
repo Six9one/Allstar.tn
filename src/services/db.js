@@ -1028,6 +1028,18 @@ class DBService {
     }
   }
 
+  // ── Reels (stored inside site_content.reels) ──────────────────────────────
+  getReels() {
+    return Array.isArray(this.getSiteContent().reels)
+      ? this.getSiteContent().reels
+      : [];
+  }
+
+  async saveReels(reelsArray) {
+    const content = this.getSiteContent();
+    return this.saveSiteContent({ ...content, reels: reelsArray });
+  }
+
   saveSiteContent(contentData) {
     const save = this.siteContentSaveQueue.then(() => this.saveSiteContentNow(contentData));
     this.siteContentSaveQueue = save.catch(() => {});

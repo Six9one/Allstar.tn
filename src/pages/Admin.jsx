@@ -1126,6 +1126,14 @@ export default function Admin() {
   const [announcementText, setAnnouncementText] = useState('');
   const [registrations, setRegistrations] = useState(() => db.getRegistrations());
 
+  // Reels
+  const [reels, setReels] = useState(() => db.getReels());
+  const [newReelUrl,   setNewReelUrl]   = useState('');
+  const [newReelType,  setNewReelType]  = useState('');
+  const [newReelThumb, setNewReelThumb] = useState('');
+  const [newReelTitle, setNewReelTitle] = useState('');
+  const [newReelSport, setNewReelSport] = useState('General');
+
   // Customizer / Website Editor
   const [siteForm, setSiteForm] = useState({});
 
@@ -1352,6 +1360,62 @@ export default function Admin() {
 
   const updateSiteForm = (key, val) => setSiteForm(f => ({ ...f, [key]: val }));
 
+  // ── Reels handlers ─────────────────────────────────────────────────────────
+  const detectReelType = (url = '') => {
+    if (/youtu\.be|youtube\.com/i.test(url)) return 'youtube';
+    if (/tiktok\.com/i.test(url))            return 'tiktok';
+    if (/facebook\.com|fb\.watch|fb\.com/i.test(url)) return 'facebook';
+    if (/instagram\.com/i.test(url))         return 'instagram';
+    if (/\.(mp4|webm|ogg|mov)(\?|$)/i.test(url)) return 'direct';
+    return 'iframe';
+  };
+
+  const getReelAutoThumb = (url = '', type) => {
+    const t = type || detectReelType(url);
+    if (t === 'youtube') {
+      const m = url.match(/(?:v=|youtu\.be\/)([A-Za-z0-9_-]{11})/);
+      return m ? `https://img.youtube.com/vi/${m[1]}/hqdefault.jpg` : null;
+    }
+    return null;
+  };
+
+  const handleAddReel = async () => {
+    if (!newReelUrl.trim()) return;
+    const type  = detectReelType(newReelUrl);
+    const thumb = newReelThumb || getReelAutoThumb(newReelUrl, type) || '';
+    const newReel = {
+      id: 'REEL-' + Date.now(),
+      url: newReelUrl.trim(),
+      type,
+      thumbnailUrl: thumb,
+      title: newReelTitle.trim(),
+      sport: newReelSport,
+      createdAt: new Date().toISOString(),
+    };
+    const updated = [newReel, ...reels];
+    setReels(updated);
+    try {
+      await db.saveReels(updated);
+      showSuccess('🎬 تم إضافة الريل بنجاح!');
+    } catch (e) {
+      showSuccess('🎬 تم حفظ الريل محلياً');
+    }
+    setNewReelUrl(''); setNewReelType(''); setNewReelThumb('');
+    setNewReelTitle(''); setNewReelSport('General');
+  };
+
+  const handleDeleteReel = async (id) => {
+    if (!window.confirm('هل أنت متأكد من حذف هذا الريل؟')) return;
+    const updated = reels.filter(r => r.id !== id);
+    setReels(updated);
+    try {
+      await db.saveReels(updated);
+      showSuccess('🗑️ تم حذف الريل');
+    } catch (e) {
+      showSuccess('🗑️ تم حذف الريل محلياً');
+    }
+  };
+
   // ── Broadcast handler ──────────────────────────────────────────────────────
   const handleSendBroadcast = (e) => {
     e.preventDefault();
@@ -1457,6 +1521,7 @@ export default function Admin() {
     { id: 'accounts',       icon: '🔐', label: 'Credentials',      color: '#00E676', badge: accounts.length },
     { id: 'coaches',        icon: '🏅', label: 'Coaches',          color: '#FF9500', badge: coaches.length },
     { id: 'players',        icon: '⚽', label: 'Players',          color: '#00E676', badge: players.length },
+    { id: 'reels',          icon: '🎬', label: 'Reels',            color: '#FF3D00', badge: reels.length },
     { id: 'siteeditor',     icon: '🌐', label: 'Website Content',  color: '#00E5FF', badge: 0 },
     { id: 'qrscanner',      icon: '📱', label: 'QR Scanner',       color: '#E040FB', badge: 0 },
     { id: 'announcements',  icon: '📢', label: 'Broadcast Push',   color: '#FF3D00', badge: 0 },
@@ -1469,6 +1534,7 @@ export default function Admin() {
     accounts:       { title: 'الحسابات',           subtitle: 'بيانات دخول المدربين وأولياء الأمور' },
     coaches:        { title: 'المدربون',           subtitle: 'إدارة الطاقم التدريبي' },
     players:        { title: 'اللاعبون',           subtitle: 'قائمة اللاعبين المسجلين' },
+    reels:          { title: '🎬 Reels',           subtitle: 'إدارة مقاطع الفيديو المعروضة للأهالي' },
     siteeditor:     { title: 'محتوى الموقع',       subtitle: 'تعديل محتوى الصفحة الرئيسية' },
     qrscanner:      { title: 'ماسح QR',            subtitle: 'تسجيل الحضور بالرمز المربع' },
     announcements:  { title: 'البث المباشر',       subtitle: 'إرسال إشعارات لجميع المستخدمين' },
@@ -3235,6 +3301,160 @@ export default function Admin() {
                 </div>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* ═══════════════════════════════════════════════════════════════════ */}
+        {/* TAB: REELS                                                           */}
+        {/* ═══════════════════════════════════════════════════════════════════ */}
+        {activeTab === 'reels' && (
+          <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+
+            {/* Add new reel form */}
+            <div style={{ ...cardStyle, marginBottom: '24px' }}>
+              <h3 style={{ color: '#FF3D00', fontSize: '1.1rem', fontWeight: 900, marginBottom: '4px' }}>🎬 إضافة ريل جديد</h3>
+              <p style={{ color: '#5A6A7E', fontSize: '0.82rem', marginBottom: '20px' }}>
+                الصق رابط TikTok أو Facebook أو YouTube أو ارفع ملف MP4 مباشرة — يتم التعرف عليه تلقائياً
+              </p>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                {/* URL input */}
+                <div>
+                  <label style={labelStyle}>رابط الفيديو (TikTok / Facebook / YouTube / MP4 URL)</label>
+                  <input
+                    type="url"
+                    value={newReelUrl}
+                    onChange={e => {
+                      setNewReelUrl(e.target.value);
+                      const t = detectReelType(e.target.value);
+                      setNewReelType(t);
+                      const autoThumb = getReelAutoThumb(e.target.value, t);
+                      if (autoThumb) setNewReelThumb(autoThumb);
+                    }}
+                    placeholder="https://www.tiktok.com/@user/video/... أو https://fb.watch/... أو https://youtu.be/..."
+                    style={inputStyle}
+                  />
+                  {newReelUrl && (
+                    <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{
+                        padding: '3px 10px', borderRadius: '8px', fontSize: '0.72rem', fontWeight: 800,
+                        background: newReelType === 'youtube' ? 'rgba(255,0,0,0.15)' : newReelType === 'tiktok' ? 'rgba(0,0,0,0.4)' : newReelType === 'facebook' ? 'rgba(24,119,242,0.2)' : 'rgba(255,61,0,0.15)',
+                        color: newReelType === 'youtube' ? '#FF4444' : newReelType === 'tiktok' ? '#FFF' : newReelType === 'facebook' ? '#4A9BFF' : '#FF6E40',
+                        border: '1px solid currentColor',
+                      }}>
+                        {newReelType === 'youtube' ? '▶ YouTube' : newReelType === 'tiktok' ? '🎵 TikTok' : newReelType === 'facebook' ? '📘 Facebook' : newReelType === 'instagram' ? '📷 Instagram' : newReelType === 'direct' ? '🎥 MP4 Direct' : '🔗 Link'}
+                      </span>
+                      <span style={{ fontSize: '0.72rem', color: '#5A6A7E' }}>تم التعرف على النوع تلقائياً</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Thumbnail */}
+                <div>
+                  <label style={labelStyle}>صورة مصغرة (اختياري لـ TikTok/Facebook — تلقائي لـ YouTube)</label>
+                  <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                    {newReelThumb ? (
+                      <img src={newReelThumb} alt="thumb" onError={() => setNewReelThumb('')}
+                        style={{ width: '42px', aspectRatio: '9/16', objectFit: 'cover', borderRadius: '8px', flexShrink: 0, border: '1px solid rgba(255,255,255,0.1)' }}
+                      />
+                    ) : (
+                      <div style={{ width: '42px', aspectRatio: '9/16', borderRadius: '8px', background: 'rgba(255,255,255,0.04)', border: '1px dashed rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', flexShrink: 0 }}>🎬</div>
+                    )}
+                    <input
+                      type="url"
+                      value={newReelThumb}
+                      onChange={e => setNewReelThumb(e.target.value)}
+                      placeholder="https://... (URL للصورة المصغرة)"
+                      style={{ ...inputStyle, flex: 1 }}
+                    />
+                  </div>
+                </div>
+
+                {/* Title + Sport */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div>
+                    <label style={labelStyle}>عنوان الريل (اختياري)</label>
+                    <input type="text" value={newReelTitle} onChange={e => setNewReelTitle(e.target.value)}
+                      placeholder="مثال: تدريبات U12 ⚽" style={inputStyle} />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>الرياضة</label>
+                    <select value={newReelSport} onChange={e => setNewReelSport(e.target.value)}
+                      style={{ ...inputStyle, cursor: 'pointer' }}>
+                      <option value="General">🎬 General</option>
+                      <option value="Football">⚽ Football</option>
+                      <option value="Basketball">🏀 Basketball</option>
+                      <option value="Handball">🤾 Handball</option>
+                      <option value="Event">🏆 Event</option>
+                      <option value="Training">💪 Training</option>
+                    </select>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  disabled={!newReelUrl.trim()}
+                  onClick={handleAddReel}
+                  style={{
+                    padding: '14px',
+                    background: newReelUrl.trim() ? 'linear-gradient(135deg, #FF3D00, #FF9500)' : 'rgba(255,255,255,0.06)',
+                    border: 'none', borderRadius: '14px',
+                    color: newReelUrl.trim() ? '#FFF' : '#5A6A7E',
+                    fontWeight: 900, fontSize: '0.95rem',
+                    cursor: newReelUrl.trim() ? 'pointer' : 'default',
+                    fontFamily: '"Cairo", "Tajawal", sans-serif', transition: 'all 0.2s'
+                  }}
+                >
+                  🎬 إضافة الريل
+                </button>
+              </div>
+            </div>
+
+            {/* Existing reels list */}
+            {reels.length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <h3 style={{ color: '#FFF', fontSize: '1rem', fontWeight: 900, margin: '0 0 4px' }}>
+                  الريلز المنشورة ({reels.length})
+                </h3>
+                {reels.map((reel, idx) => (
+                  <div key={reel.id} style={{ ...cardStyle, display: 'flex', alignItems: 'center', gap: '14px', padding: '14px 16px' }}>
+                    {reel.thumbnailUrl ? (
+                      <img src={reel.thumbnailUrl} alt="" style={{ width: '42px', aspectRatio: '9/16', objectFit: 'cover', borderRadius: '6px', flexShrink: 0 }} />
+                    ) : (
+                      <div style={{ width: '42px', aspectRatio: '9/16', borderRadius: '6px', background: 'rgba(255,61,0,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', flexShrink: 0 }}>🎬</div>
+                    )}
+                    <div style={{ flex: 1, overflow: 'hidden' }}>
+                      <div style={{ fontWeight: 800, fontSize: '0.88rem', color: '#FFF', marginBottom: '3px' }}>
+                        {reel.title || `ريل ${idx + 1}`}
+                      </div>
+                      <div style={{ fontSize: '0.72rem', color: '#5A6A7E', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {reel.url}
+                      </div>
+                      <span style={{ fontSize: '0.65rem', fontWeight: 800, padding: '2px 8px', borderRadius: '6px', background: 'rgba(255,61,0,0.12)', color: '#FF6E40', display: 'inline-block', marginTop: '4px' }}>
+                        {reel.type === 'youtube' ? '▶ YouTube' : reel.type === 'tiktok' ? '🎵 TikTok' : reel.type === 'facebook' ? '📘 Facebook' : '🎥 MP4'}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => handleDeleteReel(reel.id)}
+                      style={{
+                        background: 'rgba(255,61,0,0.12)', border: '1px solid rgba(255,61,0,0.3)',
+                        borderRadius: '10px', color: '#FF5252', padding: '8px 12px',
+                        fontWeight: 800, cursor: 'pointer', fontSize: '0.8rem', flexShrink: 0,
+                        fontFamily: '"Cairo", "Tajawal", sans-serif',
+                      }}
+                    >
+                      🗑️ حذف
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{ ...cardStyle, textAlign: 'center', padding: '40px', color: '#5A6A7E' }}>
+                <div style={{ fontSize: '3rem', marginBottom: '12px' }}>🎬</div>
+                <h3 style={{ color: '#FFF', margin: '0 0 8px' }}>لا توجد ريلز بعد</h3>
+                <p style={{ margin: 0, fontSize: '0.85rem' }}>أضف أول ريل بالصق رابط TikTok أو Facebook أو YouTube</p>
+              </div>
+            )}
           </div>
         )}
 

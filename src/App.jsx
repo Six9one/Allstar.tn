@@ -23,8 +23,10 @@ import PlayerCards from './pages/PlayerCards'
 import WeatherStatus from './pages/WeatherStatus'
 import Feedback from './pages/Feedback'
 import Certificates from './pages/Certificates'
+import Reels from './pages/Reels'
 import Admin from './pages/Admin'
 import CoachPortal from './pages/CoachPortal'
+import BottomNav from './components/BottomNav'
 
 function ScrollToTop() {
   const { pathname } = useLocation()
@@ -85,9 +87,11 @@ export default function App() {
           <Route path="/player-cards" element={<PlayerCards />} />
           <Route path="/weather-status" element={<WeatherStatus />} />
           <Route path="/feedback" element={<Feedback />} />
+          <Route path="/reels" element={<Reels />} />
           <Route path="/certificates" element={<Certificates />} />
         </Routes>
       </main>
+      <BottomNav />
       <AutoUpdater />
 
       {/* FIRST OPENING ONBOARDING MODAL MATCHING SCREENSHOT */}
