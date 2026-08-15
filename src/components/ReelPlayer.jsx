@@ -188,7 +188,7 @@ function TikTokPlayer({ videoId, isActive, isMuted, posterUrl, onReady, onError 
       onClick={handleTap}
       style={{ position: 'relative', width: '100%', height: '100%', background: '#000' }}
     >
-      {/* TikTok Player iframe — treated as pure video layer */}
+      {/* TikTok Player iframe — instant pure video layer */}
       <iframe
         ref={iframeRef}
         src={playerUrl}
@@ -205,39 +205,6 @@ function TikTokPlayer({ videoId, isActive, isMuted, posterUrl, onReady, onError 
         }}
         title="Academy Reel Video"
       />
-
-      {/* Poster overlay while loading */}
-      {showPoster && (
-        <div style={{
-          position: 'absolute', inset: 0, zIndex: 2,
-          background: '#000',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          transition: 'opacity 0.4s ease',
-          opacity: playerReady ? 0 : 1,
-          pointerEvents: playerReady ? 'none' : 'auto',
-        }}>
-          {posterUrl ? (
-            <img
-              src={posterUrl}
-              alt=""
-              style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.7 }}
-              onError={(e) => { e.target.style.display = 'none'; }}
-            />
-          ) : null}
-          <div style={{
-            position: 'absolute', inset: 0,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>
-            <div style={{
-              width: '42px', height: '42px',
-              border: '3px solid rgba(255,193,7,0.2)',
-              borderTopColor: '#FFC107',
-              borderRadius: '50%',
-              animation: 'spin 0.8s linear infinite',
-            }} />
-          </div>
-        </div>
-      )}
 
       {/* Error state */}
       {playerError && (
