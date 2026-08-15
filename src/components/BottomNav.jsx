@@ -8,8 +8,8 @@ const NAV_ITEMS = [
   { path: '/portal',  icon: '👤', label: 'بوابتي'    },
 ];
 
-// Hide bottom nav on admin page
-const HIDDEN_PATHS = ['/admin', '/coach-portal'];
+// Hide bottom nav on admin and fullscreen reels page
+const HIDDEN_PATHS = ['/admin', '/coach-portal', '/reels'];
 
 export default function BottomNav() {
   const location = useLocation();

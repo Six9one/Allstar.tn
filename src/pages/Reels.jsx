@@ -112,7 +112,7 @@ function ReelSlide({
         <div style={{
           position: 'absolute',
           right: '12px',
-          bottom: '80px',
+          bottom: 'calc(env(safe-area-inset-bottom, 0px) + 28px)',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
@@ -213,7 +213,7 @@ function ReelSlide({
         {/* ─── BOTTOM OVERLAY: ACADEMY PROFILE & TITLE (RTL) ────────────────── */}
         <div style={{
           position: 'absolute',
-          bottom: '72px',
+          bottom: 'calc(env(safe-area-inset-bottom, 0px) + 24px)',
           left: '16px',
           right: '72px',
           zIndex: 25,
