@@ -376,7 +376,7 @@ export default function ReelPlayer({
   reel,
   poster = '',
   isActive = true,
-  isMuted = true,
+  isMuted = false,
   onToggleMute,
   title = '',
   style = {},
