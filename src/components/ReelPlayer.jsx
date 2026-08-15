@@ -138,7 +138,7 @@ export default function ReelPlayer({ url, autoPlay = true, title = '', style = {
     );
   }
 
-  // 3. TikTok (Clipped clean to hide white footer card)
+  // 3. TikTok (Clipped & scaled so ONLY the pure video is visible, hiding the white footer card completely)
   if (parsed.type === 'tiktok') {
     return (
       <div style={{
@@ -147,6 +147,9 @@ export default function ReelPlayer({ url, autoPlay = true, title = '', style = {
         height: '100%',
         background: '#000',
         overflow: 'hidden',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
         ...style
       }}>
         <iframe
@@ -156,13 +159,14 @@ export default function ReelPlayer({ url, autoPlay = true, title = '', style = {
           allowFullScreen
           style={{
             width: '100%',
-            height: 'calc(100% + 150px)', // Crops out the bottom white footer card!
+            height: '128%',
             border: 'none',
             background: '#000',
             display: 'block',
             position: 'absolute',
-            top: 0,
-            left: 0
+            top: '-2%',
+            left: 0,
+            pointerEvents: 'auto'
           }}
         />
       </div>
