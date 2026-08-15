@@ -3458,36 +3458,7 @@ export default function Admin() {
           </div>
         )}
 
-        {/* ═══════════════════════════════════════════════════════════════════ */}
-        {/* TAB: ANNOUNCEMENTS                                                  */}
-        {/* ═══════════════════════════════════════════════════════════════════ */}
-        {activeTab === 'announcements' && (
-          <div style={{ maxWidth: '700px', margin: '0 auto' }}>
-            <div style={cardStyle}>
-              <h2 style={{ color: '#FF3D00', fontSize: '1.4rem', fontWeight: 900, marginBottom: '8px' }}>📢 إرسال إعلانات مباشرة</h2>
-              <p style={{ color: '#8E9BAE', fontSize: '0.88rem', marginBottom: '24px' }}>إرسال إشعار فوري لجميع الأولياء واللاعبين</p>
-              <form onSubmit={handleSendBroadcast} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                <div>
-                  <label style={labelStyle}>عنوان الإشعار *</label>
-                  <input type="text" required value={announcementTitle} onChange={e => setAnnouncementTitle(e.target.value)}
-                    placeholder="مثال: تذكير بموعد المباراة الودية يوم السبت"
-                    style={inputStyle} />
-                </div>
-                <div>
-                  <label style={labelStyle}>نص الإشعار والتفاصيل</label>
-                  <textarea rows={4} value={announcementText} onChange={e => setAnnouncementText(e.target.value)}
-                    placeholder="اكتب تفاصيل التنبيه هنا..."
-                    style={{ ...inputStyle, resize: 'none' }} />
-                </div>
-                <button type="submit" style={{
-                  padding: '16px', background: 'linear-gradient(135deg, #FF3D00, #FF9500)',
-                  border: 'none', borderRadius: '16px', color: '#FFF', fontWeight: 900, fontSize: '1rem', cursor: 'pointer',
-                  fontFamily: '"Cairo", "Tajawal", sans-serif'
-                }}>🚀 إرسال التنبيه لجميع الهواتف</button>
-              </form>
-            </div>
-          </div>
-        )}
+
 
         </div>
       </div>
