@@ -56,19 +56,14 @@ export function extractTikTokVideoId(input) {
 // ─── TIKTOK PLAYER URL BUILDER ────────────────────────────────────────────────
 function buildTikTokPlayerUrl(videoId) {
   const params = new URLSearchParams({
-    controls: '0',
-    progress_bar: '0',
-    play_button: '0',
-    volume_control: '0',
-    fullscreen_button: '0',
-    timestamp: '0',
-    music_info: '0',
-    description: '0',
-    rel: '0',
-    native_context_menu: '0',
     autoplay: '1',
-    muted: '1',
     loop: '1',
+    muted: '1',
+    controls: '0',
+    rel: '0',
+    description: '0',
+    music_info: '0',
+    timestamp: '0',
   });
   return `https://www.tiktok.com/player/v1/${videoId}?${params.toString()}`;
 }
@@ -78,7 +73,6 @@ function TikTokPlayer({ videoId, isActive, isMuted, posterUrl, onReady, onError 
   const iframeRef = useRef(null);
   const [playerReady, setPlayerReady] = useState(false);
   const [playerError, setPlayerError] = useState(null);
-  const [showPoster, setShowPoster] = useState(true);
 
   const playerUrl = buildTikTokPlayerUrl(videoId);
 
@@ -104,8 +98,6 @@ function TikTokPlayer({ videoId, isActive, isMuted, posterUrl, onReady, onError 
       switch (data.type) {
         case 'onPlayerReady':
           setPlayerReady(true);
-          setShowPoster(false);
-          // Immediately trigger play and unMute
           sendPlayerMessage('play');
           if (!isMuted) {
             sendPlayerMessage('unMute');
@@ -114,24 +106,17 @@ function TikTokPlayer({ videoId, isActive, isMuted, posterUrl, onReady, onError 
           if (onReady) onReady();
           break;
         case 'onStateChange':
-          // state: -1 unstarted, 0 ended, 1 playing, 2 paused, 3 buffering
           if (data.value === 1 || data.value === 3) {
-            setShowPoster(false);
             if (!isMuted) {
               sendPlayerMessage('unMute');
             }
           }
           break;
         case 'onPlayerError':
-          console.warn('TikTok Player notice/error:', data.value);
-          // If error is autoplay restriction (3001, 3002, etc.), do NOT show error modal
-          // Just ensure player is muted and retry play
-          if (data.value === 3002 || data.value === 3001 || data.value === -1) {
+          console.warn('TikTok Player notice:', data.value);
+          if (data.value === 3002 || data.value === 3001) {
             sendPlayerMessage('mute');
             sendPlayerMessage('play');
-          } else if (data.value === 1001 || data.value === 2001) {
-            setPlayerError(data.value);
-            if (onError) onError(data.value);
           }
           break;
         default:
@@ -143,18 +128,26 @@ function TikTokPlayer({ videoId, isActive, isMuted, posterUrl, onReady, onError 
     return () => window.removeEventListener('message', handleMessage);
   }, [onReady, onError, isMuted, sendPlayerMessage]);
 
-  // Keep player in sync with active slide
+  // Keep sending play ping when active until playing
   useEffect(() => {
-    if (!iframeRef.current?.contentWindow) return;
-    if (isActive) {
-      sendPlayerMessage('play');
-      if (!isMuted) {
-        sendPlayerMessage('unMute');
-        sendPlayerMessage('setVolume', 1);
-      }
-    } else {
+    if (!isActive) {
       sendPlayerMessage('pause');
+      return;
     }
+
+    sendPlayerMessage('play');
+    if (!isMuted) {
+      sendPlayerMessage('unMute');
+    }
+
+    // Ping play twice in the first 400ms to guarantee autoplay start
+    const t1 = setTimeout(() => sendPlayerMessage('play'), 150);
+    const t2 = setTimeout(() => sendPlayerMessage('play'), 350);
+
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
   }, [isActive, isMuted, sendPlayerMessage]);
 
   // Sync mute state
