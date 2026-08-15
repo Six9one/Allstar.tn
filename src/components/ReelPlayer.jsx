@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useState, useRef } from 'react';
 
 // ─── ROBUST VIDEO PARSER ───────────────────────────────────────────────────────
 export function parseVideoUrl(rawUrl = '') {
@@ -80,6 +80,7 @@ export function parseVideoUrl(rawUrl = '') {
 // ─── REEL PLAYER COMPONENT ────────────────────────────────────────────────────
 export default function ReelPlayer({ url, autoPlay = true, title = '', style = {} }) {
   const videoRef = useRef(null);
+  const [iframeError, setIframeError] = useState(false);
   const parsed = parseVideoUrl(url);
 
   if (!url) {
@@ -94,6 +95,7 @@ export default function ReelPlayer({ url, autoPlay = true, title = '', style = {
     );
   }
 
+  // Native MP4 / Direct Video File
   if (parsed.type === 'direct') {
     return (
       <video
@@ -110,16 +112,61 @@ export default function ReelPlayer({ url, autoPlay = true, title = '', style = {
     );
   }
 
+  // YouTube Embed
+  if (parsed.type === 'youtube') {
+    return (
+      <iframe
+        src={parsed.embedUrl}
+        title={title || 'YouTube Video'}
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+        allowFullScreen
+        style={{
+          width: '100%', height: '100%', border: 'none',
+          background: '#000', borderRadius: '12px', display: 'block', ...style
+        }}
+      />
+    );
+  }
+
+  // Social Embed with smart fallback overlay (Facebook / TikTok / Instagram)
   return (
-    <iframe
-      src={parsed.embedUrl}
-      title={title || 'Reel Video'}
-      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-      allowFullScreen
-      style={{
-        width: '100%', height: '100%', border: 'none',
-        background: '#000', borderRadius: '12px', display: 'block', ...style
-      }}
-    />
+    <div style={{ position: 'relative', width: '100%', height: '100%', borderRadius: '12px', overflow: 'hidden', background: '#000', ...style }}>
+      {!iframeError && (
+        <iframe
+          src={parsed.embedUrl}
+          title={title || `${parsed.platformName} Video`}
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          allowFullScreen
+          onError={() => setIframeError(true)}
+          style={{
+            width: '100%', height: '100%', border: 'none',
+            background: '#000', display: 'block'
+          }}
+        />
+      )}
+
+      {/* Floating Direct Play Button (if browser/adblocker blocks social embed) */}
+      <div style={{
+        position: 'absolute', bottom: '8px', left: '8px', right: '8px',
+        display: 'flex', justifyContent: 'center', zIndex: 10
+      }}>
+        <a
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: '6px',
+            padding: '6px 14px', borderRadius: '20px',
+            background: 'rgba(0, 0, 0, 0.8)', border: '1px solid rgba(255,255,255,0.25)',
+            color: '#FFF', fontSize: '0.74rem', fontWeight: 800,
+            textDecoration: 'none', backdropFilter: 'blur(8px)',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.5)'
+          }}
+        >
+          <span>▶</span>
+          <span>تشغيل عبر {parsed.platformName}</span>
+        </a>
+      </div>
+    </div>
   );
 }
