@@ -37,12 +37,27 @@ export default function Home() {
       const finalSlides = nextSlides.length > 0 ? nextSlides : FALLBACK_SLIDES;
       setSlides(finalSlides);
       setCurrentIndex((previous) => Math.min(previous, Math.max(finalSlides.length, 1) - 1));
+      // Try loading from dedicated academy_reels table first
+      try {
+        const academyReels = await db.getAcademyReels();
+        if (Array.isArray(academyReels) && academyReels.length > 0) {
+          setReels(academyReels.filter(r => {
+            if (!r || r.is_active === false) return false;
+            if (r.playback_type === 'tiktok') return !!r.tiktok_video_id;
+            const src = (r.video_url || r.url || '').trim();
+            return !!src;
+          }));
+          return;
+        }
+      } catch (e) {
+        // Table may not exist yet — fall through to legacy
+      }
+      // Fallback: legacy embedded JSON reels
       if (Array.isArray(content?.reels)) {
         setReels(content.reels.filter(r => {
           if (!r || r.active === false) return false;
           const src = (r.video_url || r.url || '').trim();
-          if (!src || /tiktok\.com|facebook\.com|fb\.watch/i.test(src)) return false;
-          return true;
+          return !!src;
         }));
       }
     };
@@ -392,7 +407,7 @@ export default function Home() {
             }}>
               {reels.map((reel) => {
                 const videoSrc = reel.video_url || reel.url || '';
-                const thumb = reel.thumbnail_url || reel.thumbnailUrl || '';
+                const thumb = reel.cover_image_url || reel.thumbnail_url || reel.thumbnailUrl || '';
                 return (
                   <div
                     key={reel.id}
@@ -499,8 +514,9 @@ export default function Home() {
               boxShadow: '0 20px 50px rgba(0,0,0,0.9)'
             }}>
               <ReelPlayer
+                reel={activeReel}
                 url={activeReel.video_url || activeReel.url}
-                poster={activeReel.thumbnail_url || activeReel.thumbnailUrl}
+                poster={activeReel.cover_image_url || activeReel.thumbnail_url || activeReel.thumbnailUrl}
                 isActive={true}
                 isMuted={false}
                 title={activeReel.title}

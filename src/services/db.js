@@ -1052,6 +1052,148 @@ class DBService {
     return urlData?.publicUrl;
   }
 
+  // ── Academy Reels (dedicated Supabase table) ────────────────────────────────
+
+  /**
+   * Fetch active reels from the dedicated academy_reels table.
+   * Falls back to the legacy embedded JSON reels if the table doesn't exist yet.
+   */
+  async getAcademyReels() {
+    if (!supabase) return this.getReels();
+    try {
+      const { data, error } = await supabase
+        .from('academy_reels')
+        .select('*')
+        .eq('is_active', true)
+        .order('display_order', { ascending: false })
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        // If table doesn't exist yet, fall back to legacy reels
+        if (error.code === '42P01' || error.message?.includes('does not exist')) {
+          console.warn('academy_reels table not found, using legacy reels');
+          return this.getReels();
+        }
+        throw error;
+      }
+      return data || [];
+    } catch (e) {
+      console.warn('getAcademyReels error, falling back to legacy:', e);
+      return this.getReels();
+    }
+  }
+
+  /**
+   * Add a reel manually (native upload or manual TikTok ID entry).
+   */
+  async addManualReel(reelData) {
+    if (!supabase) throw new Error('Supabase is not connected');
+    const { data, error } = await supabase
+      .from('academy_reels')
+      .insert({
+        playback_type: reelData.playback_type || 'native',
+        video_url: reelData.video_url || null,
+        tiktok_video_id: reelData.tiktok_video_id || null,
+        cover_image_url: reelData.cover_image_url || null,
+        title: reelData.title || null,
+        description: reelData.description || null,
+        sport: reelData.sport || 'General',
+        source: reelData.source || 'manual',
+        is_active: true,
+        display_order: reelData.display_order || 0,
+      })
+      .select();
+    if (error) throw error;
+    return data;
+  }
+
+  /**
+   * Soft-delete a reel (set is_active = false).
+   */
+  async deleteAcademyReel(id) {
+    if (!supabase) throw new Error('Supabase is not connected');
+    const { error } = await supabase
+      .from('academy_reels')
+      .update({ is_active: false })
+      .eq('id', id);
+    if (error) throw error;
+    return true;
+  }
+
+  /**
+   * Hard-delete a reel (permanent removal).
+   */
+  async hardDeleteAcademyReel(id) {
+    if (!supabase) throw new Error('Supabase is not connected');
+    const { error } = await supabase
+      .from('academy_reels')
+      .delete()
+      .eq('id', id);
+    if (error) throw error;
+    return true;
+  }
+
+  /**
+   * Toggle a reel's active state.
+   */
+  async toggleAcademyReel(id, isActive) {
+    if (!supabase) throw new Error('Supabase is not connected');
+    const { error } = await supabase
+      .from('academy_reels')
+      .update({ is_active: isActive })
+      .eq('id', id);
+    if (error) throw error;
+    return true;
+  }
+
+  /**
+   * Trigger TikTok sync via Edge Function.
+   */
+  async triggerTikTokSync() {
+    if (!supabase) throw new Error('Supabase is not connected');
+    const { data, error } = await supabase.functions.invoke('sync-tiktok-reels', {
+      method: 'POST',
+      body: {},
+    });
+    if (error) throw error;
+    return data;
+  }
+
+  /**
+   * Get TikTok sync state (non-sensitive fields only, via RPC).
+   */
+  async getTikTokSyncState() {
+    if (!supabase) return null;
+    try {
+      const { data, error } = await supabase.rpc('get_tiktok_sync_status');
+      if (error) {
+        // RPC not created yet — return null gracefully
+        if (error.code === '42883' || error.message?.includes('does not exist')) {
+          return null;
+        }
+        throw error;
+      }
+      return data?.[0] || null;
+    } catch (e) {
+      console.warn('getTikTokSyncState error:', e);
+      return null;
+    }
+  }
+
+  /**
+   * Get TikTok OAuth authorization URL from Edge Function.
+   */
+  async getTikTokAuthUrl() {
+    if (!supabase) throw new Error('Supabase is not connected');
+    const redirectUri = `${SUPABASE_URL}/functions/v1/tiktok-oauth`;
+    const { data, error } = await supabase.functions.invoke('tiktok-auth-url', {
+      method: 'POST',
+      body: { redirect_uri: redirectUri },
+    });
+    if (error) throw error;
+    return data;
+  }
+
   saveSiteContent(contentData) {
     const save = this.siteContentSaveQueue.then(() => this.saveSiteContentNow(contentData));
     this.siteContentSaveQueue = save.catch(() => {});

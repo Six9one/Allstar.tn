@@ -7,6 +7,9 @@ import ReelPlayer from '../components/ReelPlayer';
 const SPORT_ICONS  = { Football: '⚽', Basketball: '🏀', Handball: '🤾', General: '🎬', Event: '🏆', Training: '💪' };
 const SPORT_COLORS = { Football: '#00E676', Basketball: '#FF9500', Handball: '#00E5FF', General: '#FFC107', Event: '#FF9500', Training: '#E040FB' };
 
+// ─── PLAYER WINDOWING: Only mount players for nearby slides ────────────────────
+const PLAYER_WINDOW = 1; // Mount players for current ± 1 slides
+
 // ─── SINGLE FULLSCREEN REEL SLIDE ─────────────────────────────────────────────
 function ReelSlide({
   reel,
@@ -15,7 +18,8 @@ function ReelSlide({
   isActive,
   isMuted,
   onToggleMute,
-  setSlideRef
+  setSlideRef,
+  shouldMountPlayer
 }) {
   const [liked, setLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(() => Math.floor(Math.random() * 30) + 12);
@@ -23,8 +27,6 @@ function ReelSlide({
 
   const sportColor = SPORT_COLORS[reel.sport] || '#FFC107';
   const sportIcon  = SPORT_ICONS[reel.sport]  || '🎬';
-  const videoSrc   = reel.video_url || reel.url || '';
-  const posterSrc  = reel.thumbnail_url || reel.thumbnailUrl || '';
 
   const handleLike = (e) => {
     e.stopPropagation();
@@ -39,15 +41,17 @@ function ReelSlide({
 
   const handleShare = (e) => {
     e.stopPropagation();
-    const shareText = `🎬 شاهد هذا الريل من أكاديمية أولستار الرياضية بتطاوين!\n${videoSrc}`;
+    const shareUrl = reel.tiktok_share_url || reel.video_url || reel.url || '';
+    const shareText = `🎬 شاهد هذا الريل من أكاديمية أولستار الرياضية بتطاوين!\n${shareUrl}`;
     const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
     window.open(whatsappUrl, '_blank');
   };
 
   const handleCopyLink = (e) => {
     e.stopPropagation();
-    if (navigator.clipboard && videoSrc) {
-      navigator.clipboard.writeText(videoSrc);
+    const link = reel.tiktok_share_url || reel.video_url || reel.url || '';
+    if (navigator.clipboard && link) {
+      navigator.clipboard.writeText(link);
       setIsCopied(true);
       setTimeout(() => setIsCopied(false), 2000);
     }
@@ -83,16 +87,35 @@ function ReelSlide({
         justifyContent: 'center',
         boxShadow: '0 0 50px rgba(0,0,0,0.9)'
       }}>
-        {/* NATIVE HTML5 DIRECT PLAYER */}
-        <ReelPlayer
-          url={videoSrc}
-          poster={posterSrc}
-          isActive={isActive}
-          isMuted={isMuted}
-          onToggleMute={onToggleMute}
-          title={reel.title}
-          objectFit="cover"
-        />
+        {/* PLAYER — only mounted when within the windowing range */}
+        {shouldMountPlayer ? (
+          <ReelPlayer
+            reel={reel}
+            url={reel.video_url || reel.url || ''}
+            poster={reel.cover_image_url || reel.thumbnail_url || reel.thumbnailUrl || ''}
+            isActive={isActive}
+            isMuted={isMuted}
+            onToggleMute={onToggleMute}
+            title={reel.title}
+            objectFit="cover"
+          />
+        ) : (
+          /* Placeholder: cover image or dark background */
+          <div style={{
+            width: '100%', height: '100%', background: '#000',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            {(reel.cover_image_url || reel.thumbnail_url) ? (
+              <img
+                src={reel.cover_image_url || reel.thumbnail_url}
+                alt=""
+                style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.5 }}
+              />
+            ) : (
+              <span style={{ fontSize: '2rem', opacity: 0.3 }}>🎬</span>
+            )}
+          </div>
+        )}
 
         {/* TOP CINEMATIC GRADIENT */}
         <div style={{
@@ -314,7 +337,7 @@ function EmptyReelsState() {
   );
 }
 
-// ─── MAIN FULLSCREEN REELS COMPONENT (SMART INTERSECTION OBSERVER) ─────────────
+// ─── MAIN FULLSCREEN REELS COMPONENT ────────────────────────────────────────────
 export default function Reels() {
   const navigate = useNavigate();
   const [reels, setReels] = useState([]);
@@ -333,32 +356,69 @@ export default function Reels() {
     }
   }, []);
 
-  // Fetch site reels
+  // Fetch reels from dedicated table, with legacy fallback
   useEffect(() => {
-    const load = (content) => {
+    let mounted = true;
+
+    const loadReels = async () => {
+      try {
+        // Try dedicated academy_reels table first
+        const academyReels = await db.getAcademyReels();
+        if (mounted && Array.isArray(academyReels) && academyReels.length > 0) {
+          // Filter: must have valid playback source
+          const valid = academyReels.filter(r => {
+            if (!r || r.is_active === false) return false;
+            // TikTok reels need a tiktok_video_id
+            if (r.playback_type === 'tiktok') return !!r.tiktok_video_id;
+            // Native reels need a video_url
+            const src = (r.video_url || r.url || '').trim();
+            return !!src;
+          });
+          setReels(valid);
+          setLoading(false);
+          return;
+        }
+      } catch (e) {
+        console.warn('Academy reels fetch failed, trying legacy:', e);
+      }
+
+      // Fallback: legacy embedded JSON reels
+      if (mounted) {
+        const content = db.getSiteContent();
+        loadLegacyReels(content);
+        db.getSiteContentAsync().then(c => {
+          if (c && mounted) loadLegacyReels(c);
+        });
+      }
+    };
+
+    const loadLegacyReels = (content) => {
       const r = content?.reels;
       if (Array.isArray(r)) {
-        // Filter out empty, inactive, or non-video web links (e.g. raw TikTok/Facebook page URLs)
         const validReels = r.filter(x => {
           if (!x || x.active === false) return false;
           const src = (x.video_url || x.url || '').trim();
-          if (!src) return false;
-          // Exclude raw TikTok / Facebook webpage URLs from native playback feed
-          if (/tiktok\.com|facebook\.com|fb\.watch/i.test(src)) return false;
-          return true;
+          return !!src;
         });
         setReels(validReels);
       }
       setLoading(false);
     };
 
-    load(db.getSiteContent());
-    db.getSiteContentAsync().then(c => c && load(c));
+    loadReels();
 
+    // Realtime subscription for legacy reels
     const unsub = db.subscribeToRealtime(null, null, (live) => {
-      if (live) load(live);
+      if (live && mounted) {
+        // Re-check academy reels on content change
+        loadReels();
+      }
     });
-    return () => { if (unsub) unsub(); };
+
+    return () => {
+      mounted = false;
+      if (unsub) unsub();
+    };
   }, []);
 
   // Set up IntersectionObserver to detect which slide is active in viewport
@@ -378,7 +438,7 @@ export default function Reels() {
       },
       {
         root: containerRef.current,
-        threshold: 0.65 // Slide must be at least 65% visible to become active
+        threshold: 0.65
       }
     );
 
@@ -536,6 +596,7 @@ export default function Reels() {
             isMuted={isMuted}
             onToggleMute={() => setIsMuted(m => !m)}
             setSlideRef={setSlideRef}
+            shouldMountPlayer={Math.abs(index - activeSlideIndex) <= PLAYER_WINDOW}
           />
         ))}
       </div>
