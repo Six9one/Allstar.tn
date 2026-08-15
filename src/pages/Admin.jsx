@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { db } from '../services/db';
 import { notificationService } from '../services/notifications';
 import { PhotoStudioEngine, ALLSTAR_BACKDROPS } from '../services/photoStudio';
+import { parseVideoInfo } from './Reels';
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
 const SPORT_ICONS = { Football: '⚽', Basketball: '🏀', Handball: '🤾', 'Multi-Sport': '🏆' };
@@ -1361,32 +1362,44 @@ export default function Admin() {
   const updateSiteForm = (key, val) => setSiteForm(f => ({ ...f, [key]: val }));
 
   // ── Reels handlers ─────────────────────────────────────────────────────────
-  const detectReelType = (url = '') => {
-    if (/youtu\.be|youtube\.com/i.test(url)) return 'youtube';
-    if (/tiktok\.com/i.test(url))            return 'tiktok';
-    if (/facebook\.com|fb\.watch|fb\.com/i.test(url)) return 'facebook';
-    if (/instagram\.com/i.test(url))         return 'instagram';
-    if (/\.(mp4|webm|ogg|mov)(\?|$)/i.test(url)) return 'direct';
-    return 'iframe';
-  };
+  const [isUploadingVideo, setIsUploadingVideo] = useState(false);
+  const videoFileInputRef = useRef(null);
 
-  const getReelAutoThumb = (url = '', type) => {
-    const t = type || detectReelType(url);
-    if (t === 'youtube') {
-      const m = url.match(/(?:v=|youtu\.be\/)([A-Za-z0-9_-]{11})/);
-      return m ? `https://img.youtube.com/vi/${m[1]}/hqdefault.jpg` : null;
+  const handleVideoFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Check size limit (e.g. 50MB)
+    if (file.size > 60 * 1024 * 1024) {
+      alert('حجم ملف الفيديو كبير جداً. يُفضل ألا يتجاوز 60 ميغابايت لتشغيل سلس وسريع.');
+      return;
     }
-    return null;
+
+    setIsUploadingVideo(true);
+    try {
+      const publicUrl = await db.uploadVideoFile(file);
+      if (publicUrl) {
+        setNewReelUrl(publicUrl);
+        setNewReelType('direct');
+        showSuccess('✅ تم رفع ملف الفيديو بنجاح!');
+      }
+    } catch (err) {
+      console.error('Video upload error:', err);
+      alert('تعذر رفع الفيديو: ' + (err.message || 'يرجى التحقق من اتصال الإنترنت'));
+    } finally {
+      setIsUploadingVideo(false);
+      if (videoFileInputRef.current) videoFileInputRef.current.value = '';
+    }
   };
 
   const handleAddReel = async () => {
     if (!newReelUrl.trim()) return;
-    const type  = detectReelType(newReelUrl);
-    const thumb = newReelThumb || getReelAutoThumb(newReelUrl, type) || '';
+    const parsed = parseVideoInfo(newReelUrl);
+    const thumb = newReelThumb || parsed.thumbnailUrl || '';
     const newReel = {
       id: 'REEL-' + Date.now(),
       url: newReelUrl.trim(),
-      type,
+      type: parsed.type,
       thumbnailUrl: thumb,
       title: newReelTitle.trim(),
       sport: newReelSport,
@@ -1396,7 +1409,7 @@ export default function Admin() {
     setReels(updated);
     try {
       await db.saveReels(updated);
-      showSuccess('🎬 تم إضافة الريل بنجاح!');
+      showSuccess('🎬 تم إضافة الريل ونشره بنجاح!');
     } catch (e) {
       showSuccess('🎬 تم حفظ الريل محلياً');
     }
@@ -3310,61 +3323,148 @@ export default function Admin() {
         {activeTab === 'reels' && (
           <div style={{ maxWidth: '800px', margin: '0 auto' }}>
 
-            {/* Add new reel form */}
+            {/* Add new reel card */}
             <div style={{ ...cardStyle, marginBottom: '24px' }}>
-              <h3 style={{ color: '#FF3D00', fontSize: '1.1rem', fontWeight: 900, marginBottom: '4px' }}>🎬 إضافة ريل جديد</h3>
-              <p style={{ color: '#5A6A7E', fontSize: '0.82rem', marginBottom: '20px' }}>
-                الصق رابط TikTok أو Facebook أو YouTube أو ارفع ملف MP4 مباشرة — يتم التعرف عليه تلقائياً
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: '10px' }}>
+                <h3 style={{ color: '#FF3D00', fontSize: '1.2rem', fontWeight: 900, margin: 0 }}>🎬 نشر ريل جديد</h3>
+                <span style={{
+                  background: 'rgba(255,193,7,0.12)', border: '1px solid rgba(255,193,7,0.3)',
+                  color: '#FFC107', borderRadius: '12px', padding: '4px 10px', fontSize: '0.74rem', fontWeight: 800
+                }}>
+                  يظهر فوراً في قسم Reels والصفحة الرئيسية
+                </span>
+              </div>
+              <p style={{ color: '#8E9BAE', fontSize: '0.84rem', marginBottom: '20px', lineHeight: 1.5 }}>
+                يمكنك لصق رابط من (YouTube / TikTok / Facebook / Instagram) أو رفع ملف فيديو MP4 مباشرة من هاتفك أو جهازك.
               </p>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                {/* URL input */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+
+                {/* Option 1: Direct File Upload */}
+                <div style={{
+                  padding: '16px', borderRadius: '16px',
+                  background: 'rgba(0, 230, 118, 0.04)', border: '1.5px dashed rgba(0, 230, 118, 0.3)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <span style={{ fontSize: '1.8rem' }}>📁</span>
+                    <div>
+                      <div style={{ fontWeight: 800, fontSize: '0.9rem', color: '#00E676' }}>
+                        رفع فيديو MP4 / MOV مباشرة
+                      </div>
+                      <div style={{ fontSize: '0.74rem', color: '#8E9BAE' }}>
+                        تشغيل مباشر فائق السرعة وبدون إعلانات (حتى 60MB)
+                      </div>
+                    </div>
+                  </div>
+
+                  <input
+                    type="file"
+                    accept="video/mp4,video/quicktime,video/webm"
+                    ref={videoFileInputRef}
+                    onChange={handleVideoFileChange}
+                    style={{ display: 'none' }}
+                  />
+
+                  <button
+                    type="button"
+                    disabled={isUploadingVideo}
+                    onClick={() => videoFileInputRef.current?.click()}
+                    style={{
+                      padding: '10px 20px', borderRadius: '12px',
+                      background: isUploadingVideo ? 'rgba(255,255,255,0.1)' : 'linear-gradient(135deg, #00E676, #00B0FF)',
+                      border: 'none', color: '#000', fontWeight: 900, fontSize: '0.85rem',
+                      cursor: isUploadingVideo ? 'wait' : 'pointer',
+                      fontFamily: '"Cairo", "Tajawal", sans-serif',
+                      boxShadow: '0 4px 15px rgba(0,230,118,0.25)'
+                    }}
+                  >
+                    {isUploadingVideo ? '⏳ جاري رفع الفيديو...' : '📤 اختيار فيديو من جهازك'}
+                  </button>
+                </div>
+
+                <div style={{ textAlign: 'center', color: '#5A6A7E', fontSize: '0.78rem', fontWeight: 700 }}>
+                  — أو الصق رابط الفيديو أدناه —
+                </div>
+
+                {/* Option 2: URL Input */}
                 <div>
-                  <label style={labelStyle}>رابط الفيديو (TikTok / Facebook / YouTube / MP4 URL)</label>
+                  <label style={labelStyle}>رابط الفيديو (YouTube Shorts / TikTok / Facebook Reel / Instagram / MP4 URL)</label>
                   <input
                     type="url"
                     value={newReelUrl}
                     onChange={e => {
-                      setNewReelUrl(e.target.value);
-                      const t = detectReelType(e.target.value);
-                      setNewReelType(t);
-                      const autoThumb = getReelAutoThumb(e.target.value, t);
-                      if (autoThumb) setNewReelThumb(autoThumb);
+                      const val = e.target.value;
+                      setNewReelUrl(val);
+                      const parsed = parseVideoInfo(val);
+                      setNewReelType(parsed.type);
+                      if (parsed.thumbnailUrl && !newReelThumb) {
+                        setNewReelThumb(parsed.thumbnailUrl);
+                      }
                     }}
-                    placeholder="https://www.tiktok.com/@user/video/... أو https://fb.watch/... أو https://youtu.be/..."
+                    placeholder="https://www.youtube.com/shorts/... أو https://www.tiktok.com/... أو https://fb.watch/..."
                     style={inputStyle}
                   />
+
                   {newReelUrl && (
-                    <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{
-                        padding: '3px 10px', borderRadius: '8px', fontSize: '0.72rem', fontWeight: 800,
-                        background: newReelType === 'youtube' ? 'rgba(255,0,0,0.15)' : newReelType === 'tiktok' ? 'rgba(0,0,0,0.4)' : newReelType === 'facebook' ? 'rgba(24,119,242,0.2)' : 'rgba(255,61,0,0.15)',
-                        color: newReelType === 'youtube' ? '#FF4444' : newReelType === 'tiktok' ? '#FFF' : newReelType === 'facebook' ? '#4A9BFF' : '#FF6E40',
-                        border: '1px solid currentColor',
-                      }}>
-                        {newReelType === 'youtube' ? '▶ YouTube' : newReelType === 'tiktok' ? '🎵 TikTok' : newReelType === 'facebook' ? '📘 Facebook' : newReelType === 'instagram' ? '📷 Instagram' : newReelType === 'direct' ? '🎥 MP4 Direct' : '🔗 Link'}
+                    <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                      {(() => {
+                        const parsed = parseVideoInfo(newReelUrl);
+                        return (
+                          <span style={{
+                            padding: '4px 12px', borderRadius: '8px', fontSize: '0.74rem', fontWeight: 800,
+                            background: parsed.type === 'youtube' ? 'rgba(255,0,0,0.15)' :
+                                        parsed.type === 'tiktok'  ? 'rgba(0,0,0,0.4)' :
+                                        parsed.type === 'facebook'? 'rgba(24,119,242,0.2)' :
+                                        parsed.type === 'instagram'? 'rgba(225,48,108,0.2)' :
+                                        'rgba(0,230,118,0.15)',
+                            color: parsed.type === 'youtube' ? '#FF4444' :
+                                   parsed.type === 'tiktok'  ? '#FFF' :
+                                   parsed.type === 'facebook'? '#4A9BFF' :
+                                   parsed.type === 'instagram'? '#FF6EA7' :
+                                   '#00E676',
+                            border: '1px solid currentColor',
+                          }}>
+                            {parsed.type === 'youtube'   ? '▶ YouTube Video/Shorts' :
+                             parsed.type === 'tiktok'    ? '🎵 TikTok' :
+                             parsed.type === 'facebook'  ? '📘 Facebook Reel/Video' :
+                             parsed.type === 'instagram' ? '📷 Instagram Reel' :
+                             '🎥 MP4 مباشر'}
+                          </span>
+                        );
+                      })()}
+                      <span style={{ fontSize: '0.74rem', color: '#00E676', fontWeight: 700 }}>
+                        ✓ تم التعرف على الفيديو وجاهز للنشر
                       </span>
-                      <span style={{ fontSize: '0.72rem', color: '#5A6A7E' }}>تم التعرف على النوع تلقائياً</span>
                     </div>
                   )}
                 </div>
 
-                {/* Thumbnail */}
+                {/* Thumbnail input */}
                 <div>
-                  <label style={labelStyle}>صورة مصغرة (اختياري لـ TikTok/Facebook — تلقائي لـ YouTube)</label>
-                  <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                  <label style={labelStyle}>الصورة المصغرة (تلقائية لـ YouTube — اختيارية لباقي المنصات)</label>
+                  <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
                     {newReelThumb ? (
-                      <img src={newReelThumb} alt="thumb" onError={() => setNewReelThumb('')}
-                        style={{ width: '42px', aspectRatio: '9/16', objectFit: 'cover', borderRadius: '8px', flexShrink: 0, border: '1px solid rgba(255,255,255,0.1)' }}
+                      <img
+                        src={newReelThumb}
+                        alt="thumb"
+                        onError={() => setNewReelThumb('')}
+                        style={{ width: '48px', height: '64px', objectFit: 'cover', borderRadius: '10px', flexShrink: 0, border: '1px solid rgba(255,255,255,0.15)' }}
                       />
                     ) : (
-                      <div style={{ width: '42px', aspectRatio: '9/16', borderRadius: '8px', background: 'rgba(255,255,255,0.04)', border: '1px dashed rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', flexShrink: 0 }}>🎬</div>
+                      <div style={{
+                        width: '48px', height: '64px', borderRadius: '10px',
+                        background: 'rgba(255,255,255,0.04)', border: '1px dashed rgba(255,255,255,0.15)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', flexShrink: 0
+                      }}>
+                        🎬
+                      </div>
                     )}
                     <input
                       type="url"
                       value={newReelThumb}
                       onChange={e => setNewReelThumb(e.target.value)}
-                      placeholder="https://... (URL للصورة المصغرة)"
+                      placeholder="https://... رابط الصورة المصغرة (اختياري)"
                       style={{ ...inputStyle, flex: 1 }}
                     />
                   </div>
@@ -3374,85 +3474,145 @@ export default function Admin() {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                   <div>
                     <label style={labelStyle}>عنوان الريل (اختياري)</label>
-                    <input type="text" value={newReelTitle} onChange={e => setNewReelTitle(e.target.value)}
-                      placeholder="مثال: تدريبات U12 ⚽" style={inputStyle} />
+                    <input
+                      type="text"
+                      value={newReelTitle}
+                      onChange={e => setNewReelTitle(e.target.value)}
+                      placeholder="مثال: مهارات فئة U12 ⚽"
+                      style={inputStyle}
+                    />
                   </div>
                   <div>
-                    <label style={labelStyle}>الرياضة</label>
-                    <select value={newReelSport} onChange={e => setNewReelSport(e.target.value)}
-                      style={{ ...inputStyle, cursor: 'pointer' }}>
-                      <option value="General">🎬 General</option>
-                      <option value="Football">⚽ Football</option>
-                      <option value="Basketball">🏀 Basketball</option>
-                      <option value="Handball">🤾 Handball</option>
-                      <option value="Event">🏆 Event</option>
-                      <option value="Training">💪 Training</option>
+                    <label style={labelStyle}>الفئة أو الرياضة</label>
+                    <select
+                      value={newReelSport}
+                      onChange={e => setNewReelSport(e.target.value)}
+                      style={{ ...inputStyle, cursor: 'pointer' }}
+                    >
+                      <option value="General">🎬 عام (General)</option>
+                      <option value="Football">⚽ كرة قدم (Football)</option>
+                      <option value="Basketball">🏀 كرة سلة (Basketball)</option>
+                      <option value="Handball">🤾 كرة يد (Handball)</option>
+                      <option value="Event">🏆 احتفال ومباريات (Event)</option>
+                      <option value="Training">💪 تدريبات (Training)</option>
                     </select>
                   </div>
                 </div>
 
+                {/* Submit button */}
                 <button
                   type="button"
-                  disabled={!newReelUrl.trim()}
+                  disabled={!newReelUrl.trim() || isUploadingVideo}
                   onClick={handleAddReel}
                   style={{
-                    padding: '14px',
-                    background: newReelUrl.trim() ? 'linear-gradient(135deg, #FF3D00, #FF9500)' : 'rgba(255,255,255,0.06)',
+                    padding: '16px',
+                    background: newReelUrl.trim()
+                      ? 'linear-gradient(135deg, #FF3D00, #FF9500)'
+                      : 'rgba(255,255,255,0.06)',
                     border: 'none', borderRadius: '14px',
                     color: newReelUrl.trim() ? '#FFF' : '#5A6A7E',
-                    fontWeight: 900, fontSize: '0.95rem',
+                    fontWeight: 900, fontSize: '1rem',
                     cursor: newReelUrl.trim() ? 'pointer' : 'default',
-                    fontFamily: '"Cairo", "Tajawal", sans-serif', transition: 'all 0.2s'
+                    fontFamily: '"Cairo", "Tajawal", sans-serif',
+                    boxShadow: newReelUrl.trim() ? '0 8px 25px rgba(255,61,0,0.35)' : 'none',
+                    transition: 'all 0.2s'
                   }}
                 >
-                  🎬 إضافة الريل
+                  🚀 نشر الريل على الموقع فوراً
                 </button>
               </div>
             </div>
 
-            {/* Existing reels list */}
+            {/* Existing published reels */}
             {reels.length > 0 ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <h3 style={{ color: '#FFF', fontSize: '1rem', fontWeight: 900, margin: '0 0 4px' }}>
-                  الريلز المنشورة ({reels.length})
-                </h3>
-                {reels.map((reel, idx) => (
-                  <div key={reel.id} style={{ ...cardStyle, display: 'flex', alignItems: 'center', gap: '14px', padding: '14px 16px' }}>
-                    {reel.thumbnailUrl ? (
-                      <img src={reel.thumbnailUrl} alt="" style={{ width: '42px', aspectRatio: '9/16', objectFit: 'cover', borderRadius: '6px', flexShrink: 0 }} />
-                    ) : (
-                      <div style={{ width: '42px', aspectRatio: '9/16', borderRadius: '6px', background: 'rgba(255,61,0,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', flexShrink: 0 }}>🎬</div>
-                    )}
-                    <div style={{ flex: 1, overflow: 'hidden' }}>
-                      <div style={{ fontWeight: 800, fontSize: '0.88rem', color: '#FFF', marginBottom: '3px' }}>
-                        {reel.title || `ريل ${idx + 1}`}
-                      </div>
-                      <div style={{ fontSize: '0.72rem', color: '#5A6A7E', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {reel.url}
-                      </div>
-                      <span style={{ fontSize: '0.65rem', fontWeight: 800, padding: '2px 8px', borderRadius: '6px', background: 'rgba(255,61,0,0.12)', color: '#FF6E40', display: 'inline-block', marginTop: '4px' }}>
-                        {reel.type === 'youtube' ? '▶ YouTube' : reel.type === 'tiktok' ? '🎵 TikTok' : reel.type === 'facebook' ? '📘 Facebook' : '🎥 MP4'}
-                      </span>
-                    </div>
-                    <button
-                      onClick={() => handleDeleteReel(reel.id)}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <h3 style={{ color: '#FFF', fontSize: '1.05rem', fontWeight: 900, margin: 0 }}>
+                    الريلز المنشورة حالياً ({reels.length})
+                  </h3>
+                  <a
+                    href="/reels"
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{ color: '#FFC107', fontSize: '0.8rem', fontWeight: 800, textDecoration: 'none' }}
+                  >
+                    ↗ معاينة صفحة الريلز
+                  </a>
+                </div>
+
+                {reels.map((reel, idx) => {
+                  const parsed = parseVideoInfo(reel.url);
+                  const thumb = reel.thumbnailUrl || parsed.thumbnailUrl;
+                  return (
+                    <div
+                      key={reel.id}
                       style={{
-                        background: 'rgba(255,61,0,0.12)', border: '1px solid rgba(255,61,0,0.3)',
-                        borderRadius: '10px', color: '#FF5252', padding: '8px 12px',
-                        fontWeight: 800, cursor: 'pointer', fontSize: '0.8rem', flexShrink: 0,
-                        fontFamily: '"Cairo", "Tajawal", sans-serif',
+                        ...cardStyle,
+                        display: 'flex', alignItems: 'center', gap: '14px', padding: '14px 18px'
                       }}
                     >
-                      🗑️ حذف
-                    </button>
-                  </div>
-                ))}
+                      {/* Thumbnail */}
+                      {thumb ? (
+                        <img
+                          src={thumb}
+                          alt=""
+                          style={{ width: '48px', height: '64px', objectFit: 'cover', borderRadius: '8px', flexShrink: 0, border: '1px solid rgba(255,255,255,0.1)' }}
+                        />
+                      ) : (
+                        <div style={{
+                          width: '48px', height: '64px', borderRadius: '8px',
+                          background: 'rgba(255,61,0,0.12)', border: '1px solid rgba(255,61,0,0.2)',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: '1.3rem', flexShrink: 0
+                        }}>
+                          🎬
+                        </div>
+                      )}
+
+                      {/* Info */}
+                      <div style={{ flex: 1, overflow: 'hidden' }}>
+                        <div style={{ fontWeight: 900, fontSize: '0.92rem', color: '#FFF', marginBottom: '4px' }}>
+                          {reel.title || `ريل ${idx + 1}`}
+                        </div>
+                        <div style={{ fontSize: '0.74rem', color: '#8E9BAE', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', direction: 'ltr', textAlign: 'left' }}>
+                          {reel.url}
+                        </div>
+                        <div style={{ marginTop: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{
+                            fontSize: '0.68rem', fontWeight: 800, padding: '2px 8px', borderRadius: '6px',
+                            background: 'rgba(255,61,0,0.12)', color: '#FF6E40', border: '1px solid rgba(255,61,0,0.25)'
+                          }}>
+                            {parsed.platformName}
+                          </span>
+                          <span style={{ fontSize: '0.68rem', color: '#5A6A7E' }}>
+                            {reel.sport || 'عام'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Delete */}
+                      <button
+                        onClick={() => handleDeleteReel(reel.id)}
+                        style={{
+                          background: 'rgba(255,61,0,0.12)', border: '1px solid rgba(255,61,0,0.3)',
+                          borderRadius: '10px', color: '#FF5252', padding: '8px 14px',
+                          fontWeight: 800, cursor: 'pointer', fontSize: '0.82rem', flexShrink: 0,
+                          fontFamily: '"Cairo", "Tajawal", sans-serif', transition: 'all 0.2s'
+                        }}
+                      >
+                        🗑️ حذف
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             ) : (
-              <div style={{ ...cardStyle, textAlign: 'center', padding: '40px', color: '#5A6A7E' }}>
+              <div style={{ ...cardStyle, textAlign: 'center', padding: '40px', color: '#8E9BAE' }}>
                 <div style={{ fontSize: '3rem', marginBottom: '12px' }}>🎬</div>
-                <h3 style={{ color: '#FFF', margin: '0 0 8px' }}>لا توجد ريلز بعد</h3>
-                <p style={{ margin: 0, fontSize: '0.85rem' }}>أضف أول ريل بالصق رابط TikTok أو Facebook أو YouTube</p>
+                <h3 style={{ color: '#FFF', margin: '0 0 8px' }}>لا توجد أي ريلز منشورة بعد</h3>
+                <p style={{ margin: 0, fontSize: '0.85rem' }}>
+                  الصق أول رابط (YouTube Shorts / TikTok / Facebook) أو ارفع ملف MP4 أعلاه لنشره فوراً!
+                </p>
               </div>
             )}
           </div>

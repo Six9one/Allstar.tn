@@ -1040,6 +1040,18 @@ class DBService {
     return this.saveSiteContent({ ...content, reels: reelsArray });
   }
 
+  async uploadVideoFile(file) {
+    if (!supabase) throw new Error('Supabase is not connected');
+    const ext = file.name ? file.name.split('.').pop().toLowerCase() : 'mp4';
+    const fileName = `reels/${Date.now()}-${Math.random().toString(36).substring(2, 9)}.${ext}`;
+    const { error } = await supabase.storage
+      .from('carousel')
+      .upload(fileName, file, { contentType: file.type || 'video/mp4', upsert: false });
+    if (error) throw error;
+    const { data: urlData } = supabase.storage.from('carousel').getPublicUrl(fileName);
+    return urlData?.publicUrl;
+  }
+
   saveSiteContent(contentData) {
     const save = this.siteContentSaveQueue.then(() => this.saveSiteContentNow(contentData));
     this.siteContentSaveQueue = save.catch(() => {});

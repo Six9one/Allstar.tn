@@ -5,117 +5,202 @@ import { db } from '../services/db';
 const SPORT_ICONS  = { Football: '⚽', Basketball: '🏀', Handball: '🤾', General: '🎬', Event: '🏆', Training: '💪' };
 const SPORT_COLORS = { Football: '#00E676', Basketball: '#FF9500', Handball: '#00E5FF', General: '#FFC107', Event: '#FF9500', Training: '#E040FB' };
 
-// ─── VIDEO URL HELPERS ─────────────────────────────────────────────────────────
-export function detectVideoType(url = '') {
-  if (!url) return 'unknown';
-  if (/youtu\.be|youtube\.com/i.test(url)) return 'youtube';
-  if (/tiktok\.com/i.test(url)) return 'tiktok';
-  if (/facebook\.com|fb\.watch|fb\.com/i.test(url)) return 'facebook';
-  if (/instagram\.com/i.test(url)) return 'instagram';
-  if (/\.(mp4|webm|ogg|mov)(\?|$)/i.test(url)) return 'direct';
-  return 'iframe';
-}
+// ─── ROBUST URL PARSER ────────────────────────────────────────────────────────
+export function parseVideoInfo(rawUrl = '') {
+  const url = (rawUrl || '').trim();
+  if (!url) return { type: 'unknown', embedUrl: '', thumbnailUrl: '', directUrl: '', rawUrl: '', platformName: 'فيديو' };
 
-export function getEmbedUrl(url = '', type) {
-  const t = type || detectVideoType(url);
-  if (t === 'youtube') {
-    const m = url.match(/(?:v=|youtu\.be\/)([A-Za-z0-9_-]{11})/);
-    return m ? `https://www.youtube.com/embed/${m[1]}?autoplay=1&rel=0` : url;
+  // 1. YouTube (Shorts, Standard, youtu.be, mobile, embed)
+  const ytMatch = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=|shorts\/))([A-Za-z0-9_-]{11})/i);
+  if (ytMatch) {
+    const videoId = ytMatch[1];
+    return {
+      type: 'youtube',
+      videoId,
+      embedUrl: `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&playsinline=1&modestbranding=1`,
+      thumbnailUrl: `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
+      rawUrl: url,
+      platformName: 'YouTube'
+    };
   }
-  if (t === 'tiktok') {
-    const m = url.match(/video\/(\d+)/);
-    return m ? `https://www.tiktok.com/embed/v2/${m[1]}` : url;
-  }
-  if (t === 'facebook') {
-    return `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(url)}&autoplay=true&show_text=false`;
-  }
-  if (t === 'instagram') {
-    // Convert /p/CODE/ or /reel/CODE/ to embed
-    const m = url.match(/\/(p|reel)\/([A-Za-z0-9_-]+)/);
-    return m ? `https://www.instagram.com/${m[1]}/${m[2]}/embed/` : url;
-  }
-  return url; // direct mp4 or fallback
-}
 
-export function getAutoThumbnail(url = '', type) {
-  const t = type || detectVideoType(url);
-  if (t === 'youtube') {
-    const m = url.match(/(?:v=|youtu\.be\/)([A-Za-z0-9_-]{11})/);
-    return m ? `https://img.youtube.com/vi/${m[1]}/hqdefault.jpg` : null;
+  // 2. Instagram Reels & Posts
+  const igMatch = url.match(/instagram\.com\/(?:p|reel|reels)\/([A-Za-z0-9_-]+)/i);
+  if (igMatch) {
+    const code = igMatch[1];
+    return {
+      type: 'instagram',
+      code,
+      embedUrl: `https://www.instagram.com/reel/${code}/embed/`,
+      thumbnailUrl: '',
+      rawUrl: url,
+      platformName: 'Instagram'
+    };
   }
-  return null; // TikTok/FB/Instagram need manual thumbnail
+
+  // 3. TikTok
+  const ttMatch = url.match(/tiktok\.com\/(?:@[\w.-]+\/video\/|v\/|embed\/v2\/)(\d+)/i);
+  if (ttMatch) {
+    const videoId = ttMatch[1];
+    return {
+      type: 'tiktok',
+      videoId,
+      embedUrl: `https://www.tiktok.com/embed/v2/${videoId}`,
+      thumbnailUrl: '',
+      rawUrl: url,
+      platformName: 'TikTok'
+    };
+  } else if (/tiktok\.com/i.test(url)) {
+    return {
+      type: 'tiktok',
+      embedUrl: url,
+      thumbnailUrl: '',
+      rawUrl: url,
+      platformName: 'TikTok'
+    };
+  }
+
+  // 4. Facebook Reels & Videos
+  if (/facebook\.com|fb\.watch|fb\.com/i.test(url)) {
+    return {
+      type: 'facebook',
+      embedUrl: `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(url)}&show_text=false&autoplay=true&mute=0`,
+      thumbnailUrl: '',
+      rawUrl: url,
+      platformName: 'Facebook'
+    };
+  }
+
+  // 5. Direct Video File (MP4, WebM, MOV, storage)
+  return {
+    type: 'direct',
+    directUrl: url,
+    embedUrl: url,
+    thumbnailUrl: '',
+    rawUrl: url,
+    platformName: 'فيديو مباشر'
+  };
 }
 
 // ─── REEL CARD ─────────────────────────────────────────────────────────────────
 function ReelCard({ reel, onClick }) {
   const [imgError, setImgError] = useState(false);
+  const parsed = parseVideoInfo(reel.url);
   const sportColor = SPORT_COLORS[reel.sport] || '#FFC107';
   const sportIcon  = SPORT_ICONS[reel.sport]  || '🎬';
-  const thumb = !imgError && (reel.thumbnailUrl || getAutoThumbnail(reel.url, reel.type));
+  const thumb = !imgError && (reel.thumbnailUrl || parsed.thumbnailUrl);
 
   return (
     <div
       onClick={() => onClick(reel)}
       style={{
-        position: 'relative', borderRadius: '16px', overflow: 'hidden',
-        aspectRatio: '9/16', cursor: 'pointer', background: '#0D111A',
+        position: 'relative',
+        borderRadius: '18px',
+        overflow: 'hidden',
+        aspectRatio: '9/16',
+        cursor: 'pointer',
+        background: '#0D111A',
         border: '1px solid rgba(255,255,255,0.08)',
         boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
-        transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+        transition: 'transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease',
       }}
-      onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.03)'; e.currentTarget.style.boxShadow = `0 12px 32px rgba(0,0,0,0.7), 0 0 0 1.5px ${sportColor}55`; }}
-      onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.5)'; }}
+      onMouseEnter={e => {
+        e.currentTarget.style.transform = 'translateY(-4px) scale(1.02)';
+        e.currentTarget.style.boxShadow = `0 14px 36px rgba(0,0,0,0.7), 0 0 0 1.5px ${sportColor}66`;
+        e.currentTarget.style.borderColor = sportColor;
+      }}
+      onMouseLeave={e => {
+        e.currentTarget.style.transform = 'translateY(0) scale(1)';
+        e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.5)';
+        e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
+      }}
     >
-      {/* Thumbnail or gradient placeholder */}
+      {/* Thumbnail or animated backdrop */}
       {thumb ? (
         <img
           src={thumb}
-          alt=""
+          alt={reel.title || 'Reel'}
           onError={() => setImgError(true)}
           style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
         />
       ) : (
         <div style={{
           width: '100%', height: '100%',
-          background: `linear-gradient(160deg, #0D111A 0%, ${sportColor}18 100%)`,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: '2.8rem',
+          background: `linear-gradient(160deg, #090E18 0%, ${sportColor}22 50%, #060910 100%)`,
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          gap: '8px', padding: '16px', boxSizing: 'border-box'
         }}>
-          {sportIcon}
+          <span style={{ fontSize: '3rem', filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.5))' }}>
+            {sportIcon}
+          </span>
+          <span style={{
+            fontSize: '0.7rem', color: '#8E9BAE', fontWeight: 700,
+            background: 'rgba(0,0,0,0.4)', padding: '2px 8px', borderRadius: '12px'
+          }}>
+            {parsed.platformName}
+          </span>
         </div>
       )}
 
-      {/* Dark gradient overlay at bottom */}
+      {/* Dark gradient overlay */}
       <div style={{
         position: 'absolute', inset: 0,
-        background: 'linear-gradient(180deg, rgba(0,0,0,0.05) 50%, rgba(0,0,0,0.82) 100%)',
+        background: 'linear-gradient(180deg, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.05) 40%, rgba(0,0,0,0.85) 100%)',
         pointerEvents: 'none'
       }} />
 
-      {/* Sport tag — top left */}
+      {/* Sport Badge Top Left */}
       <div style={{
         position: 'absolute', top: '10px', left: '10px',
-        background: `${sportColor}22`,
-        border: `1px solid ${sportColor}55`,
-        borderRadius: '8px', padding: '3px 8px',
-        fontSize: '1rem', lineHeight: 1,
+        background: 'rgba(10, 14, 24, 0.85)',
+        border: `1px solid ${sportColor}66`,
+        backdropFilter: 'blur(8px)',
+        borderRadius: '10px', padding: '4px 8px',
+        fontSize: '0.95rem', lineHeight: 1,
+        display: 'flex', alignItems: 'center', gap: '4px'
       }}>
-        {sportIcon}
+        <span>{sportIcon}</span>
       </div>
 
-      {/* Play button — center */}
+      {/* Platform Badge Top Right */}
+      <div style={{
+        position: 'absolute', top: '10px', right: '10px',
+        background: 'rgba(0,0,0,0.6)',
+        backdropFilter: 'blur(6px)',
+        borderRadius: '8px', padding: '3px 8px',
+        fontSize: '0.65rem', fontWeight: 800, color: '#CBD5E1'
+      }}>
+        {parsed.platformName}
+      </div>
+
+      {/* Play Button Icon Center */}
       <div style={{
         position: 'absolute', top: '50%', left: '50%',
         transform: 'translate(-50%, -50%)',
-        width: '52px', height: '52px', borderRadius: '50%',
+        width: '54px', height: '54px', borderRadius: '50%',
         background: 'rgba(0,0,0,0.65)',
-        backdropFilter: 'blur(8px)',
-        border: '2px solid rgba(255,255,255,0.3)',
+        backdropFilter: 'blur(10px)',
+        border: '2px solid rgba(255,255,255,0.4)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         fontSize: '1.3rem', color: '#FFF',
+        boxShadow: '0 8px 24px rgba(0,0,0,0.6), 0 0 20px rgba(255,193,7,0.3)',
+        transition: 'transform 0.2s ease',
       }}>
         ▶
       </div>
+
+      {/* Title at bottom if provided */}
+      {reel.title && (
+        <div style={{
+          position: 'absolute', bottom: '12px', left: '12px', right: '12px',
+          color: '#FFF', fontSize: '0.82rem', fontWeight: 800,
+          textShadow: '0 2px 8px rgba(0,0,0,0.9)',
+          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          direction: 'rtl', textAlign: 'right'
+        }}>
+          {reel.title}
+        </div>
+      )}
     </div>
   );
 }
@@ -123,12 +208,12 @@ function ReelCard({ reel, onClick }) {
 // ─── LIGHTBOX ──────────────────────────────────────────────────────────────────
 function Lightbox({ reel, onClose }) {
   const videoRef = useRef(null);
-  const embedUrl = getEmbedUrl(reel.url, reel.type);
-  const isDirect = reel.type === 'direct';
+  const parsed = parseVideoInfo(reel.url);
   const sportColor = SPORT_COLORS[reel.sport] || '#FFC107';
   const sportIcon  = SPORT_ICONS[reel.sport]  || '🎬';
+  const isDirect = parsed.type === 'direct';
 
-  // Trap focus & ESC close
+  // ESC keyboard close
   useEffect(() => {
     const handleKey = (e) => { if (e.key === 'Escape') onClose(); };
     window.addEventListener('keydown', handleKey);
@@ -146,10 +231,12 @@ function Lightbox({ reel, onClose }) {
     <div
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
       style={{
-        position: 'fixed', inset: 0, zIndex: 99999,
-        background: '#000',
+        position: 'fixed', inset: 0, zIndex: 999999,
+        background: 'rgba(0, 0, 0, 0.95)',
+        backdropFilter: 'blur(12px)',
         display: 'flex', flexDirection: 'column',
         alignItems: 'center', justifyContent: 'center',
+        padding: '16px', boxSizing: 'border-box'
       }}
     >
       {/* Top bar */}
@@ -157,7 +244,7 @@ function Lightbox({ reel, onClose }) {
         position: 'absolute', top: 0, left: 0, right: 0,
         padding: '16px 20px',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        background: 'linear-gradient(180deg, rgba(0,0,0,0.8) 0%, transparent 100%)',
+        background: 'linear-gradient(180deg, rgba(0,0,0,0.85) 0%, transparent 100%)',
         zIndex: 10,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -165,73 +252,100 @@ function Lightbox({ reel, onClose }) {
             background: `${sportColor}22`, border: `1px solid ${sportColor}55`,
             borderRadius: '8px', padding: '4px 10px', fontSize: '1rem',
           }}>{sportIcon}</span>
-          {reel.title && (
-            <span style={{ color: '#FFF', fontWeight: 800, fontSize: '0.95rem', fontFamily: '"Cairo", sans-serif' }}>
-              {reel.title}
-            </span>
-          )}
+          <span style={{ color: '#FFF', fontWeight: 800, fontSize: '0.95rem', fontFamily: '"Cairo", sans-serif' }}>
+            {reel.title || `ريل الأكاديمية (${parsed.platformName})`}
+          </span>
         </div>
         <button
           onClick={onClose}
           style={{
-            width: '38px', height: '38px', borderRadius: '50%',
-            background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.2)',
-            color: '#FFF', fontSize: '1.1rem', cursor: 'pointer',
+            width: '40px', height: '40px', borderRadius: '50%',
+            background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.25)',
+            color: '#FFF', fontSize: '1.2rem', cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
+            transition: 'background 0.2s'
           }}
+          onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,60,60,0.4)'}
+          onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.15)'}
         >✕</button>
       </div>
 
-      {/* Video player */}
+      {/* Video player container */}
       <div style={{
-        width: '100%', maxWidth: '460px',
-        aspectRatio: '9/16', position: 'relative',
-        maxHeight: 'calc(100vh - 120px)',
+        width: '100%', maxWidth: '420px',
+        height: '75vh', maxHeight: '720px',
+        position: 'relative',
+        borderRadius: '16px', overflow: 'hidden',
+        background: '#080C14',
+        boxShadow: '0 20px 50px rgba(0,0,0,0.9), 0 0 0 1px rgba(255,255,255,0.1)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center'
       }}>
         {isDirect ? (
           <video
             ref={videoRef}
-            src={reel.url}
+            src={parsed.directUrl || reel.url}
             controls
             autoPlay
-            style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: '12px' }}
+            playsInline
+            style={{ width: '100%', height: '100%', objectFit: 'contain', background: '#000' }}
           />
         ) : (
           <iframe
-            src={embedUrl}
-            title={reel.title || 'Reel'}
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            src={parsed.embedUrl}
+            title={reel.title || 'Reel Video'}
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
             allowFullScreen
             style={{
-              width: '100%', height: '100%', border: 'none', borderRadius: '12px',
+              width: '100%', height: '100%', border: 'none', background: '#000'
             }}
           />
         )}
       </div>
 
-      {/* Bottom bar — WhatsApp share */}
+      {/* Action buttons bar */}
       <div style={{
-        position: 'absolute', bottom: 0, left: 0, right: 0,
-        padding: '20px',
-        background: 'linear-gradient(0deg, rgba(0,0,0,0.85) 0%, transparent 100%)',
-        display: 'flex', justifyContent: 'center', zIndex: 10,
+        marginTop: '16px',
+        display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap',
+        justifyContent: 'center', zIndex: 10
       }}>
+        {/* Open in external app/site fallback */}
+        {!isDirect && (
+          <a
+            href={reel.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: '8px',
+              padding: '10px 20px', borderRadius: '999px',
+              background: 'rgba(255,255,255,0.1)',
+              border: '1px solid rgba(255,255,255,0.2)',
+              color: '#FFF', fontWeight: 800, fontSize: '0.84rem',
+              fontFamily: '"Cairo", "Tajawal", sans-serif',
+              textDecoration: 'none', backdropFilter: 'blur(8px)'
+            }}
+          >
+            <span>🔗</span>
+            فتح في {parsed.platformName}
+          </a>
+        )}
+
+        {/* WhatsApp Share */}
         <a
           href={whatsappUrl}
           target="_blank"
           rel="noopener noreferrer"
           style={{
-            display: 'inline-flex', alignItems: 'center', gap: '10px',
-            padding: '12px 28px', borderRadius: '999px',
+            display: 'inline-flex', alignItems: 'center', gap: '8px',
+            padding: '10px 24px', borderRadius: '999px',
             background: 'linear-gradient(135deg, #25D366, #128C7E)',
-            color: '#FFF', fontWeight: 900, fontSize: '0.9rem',
+            color: '#FFF', fontWeight: 900, fontSize: '0.86rem',
             fontFamily: '"Cairo", "Tajawal", sans-serif',
             textDecoration: 'none',
             boxShadow: '0 6px 20px rgba(37,211,102,0.4)',
           }}
         >
-          <span style={{ fontSize: '1.2rem' }}>📤</span>
-          شارك على واتساب
+          <span>📤</span>
+          مشاركة على واتساب
         </a>
       </div>
     </div>
@@ -243,16 +357,16 @@ function EmptyState() {
   return (
     <div style={{
       display: 'flex', flexDirection: 'column', alignItems: 'center',
-      justifyContent: 'center', minHeight: '60vh',
+      justifyContent: 'center', minHeight: '55vh',
       fontFamily: '"Cairo", "Tajawal", sans-serif', textAlign: 'center',
       padding: '40px 20px',
     }}>
       <div style={{ fontSize: '4rem', marginBottom: '16px' }}>🎬</div>
       <h2 style={{ color: '#FFF', fontSize: '1.3rem', fontWeight: 900, margin: '0 0 8px' }}>
-        قريباً — ريلز الأكاديمية
+        ريلز وأبرز لحظات الأكاديمية
       </h2>
-      <p style={{ color: '#5A6A7E', fontSize: '0.9rem', margin: 0, maxWidth: '260px' }}>
-        سيتم إضافة مقاطع الفيديو قريباً من قِبل إدارة الأكاديمية
+      <p style={{ color: '#8E9BAE', fontSize: '0.9rem', margin: 0, maxWidth: '280px', lineHeight: 1.6 }}>
+        سيتم إضافة مقاطع التدريبات والمباريات قريباً من لوحة الإدارة
       </p>
     </div>
   );
@@ -265,7 +379,7 @@ export default function Reels() {
   const [activeReel, setActiveReel] = useState(null);
 
   useEffect(() => {
-    const load = async (content) => {
+    const load = (content) => {
       const r = content?.reels;
       if (Array.isArray(r)) {
         setReels(r.filter(x => x && x.url));
@@ -273,13 +387,13 @@ export default function Reels() {
       setLoading(false);
     };
 
-    // Instant local
+    // 1. Instant local cache load
     load(db.getSiteContent());
 
-    // Cloud async
+    // 2. Cloud async sync
     db.getSiteContentAsync().then(c => c && load(c));
 
-    // Realtime
+    // 3. Realtime subscription
     const unsub = db.subscribeToRealtime(null, null, (live) => {
       if (live) load(live);
     });
@@ -289,40 +403,54 @@ export default function Reels() {
   return (
     <div style={{
       minHeight: '100vh',
-      background: '#000',
+      background: '#060910',
       color: '#FFF',
       fontFamily: '"Cairo", "Tajawal", sans-serif',
       direction: 'rtl',
-      paddingTop: '80px',
-      paddingBottom: '80px',
+      paddingTop: '90px',
+      paddingBottom: '100px',
     }}>
       <style>{`
-        @keyframes reelsFadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes reelsFadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
       `}</style>
 
       {/* Lightbox */}
       {activeReel && <Lightbox reel={activeReel} onClose={() => setActiveReel(null)} />}
 
-      <div style={{ maxWidth: '520px', margin: '0 auto', padding: '0 16px' }}>
+      <div style={{ maxWidth: '540px', margin: '0 auto', padding: '0 16px' }}>
         {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
-          <h1 style={{ fontSize: '1.6rem', fontWeight: 900, margin: 0, color: '#FFF' }}>
-            🎬 ريلز الأكاديمية
-          </h1>
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          marginBottom: '24px', paddingBottom: '12px',
+          borderBottom: '1px solid rgba(255,255,255,0.08)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{ fontSize: '1.6rem' }}>🎬</span>
+            <div>
+              <h1 style={{ fontSize: '1.4rem', fontWeight: 900, margin: 0, color: '#FFF', lineHeight: 1.2 }}>
+                ريلز الأكاديمية
+              </h1>
+              <div style={{ fontSize: '0.75rem', color: '#8E9BAE' }}>
+                أبرز المهارات، التدريبات، ولحظات المباريات
+              </div>
+            </div>
+          </div>
+
           <span style={{
-            background: 'rgba(255,193,7,0.15)', border: '1px solid #FFC107',
-            color: '#FFC107', borderRadius: '20px', padding: '3px 12px',
+            background: 'linear-gradient(135deg, rgba(255,193,7,0.2), rgba(255,149,0,0.2))',
+            border: '1px solid #FFC107',
+            color: '#FFC107', borderRadius: '20px', padding: '4px 12px',
             fontSize: '0.72rem', fontWeight: 900, letterSpacing: '0.5px',
           }}>REELS</span>
         </div>
 
-        {/* Content */}
+        {/* Content Grid */}
         {loading ? (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
             {[1, 2, 3, 4].map(i => (
               <div key={i} style={{
-                aspectRatio: '9/16', borderRadius: '16px',
-                background: 'linear-gradient(160deg, #0D111A, #141A28)',
+                aspectRatio: '9/16', borderRadius: '18px',
+                background: 'linear-gradient(160deg, #0E1422, #141C30)',
                 animation: 'reelsFadeIn 0.4s ease',
               }} />
             ))}
@@ -333,7 +461,7 @@ export default function Reels() {
           <div style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(2, 1fr)',
-            gap: '12px',
+            gap: '14px',
             animation: 'reelsFadeIn 0.4s ease',
           }}>
             {reels.map((reel) => (
