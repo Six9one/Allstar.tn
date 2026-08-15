@@ -49,7 +49,7 @@ export default defineConfig({
         clientsClaim: true,
         cleanupOutdatedCaches: true,
         navigationPreload: true,
-        globPatterns: ['**/*.{js,css,html,ico,png,jpg,jpeg,svg,woff2}'],
+        globPatterns: ['**/*.{js,css,html,ico,png,jpg,jpeg,svg,webp,woff2}'],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
@@ -91,6 +91,18 @@ export default defineConfig({
               cacheableResponse: {
                 statuses: [0, 200]
               }
+            }
+          },
+          {
+            // Uploaded carousel images have unique URLs.  Prefer the network
+            // online and only fall back to the last cached response offline.
+            urlPattern: /^https:\/\/hsylnrzxeyqxczdalurj\.supabase\.co\/storage\/v1\/object\/public\/carousel\/.*/i,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'supabase-carousel-images',
+              networkTimeoutSeconds: 3,
+              expiration: { maxEntries: 100, maxAgeSeconds: 60 * 60 * 24 * 30 },
+              cacheableResponse: { statuses: [0, 200] }
             }
           },
           {

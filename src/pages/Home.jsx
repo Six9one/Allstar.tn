@@ -8,29 +8,32 @@ const FALLBACK_SLIDES = [
   { id: 'SL-2', url: 'https://hsylnrzxeyqxczdalurj.supabase.co/storage/v1/object/public/carousel/live-slide-2-1786751135909.webp', caption: '🏆 افتتاح التسجيل ومشاريع التميز الرياضي والدراسي' }
 ]
 
+const getUsableSlides = (galleryImages) => {
+  if (!Array.isArray(galleryImages)) return []
+  return galleryImages.filter((image) => {
+    const url = image?.url?.trim?.() || (typeof image?.url === 'string' ? image.url : '')
+    return url.length > 0 && (/^(https?:\/\/|data:image\/|\/|blob:)/i.test(url))
+  })
+}
+
 export default function Home() {
   const navigate = useNavigate()
   const [slides, setSlides] = useState(FALLBACK_SLIDES)
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isHovered, setIsHovered] = useState(false)
+  const [isTouching, setIsTouching] = useState(false)
   const [showPacksModal, setShowPacksModal] = useState(false)
   const autoPlayRef = useRef(null)
-  const touchStartX = useRef(null)
+  const touchStartRef = useRef(null)
 
   // Load and subscribe to live images from DB
   useEffect(() => {
     const loadImages = async (syncContent) => {
-      let combined = [];
       const content = syncContent || (await db.getSiteContentAsync());
-      if (content && Array.isArray(content.gallery_images) && content.gallery_images.length > 0) {
-        combined = content.gallery_images.filter(img => img.url && img.url.trim());
-      }
-
-      if (combined.length > 0) {
-        setSlides(combined);
-      } else {
-        setSlides(FALLBACK_SLIDES);
-      }
+      const nextSlides = getUsableSlides(content?.gallery_images);
+      const finalSlides = nextSlides.length > 0 ? nextSlides : FALLBACK_SLIDES;
+      setSlides(finalSlides);
+      setCurrentIndex((previous) => Math.min(previous, Math.max(finalSlides.length, 1) - 1));
     };
 
     // 1. Instant local load
@@ -49,9 +52,9 @@ export default function Home() {
     };
   }, []);
 
-  // Auto-Glide Carousel Timer (Glides every 4 seconds)
+  // Auto-Glide Carousel Timer (Glides every 4 seconds when not hovered or actively touched)
   useEffect(() => {
-    if (slides.length <= 1 || isHovered) return
+    if (slides.length <= 1 || isHovered || isTouching) return
 
     autoPlayRef.current = setInterval(() => {
       setCurrentIndex((prev) => (prev + 1) % slides.length)
@@ -60,7 +63,7 @@ export default function Home() {
     return () => {
       if (autoPlayRef.current) clearInterval(autoPlayRef.current)
     }
-  }, [slides.length, isHovered])
+  }, [slides.length, isHovered, isTouching])
 
   const handleNext = () => {
     setCurrentIndex((prev) => (prev + 1) % slides.length)
@@ -100,37 +103,62 @@ export default function Home() {
       >
         {/* CAROUSEL CARD WRAPPER - BULLETPROOF CROSS-FADE & TOUCH SWIPE */}
         <div
-          onMouseEnter={() => setIsHovered(true)}
-          onMouseLeave={() => setIsHovered(false)}
-          onTouchStart={(e) => {
-            touchStartX.current = e.touches[0].clientX
+          onPointerEnter={(e) => {
+            if (e.pointerType === 'mouse') setIsHovered(true)
           }}
-          onTouchEnd={(e) => {
-            if (!touchStartX.current) return
-            const touchEndX = e.changedTouches[0].clientX
-            const diff = touchStartX.current - touchEndX
-            if (Math.abs(diff) > 40) {
-              if (diff > 0) {
-                // Swiped left
-                handleNext()
-              } else {
-                // Swiped right
-                handlePrev()
+          onPointerLeave={(e) => {
+            if (e.pointerType === 'mouse') setIsHovered(false)
+          }}
+          onTouchStart={(e) => {
+            setIsTouching(true)
+            if (e.touches && e.touches[0]) {
+              touchStartRef.current = {
+                x: e.touches[0].clientX,
+                y: e.touches[0].clientY
               }
             }
-            touchStartX.current = null
+          }}
+          onTouchMove={() => {
+            // Keep active touch status
+            setIsTouching(true)
+          }}
+          onTouchEnd={(e) => {
+            if (touchStartRef.current && e.changedTouches && e.changedTouches[0]) {
+              const diffX = touchStartRef.current.x - e.changedTouches[0].clientX
+              const diffY = touchStartRef.current.y - e.changedTouches[0].clientY
+              // If horizontal movement was greater than vertical movement and exceeds threshold
+              if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 30) {
+                if (diffX > 0) {
+                  // Swiped left (finger right to left)
+                  handleNext()
+                } else {
+                  // Swiped right (finger left to right)
+                  handlePrev()
+                }
+              }
+            }
+            touchStartRef.current = null
+            // Resume auto-slide after touch release with a small buffer
+            setTimeout(() => setIsTouching(false), 300)
+          }}
+          onTouchCancel={() => {
+            touchStartRef.current = null
+            setIsTouching(false)
           }}
           style={{
             position: 'relative',
             borderRadius: '24px',
             overflow: 'hidden',
-            height: 'clamp(220px, 42vh, 480px)',
+            height: 'clamp(230px, 44vh, 480px)',
             width: '100%',
             background: '#0F131C',
             border: '1.5px solid rgba(0, 230, 118, 0.35)',
             boxShadow: '0 14px 40px rgba(0, 0, 0, 0.85), 0 0 25px rgba(0, 230, 118, 0.15)',
             boxSizing: 'border-box',
-            userSelect: 'none'
+            userSelect: 'none',
+            WebkitUserSelect: 'none',
+            WebkitTouchCallout: 'none',
+            touchAction: 'pan-y'
           }}
         >
           {/* STACKED CROSS-FADE SLIDES (100% RTL & MOBILE SAFE) */}
@@ -143,18 +171,26 @@ export default function Home() {
                   position: 'absolute',
                   inset: 0,
                   opacity: isActive ? 1 : 0,
-                  pointerEvents: isActive ? 'auto' : 'none',
+                  pointerEvents: 'none',
                   transition: 'opacity 0.7s cubic-bezier(0.4, 0, 0.2, 1)',
-                  zIndex: isActive ? 2 : 1
+                  zIndex: isActive ? 2 : 1,
+                  transform: 'translateZ(0)',
+                  WebkitTransform: 'translateZ(0)',
+                  backfaceVisibility: 'hidden',
+                  WebkitBackfaceVisibility: 'hidden',
+                  willChange: 'opacity'
                 }}
               >
                 <img
                   src={slide.url}
                   alt={slide.caption || 'صور الأكاديمية'}
                   loading={idx === 0 ? 'eager' : 'lazy'}
+                  fetchPriority={idx === 0 ? 'high' : 'auto'}
+                  draggable={false}
                   onError={(e) => {
                     const fallbackUrl = FALLBACK_SLIDES[idx % FALLBACK_SLIDES.length]?.url || FALLBACK_SLIDES[0].url;
-                    if (e.currentTarget.src !== fallbackUrl) {
+                    if (e.currentTarget.dataset.fallbackApplied !== 'true') {
+                      e.currentTarget.dataset.fallbackApplied = 'true';
                       e.currentTarget.src = fallbackUrl;
                     }
                   }}
@@ -163,7 +199,10 @@ export default function Home() {
                     height: '100%',
                     objectFit: 'cover',
                     objectPosition: 'center center',
-                    display: 'block'
+                    display: 'block',
+                    pointerEvents: 'none',
+                    userSelect: 'none',
+                    WebkitUserDrag: 'none'
                   }}
                 />
                 {/* DARK GRADIENT OVERLAY */}
@@ -171,7 +210,8 @@ export default function Home() {
                   style={{
                     position: 'absolute',
                     inset: 0,
-                    background: 'linear-gradient(180deg, rgba(8,9,12,0.15) 0%, rgba(8,9,12,0.4) 50%, rgba(8,9,12,0.9) 100%)'
+                    pointerEvents: 'none',
+                    background: 'linear-gradient(180deg, rgba(8,9,12,0.15) 0%, rgba(8,9,12,0.4) 50%, rgba(8,9,12,0.92) 100%)'
                   }}
                 />
               </div>
@@ -182,6 +222,7 @@ export default function Home() {
           {slides.length > 1 && (
             <>
               <button
+                type="button"
                 onClick={(e) => { e.stopPropagation(); handlePrev(); }}
                 aria-label="Previous Slide"
                 style={{
@@ -189,25 +230,29 @@ export default function Home() {
                   top: '50%',
                   right: '12px',
                   transform: 'translateY(-50%)',
-                  zIndex: 15,
-                  width: '36px',
-                  height: '36px',
+                  zIndex: 25,
+                  width: '42px',
+                  height: '42px',
                   borderRadius: '50%',
-                  backgroundColor: 'rgba(0, 0, 0, 0.6)',
-                  border: '1px solid rgba(255, 255, 255, 0.25)',
+                  backgroundColor: 'rgba(0, 0, 0, 0.65)',
+                  border: '1.5px solid rgba(255, 255, 255, 0.3)',
                   color: '#FFFFFF',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   cursor: 'pointer',
-                  fontSize: '18px',
-                  backdropFilter: 'blur(4px)',
-                  transition: 'all 0.2s ease'
+                  fontSize: '22px',
+                  backdropFilter: 'blur(6px)',
+                  WebkitBackdropFilter: 'blur(6px)',
+                  transition: 'all 0.2s ease',
+                  touchAction: 'manipulation',
+                  userSelect: 'none'
                 }}
               >
                 ›
               </button>
               <button
+                type="button"
                 onClick={(e) => { e.stopPropagation(); handleNext(); }}
                 aria-label="Next Slide"
                 style={{
@@ -215,20 +260,23 @@ export default function Home() {
                   top: '50%',
                   left: '12px',
                   transform: 'translateY(-50%)',
-                  zIndex: 15,
-                  width: '36px',
-                  height: '36px',
+                  zIndex: 25,
+                  width: '42px',
+                  height: '42px',
                   borderRadius: '50%',
-                  backgroundColor: 'rgba(0, 0, 0, 0.6)',
-                  border: '1px solid rgba(255, 255, 255, 0.25)',
+                  backgroundColor: 'rgba(0, 0, 0, 0.65)',
+                  border: '1.5px solid rgba(255, 255, 255, 0.3)',
                   color: '#FFFFFF',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   cursor: 'pointer',
-                  fontSize: '18px',
-                  backdropFilter: 'blur(4px)',
-                  transition: 'all 0.2s ease'
+                  fontSize: '22px',
+                  backdropFilter: 'blur(6px)',
+                  WebkitBackdropFilter: 'blur(6px)',
+                  transition: 'all 0.2s ease',
+                  touchAction: 'manipulation',
+                  userSelect: 'none'
                 }}
               >
                 ‹
@@ -243,39 +291,58 @@ export default function Home() {
               bottom: '16px',
               right: '18px',
               left: '18px',
-              zIndex: 10,
-              color: '#FFFFFF'
+              zIndex: 20,
+              color: '#FFFFFF',
+              pointerEvents: 'none'
             }}
           >
             <div
               style={{
-                fontSize: 'clamp(0.85rem, 2vw, 1.25rem)',
+                fontSize: 'clamp(0.88rem, 2.5vw, 1.25rem)',
                 fontWeight: 900,
                 textShadow: '0 2px 10px rgba(0,0,0,0.95)',
-                lineHeight: 1.3
+                lineHeight: 1.35
               }}
             >
               {currentSlide?.caption || '📸 ألبوم الصور الرسمية لأكاديمية أولستار بتطاوين'}
             </div>
 
-            {/* INDICATOR DOTS */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '10px' }}>
+            {/* INDICATOR DOTS WITH LARGE TOUCH TARGETS */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '10px', pointerEvents: 'auto' }}>
               {slides.map((_, i) => (
                 <button
+                  type="button"
                   key={i}
-                  onClick={() => setCurrentIndex(i)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setCurrentIndex(i);
+                  }}
                   aria-label={`Go to slide ${i + 1}`}
                   style={{
-                    height: '8px',
-                    width: i === currentIndex ? '24px' : '8px',
-                    borderRadius: '4px',
-                    backgroundColor: i === currentIndex ? '#00E676' : 'rgba(255, 255, 255, 0.4)',
+                    height: '28px',
+                    minWidth: '24px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: 'transparent',
                     border: 'none',
                     cursor: 'pointer',
-                    transition: 'all 0.3s ease',
-                    padding: 0
+                    padding: '0 2px',
+                    touchAction: 'manipulation'
                   }}
-                />
+                >
+                  <span
+                    style={{
+                      display: 'block',
+                      height: '8px',
+                      width: i === currentIndex ? '26px' : '8px',
+                      borderRadius: '4px',
+                      backgroundColor: i === currentIndex ? '#00E676' : 'rgba(255, 255, 255, 0.45)',
+                      boxShadow: i === currentIndex ? '0 0 8px #00E676' : 'none',
+                      transition: 'all 0.3s ease'
+                    }}
+                  />
+                </button>
               ))}
             </div>
           </div>

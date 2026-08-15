@@ -1098,6 +1098,7 @@ function BulkPlayerModal({ coaches, onSaveBulk, onClose }) {
 // ─── MAIN ADMIN COMPONENT ─────────────────────────────────────────────────────
 export default function Admin() {
   const [activeTab, setActiveTab] = useState('overview');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [players, setPlayers] = useState([]);
   const [coaches, setCoaches] = useState([]);
   const [siteContent, setSiteContent] = useState({});
@@ -1144,12 +1145,7 @@ export default function Admin() {
     db.getSiteContentAsync().then(c => {
       if (c) {
         setSiteContent(c);
-        setSiteForm(f => {
-          const hasLocalCustom = Array.isArray(f.gallery_images) && f.gallery_images.some(img => img.url && img.url.startsWith('data:'));
-          const remoteHasCustom = Array.isArray(c.gallery_images) && c.gallery_images.some(img => img.url && img.url.startsWith('data:'));
-          if (hasLocalCustom && !remoteHasCustom) return f;
-          return c;
-        });
+        setSiteForm(c);
       }
     });
 
@@ -1159,12 +1155,7 @@ export default function Admin() {
       (livePlayers) => setPlayers(livePlayers),
       (liveContent) => {
         setSiteContent(liveContent);
-        setSiteForm(f => {
-          const hasLocalCustom = Array.isArray(f.gallery_images) && f.gallery_images.some(img => img.url && img.url.startsWith('data:'));
-          const liveHasCustom = Array.isArray(liveContent.gallery_images) && liveContent.gallery_images.some(img => img.url && img.url.startsWith('data:'));
-          if (hasLocalCustom && !liveHasCustom) return f;
-          return liveContent;
-        });
+        setSiteForm(liveContent);
       }
     );
 
@@ -1460,25 +1451,40 @@ export default function Admin() {
   });
 
   const tabs = [
-    { id: 'overview', label: '📊 Dashboard Overview', color: '#FFC107' },
-    { id: 'registrations', label: `⏳ Pending Dossiers (${pendingPlayers.length})`, color: '#FF9500' },
-    { id: 'carousel', label: `🖼️ Hero Carousel (${(siteForm.gallery_images || []).length})`, color: '#E040FB' },
-    { id: 'accounts', label: `🔐 Account Credentials (${accounts.length})`, color: '#00E676' },
-    { id: 'coaches', label: `🏅 Coaches (${coaches.length})`, color: '#FF9500' },
-    { id: 'players', label: `⚽ Players (${players.length})`, color: '#00E676' },
-    { id: 'siteeditor', label: '🌐 Website Content', color: '#00E5FF' },
-    { id: 'qrscanner', label: '📱 QR Scanner', color: '#E040FB' },
-    { id: 'announcements', label: '📢 Broadcast Push', color: '#FF3D00' },
+    { id: 'overview',       icon: '📊', label: 'Dashboard',       color: '#FFC107', badge: 0 },
+    { id: 'registrations',  icon: '⏳', label: 'Pending Dossiers', color: '#FF9500', badge: pendingPlayers.length },
+    { id: 'carousel',       icon: '🖼️', label: 'Hero Carousel',    color: '#E040FB', badge: (siteForm.gallery_images || []).length },
+    { id: 'accounts',       icon: '🔐', label: 'Credentials',      color: '#00E676', badge: accounts.length },
+    { id: 'coaches',        icon: '🏅', label: 'Coaches',          color: '#FF9500', badge: coaches.length },
+    { id: 'players',        icon: '⚽', label: 'Players',          color: '#00E676', badge: players.length },
+    { id: 'siteeditor',     icon: '🌐', label: 'Website Content',  color: '#00E5FF', badge: 0 },
+    { id: 'qrscanner',      icon: '📱', label: 'QR Scanner',       color: '#E040FB', badge: 0 },
+    { id: 'announcements',  icon: '📢', label: 'Broadcast Push',   color: '#FF3D00', badge: 0 },
   ];
+
+  const tabMeta = {
+    overview:       { title: 'لوحة التحكم',      subtitle: 'نظرة عامة على الأكاديمية' },
+    registrations:  { title: 'ملفات الانتساب',    subtitle: 'طلبات التسجيل المعلقة' },
+    carousel:       { title: 'الصور الرئيسية',    subtitle: 'إدارة معرض الصور' },
+    accounts:       { title: 'الحسابات',           subtitle: 'بيانات دخول المدربين وأولياء الأمور' },
+    coaches:        { title: 'المدربون',           subtitle: 'إدارة الطاقم التدريبي' },
+    players:        { title: 'اللاعبون',           subtitle: 'قائمة اللاعبين المسجلين' },
+    siteeditor:     { title: 'محتوى الموقع',       subtitle: 'تعديل محتوى الصفحة الرئيسية' },
+    qrscanner:      { title: 'ماسح QR',            subtitle: 'تسجيل الحضور بالرمز المربع' },
+    announcements:  { title: 'البث المباشر',       subtitle: 'إرسال إشعارات لجميع المستخدمين' },
+  };
 
   return (
     <div style={{
-      paddingTop: '95px', paddingBottom: '90px', minHeight: '100vh',
-      background: 'linear-gradient(180deg, #060912 0%, #0A1628 100%)',
-      color: '#FFF', fontFamily: '"Cairo", "Tajawal", sans-serif', direction: 'ltr'
+      minHeight: '100vh',
+      background: 'linear-gradient(160deg, #060912 0%, #0A1628 100%)',
+      color: '#FFF', fontFamily: '"Cairo", "Tajawal", sans-serif', direction: 'ltr',
+      display: 'flex', paddingTop: '72px'
     }}>
 
-      {/* Player Edit Modal */}
+      {/* ══════════════════════════════════════════════════════════════════════ */}
+      {/* MODALS                                                                  */}
+      {/* ══════════════════════════════════════════════════════════════════════ */}
       {editingPlayer && (
         <PlayerEditModal
           player={editingPlayer}
@@ -1487,8 +1493,6 @@ export default function Admin() {
           onClose={() => setEditingPlayer(null)}
         />
       )}
-
-      {/* Bulk Player Import Modal */}
       {showBulkModal && (
         <BulkPlayerModal
           coaches={coaches}
@@ -1496,8 +1500,6 @@ export default function Admin() {
           onClose={() => setShowBulkModal(false)}
         />
       )}
-
-      {/* Coach Form Modal */}
       {(addingCoach || editingCoach) && (
         <CoachFormModal
           coach={editingCoach}
@@ -1506,58 +1508,184 @@ export default function Admin() {
         />
       )}
 
-      <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '0 20px' }}>
+      {/* ══════════════════════════════════════════════════════════════════════ */}
+      {/* MOBILE SIDEBAR OVERLAY                                                 */}
+      {/* ══════════════════════════════════════════════════════════════════════ */}
+      {sidebarOpen && (
+        <div
+          onClick={() => setSidebarOpen(false)}
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
+            zIndex: 998, backdropFilter: 'blur(4px)'
+          }}
+        />
+      )}
 
-        {/* HEADER */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
+      {/* ══════════════════════════════════════════════════════════════════════ */}
+      {/* SIDEBAR                                                                 */}
+      {/* ══════════════════════════════════════════════════════════════════════ */}
+      <style>{`
+        @keyframes adminFadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes adminSlideIn { from { opacity: 0; transform: translateX(-12px); } to { opacity: 1; transform: translateX(0); } }
+        .admin-nav-item:hover { background: rgba(255,255,255,0.05) !important; }
+        .admin-nav-item:hover .admin-nav-icon { transform: scale(1.15); }
+        .admin-sidebar-inner::-webkit-scrollbar { width: 4px; }
+        .admin-sidebar-inner::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+        @media (max-width: 768px) {
+          .admin-sidebar { transform: translateX(-100%); transition: transform 0.3s cubic-bezier(0.4,0,0.2,1) !important; }
+          .admin-sidebar.open { transform: translateX(0) !important; }
+          .admin-content { margin-left: 0 !important; }
+          .admin-hamburger { display: flex !important; }
+        }
+      `}</style>
+
+      <aside
+        className={`admin-sidebar${sidebarOpen ? ' open' : ''}`}
+        style={{
+          position: 'fixed', top: '72px', left: 0, bottom: 0, width: '248px',
+          background: '#080D1A',
+          borderRight: '1px solid rgba(255,255,255,0.07)',
+          zIndex: 999, display: 'flex', flexDirection: 'column',
+          transition: 'transform 0.3s cubic-bezier(0.4,0,0.2,1)',
+          boxShadow: '4px 0 24px rgba(0,0,0,0.4)'
+        }}
+      >
+        {/* Sidebar Header */}
+        <div style={{
+          padding: '20px 20px 16px',
+          borderBottom: '1px solid rgba(255,255,255,0.06)',
+          display: 'flex', alignItems: 'center', gap: '12px'
+        }}>
+          <div style={{
+            width: '38px', height: '38px', borderRadius: '12px',
+            background: 'linear-gradient(135deg, #FFC107, #FF9500)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: '1.2rem', flexShrink: 0,
+            boxShadow: '0 4px 12px rgba(255,193,7,0.35)'
+          }}>⭐</div>
           <div>
-            <div style={{
-              display: 'inline-block', background: 'rgba(255,193,7,0.15)',
-              border: '1px solid #FFC107', color: '#FFC107',
-              padding: '4px 14px', borderRadius: '12px', fontSize: '0.78rem', fontWeight: 800, marginBottom: '8px'
-            }}>
-              👑 لوحة التحكم الكاملة — All-Star Academy Boss Dashboard
+            <div style={{ fontWeight: 900, fontSize: '0.92rem', color: '#FFF', lineHeight: 1.2 }}>All-Star</div>
+            <div style={{ fontSize: '0.72rem', color: '#FFC107', fontWeight: 700, letterSpacing: '0.5px' }}>ADMIN PANEL</div>
+          </div>
+        </div>
+
+        {/* Nav Items */}
+        <nav className="admin-sidebar-inner" style={{ flex: 1, overflowY: 'auto', padding: '12px 10px' }}>
+          {tabs.map(tab => {
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                className="admin-nav-item"
+                onClick={() => { setActiveTab(tab.id); setSidebarOpen(false); }}
+                style={{
+                  width: '100%', display: 'flex', alignItems: 'center', gap: '11px',
+                  padding: '11px 12px', borderRadius: '12px', border: 'none',
+                  background: isActive ? `${tab.color}14` : 'transparent',
+                  borderLeft: isActive ? `3px solid ${tab.color}` : '3px solid transparent',
+                  color: isActive ? tab.color : '#7A8BA6',
+                  cursor: 'pointer', textAlign: 'left', marginBottom: '3px',
+                  fontFamily: '"Cairo", "Tajawal", sans-serif',
+                  transition: 'all 0.18s ease',
+                  position: 'relative'
+                }}
+              >
+                <span
+                  className="admin-nav-icon"
+                  style={{ fontSize: '1.1rem', flexShrink: 0, transition: 'transform 0.18s ease', display: 'block', lineHeight: 1 }}
+                >
+                  {tab.icon}
+                </span>
+                <span style={{ fontWeight: isActive ? 800 : 600, fontSize: '0.86rem', flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {tab.label}
+                </span>
+                {tab.badge > 0 && (
+                  <span style={{
+                    background: tab.color, color: '#000',
+                    fontSize: '0.65rem', fontWeight: 900,
+                    padding: '2px 7px', borderRadius: '20px',
+                    minWidth: '20px', textAlign: 'center', flexShrink: 0,
+                    lineHeight: '16px'
+                  }}>{tab.badge}</span>
+                )}
+              </button>
+            );
+          })}
+        </nav>
+
+        {/* System Status Footer */}
+        <div style={{
+          padding: '14px 16px',
+          borderTop: '1px solid rgba(255,255,255,0.06)',
+          background: 'rgba(0,230,118,0.05)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{
+              width: '8px', height: '8px', borderRadius: '50%',
+              background: '#00E676', display: 'block', flexShrink: 0,
+              boxShadow: '0 0 8px #00E676'
+            }} />
+            <div>
+              <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#00E676' }}>النظام متصل</div>
+              <div style={{ fontSize: '0.68rem', color: '#5A7A6A' }}>{players.length} لاعب · {coaches.length} مدرب</div>
             </div>
-            <h1 style={{ fontSize: '1.8rem', fontWeight: 900, color: '#FFF', margin: 0 }}>
-              مركز إدارة الأكاديمية الشامل
+          </div>
+        </div>
+      </aside>
+
+      {/* ══════════════════════════════════════════════════════════════════════ */}
+      {/* MAIN CONTENT                                                            */}
+      {/* ══════════════════════════════════════════════════════════════════════ */}
+      <div
+        className="admin-content"
+        style={{ marginLeft: '248px', flex: 1, minHeight: '100vh', display: 'flex', flexDirection: 'column' }}
+      >
+        {/* Top Content Header */}
+        <div style={{
+          padding: '24px 28px 0',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          flexWrap: 'wrap', gap: '12px'
+        }}>
+          {/* Mobile hamburger */}
+          <button
+            onClick={() => setSidebarOpen(s => !s)}
+            style={{
+              display: 'none', background: 'rgba(255,255,255,0.06)',
+              border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px',
+              color: '#FFF', width: '40px', height: '40px', fontSize: '1.2rem',
+              cursor: 'pointer', alignItems: 'center', justifyContent: 'center'
+            }}
+            className="admin-hamburger"
+          >☰</button>
+
+          <div style={{ animation: 'adminSlideIn 0.35s ease' }}>
+            <div style={{ fontSize: '0.72rem', color: '#5A6A7E', fontWeight: 700, marginBottom: '3px', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+              لوحة التحكم › {tabMeta[activeTab]?.title}
+            </div>
+            <h1 style={{ fontSize: '1.55rem', fontWeight: 900, color: '#FFF', margin: 0, lineHeight: 1.2 }}>
+              {tabMeta[activeTab]?.title}
             </h1>
-            <p style={{ color: '#8E9BAE', fontSize: '0.85rem', margin: '4px 0 0 0' }}>
-              تحكم كامل في كل شيء — المدربون، اللاعبون، محتوى الموقع، الإعلانات
+            <p style={{ color: '#5A6A7E', fontSize: '0.82rem', margin: '3px 0 0 0' }}>
+              {tabMeta[activeTab]?.subtitle}
             </p>
           </div>
-          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-            <div style={{ background: 'rgba(0,230,118,0.12)', border: '1px solid #00E676', color: '#00E676', padding: '8px 16px', borderRadius: '16px', fontWeight: 900, fontSize: '0.82rem' }}>
-              ● النظام متصل — {players.length} لاعب | {coaches.length} مدرب
-            </div>
-          </div>
-        </div>
 
-        {/* SUCCESS ALERT */}
-        {savedSuccessMsg && (
-          <div style={{
-            background: 'rgba(0,230,118,0.15)', border: '1.5px solid #00E676', color: '#00E676',
-            padding: '14px 20px', borderRadius: '16px', fontWeight: 800, marginBottom: '24px', textAlign: 'center',
-            animation: 'fadeIn 0.3s ease'
-          }}>
-            {savedSuccessMsg}
-          </div>
-        )}
-
-        {/* NAV TABS */}
-        <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '12px', marginBottom: '28px' }}>
-          {tabs.map(tab => (
-            <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={{
-              padding: '11px 20px', borderRadius: '14px', border: `1.5px solid ${activeTab === tab.id ? tab.color : 'transparent'}`,
-              background: activeTab === tab.id ? `${tab.color}22` : 'rgba(255,255,255,0.04)',
-              color: activeTab === tab.id ? tab.color : '#B0BEC5',
-              fontWeight: 900, cursor: 'pointer', whiteSpace: 'nowrap',
-              fontSize: '0.88rem', fontFamily: '"Cairo", "Tajawal", sans-serif',
-              transition: 'all 0.2s'
+          {savedSuccessMsg && (
+            <div style={{
+              background: 'rgba(0,230,118,0.12)', border: '1.5px solid #00E676', color: '#00E676',
+              padding: '10px 18px', borderRadius: '14px', fontWeight: 800, fontSize: '0.85rem',
+              animation: 'adminFadeIn 0.3s ease', display: 'flex', alignItems: 'center', gap: '8px'
             }}>
-              {tab.label}
-            </button>
-          ))}
+              ✅ {savedSuccessMsg}
+            </div>
+          )}
         </div>
+
+        {/* Divider */}
+        <div style={{ height: '1px', background: 'rgba(255,255,255,0.05)', margin: '20px 28px 0' }} />
+
+        {/* Page Content */}
+        <div style={{ padding: '24px 28px 60px', animation: 'adminFadeIn 0.3s ease' }}>
 
         {/* ═══════════════════════════════════════════════════════════════════ */}
         {/* TAB: OVERVIEW                                                       */}
@@ -3141,6 +3269,7 @@ export default function Admin() {
           </div>
         )}
 
+        </div>
       </div>
     </div>
   );

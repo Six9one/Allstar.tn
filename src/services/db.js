@@ -348,6 +348,7 @@ const SEED_SITE_CONTENT = {
 // ─── DB SERVICE CLASS ─────────────────────────────────────────────────────────
 class DBService {
   constructor() {
+    this.siteContentSaveQueue = Promise.resolve();
     this.initStorage();
     this.syncFromSupabase();
   }
@@ -414,11 +415,16 @@ class DBService {
         let baseContent = { ...SEED_SITE_CONTENT, ...localContent };
 
         // 1. Fetch main_content from allstar_site_content (PRIMARY source for gallery_images)
-        const { data: siteData } = await supabase.from('allstar_site_content').select('*').eq('id', 'main_content').single();
+        const { data: siteData, error: siteContentError } = await supabase
+          .from('allstar_site_content')
+          .select('data')
+          .eq('id', 'main_content')
+          .maybeSingle();
+        if (siteContentError) throw siteContentError;
         if (siteData && siteData.data) {
           // Check if remote has gallery images with actual URLs
           const remoteGallery = siteData.data.gallery_images;
-          const hasRemoteImages = Array.isArray(remoteGallery) && remoteGallery.length > 0 && remoteGallery.some(img => img.url && img.url.trim());
+          const hasRemoteImages = Array.isArray(remoteGallery) && remoteGallery.length > 0 && remoteGallery.some(img => /^https?:\/\//i.test(img?.url?.trim() || ''));
           
           // Apply remote data BUT preserve gallery_images separately
           const remoteGalleryBackup = hasRemoteImages ? remoteGallery : null;
@@ -434,7 +440,9 @@ class DBService {
         const hasLocalCustomPhotos = Array.isArray(localContent.gallery_images) && localContent.gallery_images.some(img => img.url && img.url.startsWith('data:image/'));
         const remoteHasCustomPhotos = Array.isArray(baseContent.gallery_images) && baseContent.gallery_images.some(img => img.url && img.url.startsWith('data:image/'));
         
-        if (hasLocalCustomPhotos && !remoteHasCustomPhotos) {
+        // Only migrate a legacy local upload when no cloud record exists at all.
+        // Once a record exists, the cloud value is authoritative.
+        if (!siteData && hasLocalCustomPhotos && !remoteHasCustomPhotos) {
           console.log('⚡ Auto-syncing local custom admin photos to Supabase cloud...');
           await this.saveSiteContent(localContent);
           return localContent;
@@ -1020,12 +1028,22 @@ class DBService {
     }
   }
 
-  async saveSiteContent(contentData) {
+  saveSiteContent(contentData) {
+    const save = this.siteContentSaveQueue.then(() => this.saveSiteContentNow(contentData));
+    this.siteContentSaveQueue = save.catch(() => {});
+    return save;
+  }
+
+  async saveSiteContentNow(contentData) {
     const current = this.getSiteContent();
     const updated = { ...current, ...contentData };
+    const uploadedPaths = [];
 
     // Upload any Base64 gallery images to Supabase Storage and replace with real public URLs
-    if (supabase && Array.isArray(updated.gallery_images)) {
+    if (Array.isArray(updated.gallery_images)) {
+      if (!supabase && updated.gallery_images.some((image) => image?.url?.startsWith('data:image/'))) {
+        throw new Error('Supabase is not configured; carousel images cannot be published.');
+      }
       const uploaded = await Promise.all(
         updated.gallery_images.map(async (img, i) => {
           if (img.url && img.url.startsWith('data:image/')) {
@@ -1039,18 +1057,22 @@ class DBService {
               // Convert base64 to Blob for upload
               const response = await fetch(base64Url);
               const blob = await response.blob();
-              const ext = base64Url.includes('image/png') ? 'png' : 'webp';
-              const fileName = `slide-${i + 1}-${Date.now()}.${ext}`;
+              if (!blob.size || !blob.type.startsWith('image/')) throw new Error('Invalid image data');
+              const ext = blob.type === 'image/png' ? 'png' : blob.type === 'image/jpeg' ? 'jpg' : 'webp';
+              const uniqueId = globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+              const fileName = `slides/${uniqueId}.${ext}`;
 
               // Upload to Supabase Storage
               const { error: uploadErr } = await supabase.storage
                 .from('carousel')
-                .upload(fileName, blob, { contentType: blob.type, upsert: true });
+                .upload(fileName, blob, { contentType: blob.type, upsert: false, cacheControl: '31536000' });
 
               if (uploadErr) {
                 console.warn('⚠️ Storage upload failed for slide', i + 1, uploadErr.message, '- keeping base64');
-                return img;
+                throw uploadErr;
               }
+
+              uploadedPaths.push(fileName);
 
               // Get the public URL
               const { data: urlData } = supabase.storage.from('carousel').getPublicUrl(fileName);
@@ -1060,8 +1082,9 @@ class DBService {
                 console.log('✅ Slide', i + 1, 'uploaded to Storage:', publicUrl.substring(0, 80));
                 return { ...img, url: publicUrl };
               }
+              throw new Error('Supabase did not return a public URL.');
             } catch (e) {
-              console.warn('Storage upload error for slide', i + 1, e);
+              throw new Error(`Slide ${i + 1} was not uploaded: ${e.message || e}`);
             }
           }
           return img;
@@ -1070,23 +1093,22 @@ class DBService {
       updated.gallery_images = uploaded;
     }
 
-    safeSetLocalStorage(STORAGE_KEYS.SITE_CONTENT, updated);
-    if (contentData.hero_title) safeSetLocalStorage('allstar_hero_title', contentData.hero_title);
-    if (contentData.hero_subtitle) safeSetLocalStorage('allstar_hero_subtitle', contentData.hero_subtitle);
-    if (contentData.field_status) safeSetLocalStorage('allstar_field_status', contentData.field_status);
-
     if (supabase) {
       try {
         // 1. Save site content with real URLs to allstar_site_content
         const { error: upsertErr } = await supabase.from('allstar_site_content').upsert([{ id: 'main_content', data: updated }]);
+        if (upsertErr) throw upsertErr;
         if (upsertErr) {
           console.error('❌ Supabase site_content upsert error:', upsertErr);
         } else {
           console.log('✅ Site content saved to allstar_site_content');
         }
 
-        // 2. Sync slides to allstar_players table
-        if (Array.isArray(updated.gallery_images) && updated.gallery_images.length > 0) {
+        // Carousel data is owned by allstar_site_content.  Leave legacy player
+        // rows untouched so their write permissions cannot turn a successful
+        // publish into a reported failure.
+        const syncLegacyCarouselRows = false;
+        if (syncLegacyCarouselRows && Array.isArray(updated.gallery_images) && updated.gallery_images.length > 0) {
           const carouselPlayers = updated.gallery_images
             .filter(img => img.url && img.url.trim())
             .map((img, i) => ({
@@ -1120,9 +1142,16 @@ class DBService {
           console.log('✅ VERIFIED: Supabase has', verify.data.gallery_images.length, 'gallery images');
         }
       } catch (e) {
+        if (uploadedPaths.length) supabase.storage.from('carousel').remove(uploadedPaths).catch(() => {});
         console.error('Supabase site content sync error:', e);
+        throw new Error(`Site content was not published: ${e.message || e}`);
       }
     }
+
+    safeSetLocalStorage(STORAGE_KEYS.SITE_CONTENT, updated);
+    if (contentData.hero_title) safeSetLocalStorage('allstar_hero_title', contentData.hero_title);
+    if (contentData.hero_subtitle) safeSetLocalStorage('allstar_hero_subtitle', contentData.hero_subtitle);
+    if (contentData.field_status) safeSetLocalStorage('allstar_field_status', contentData.field_status);
 
     return updated;
   }
