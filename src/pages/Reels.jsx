@@ -338,8 +338,16 @@ export default function Reels() {
     const load = (content) => {
       const r = content?.reels;
       if (Array.isArray(r)) {
-        // Filter out empty or inactive items
-        setReels(r.filter(x => x && (x.video_url || x.url) && x.active !== false));
+        // Filter out empty, inactive, or non-video web links (e.g. raw TikTok/Facebook page URLs)
+        const validReels = r.filter(x => {
+          if (!x || x.active === false) return false;
+          const src = (x.video_url || x.url || '').trim();
+          if (!src) return false;
+          // Exclude raw TikTok / Facebook webpage URLs from native playback feed
+          if (/tiktok\.com|facebook\.com|fb\.watch/i.test(src)) return false;
+          return true;
+        });
+        setReels(validReels);
       }
       setLoading(false);
     };

@@ -38,7 +38,12 @@ export default function Home() {
       setSlides(finalSlides);
       setCurrentIndex((previous) => Math.min(previous, Math.max(finalSlides.length, 1) - 1));
       if (Array.isArray(content?.reels)) {
-        setReels(content.reels.filter(r => r && r.url));
+        setReels(content.reels.filter(r => {
+          if (!r || r.active === false) return false;
+          const src = (r.video_url || r.url || '').trim();
+          if (!src || /tiktok\.com|facebook\.com|fb\.watch/i.test(src)) return false;
+          return true;
+        }));
       }
     };
 

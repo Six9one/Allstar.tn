@@ -3548,6 +3548,7 @@ export default function Admin() {
                 {reels.map((reel, idx) => {
                   const videoSrc = reel.video_url || reel.url || '';
                   const thumb = reel.thumbnail_url || reel.thumbnailUrl;
+                  const isWebLink = /tiktok\.com|facebook\.com|fb\.watch|instagram\.com/i.test(videoSrc);
                   return (
                     <div
                       key={reel.id || idx}
@@ -3582,24 +3583,34 @@ export default function Admin() {
                         <div style={{ fontSize: '0.74rem', color: '#8E9BAE', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', direction: 'ltr', textAlign: 'left' }}>
                           {videoSrc}
                         </div>
-                        <div style={{ marginTop: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <span style={{
-                            fontSize: '0.68rem', fontWeight: 800, padding: '2px 8px', borderRadius: '6px',
-                            background: 'rgba(0,230,118,0.12)', color: '#00E676', border: '1px solid rgba(0,230,118,0.25)'
+                        {isWebLink ? (
+                          <div style={{
+                            marginTop: '8px', padding: '6px 10px', borderRadius: '8px',
+                            background: 'rgba(255, 61, 0, 0.15)', border: '1px solid rgba(255, 61, 0, 0.3)',
+                            fontSize: '0.72rem', color: '#FF6E40', fontWeight: 800
                           }}>
-                            فيديو مباشر
-                          </span>
-                          <span style={{ fontSize: '0.68rem', color: '#5A6A7E' }}>
-                            {reel.sport || 'عام'}
-                          </span>
-                        </div>
+                            ⚠️ رابط صفحة ويب (TikTok/Facebook) — غير صالح للعرض في مشغل الفيديو المباشر. يرجى حذف هذا السجل ورفع ملف MP4.
+                          </div>
+                        ) : (
+                          <div style={{ marginTop: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span style={{
+                              fontSize: '0.68rem', fontWeight: 800, padding: '2px 8px', borderRadius: '6px',
+                              background: 'rgba(0,230,118,0.12)', color: '#00E676', border: '1px solid rgba(0,230,118,0.25)'
+                            }}>
+                              ✓ فيديو مباشر (MP4/Supabase)
+                            </span>
+                            <span style={{ fontSize: '0.68rem', color: '#5A6A7E' }}>
+                              {reel.sport || 'عام'}
+                            </span>
+                          </div>
+                        )}
                       </div>
 
                       {/* Delete */}
                       <button
                         onClick={() => handleDeleteReel(reel.id)}
                         style={{
-                          background: 'rgba(255,61,0,0.12)', border: '1px solid rgba(255,61,0,0.3)',
+                          background: 'rgba(255,61,0,0.15)', border: '1px solid rgba(255,61,0,0.35)',
                           borderRadius: '10px', color: '#FF5252', padding: '8px 14px',
                           fontWeight: 800, cursor: 'pointer', fontSize: '0.82rem', flexShrink: 0,
                           fontFamily: '"Cairo", "Tajawal", sans-serif', transition: 'all 0.2s'
