@@ -27,37 +27,7 @@ export function parseVideoUrl(rawInput = '') {
     };
   }
 
-  // 2. Facebook Reels / Videos / Share links
-  if (/facebook\.com|fb\.watch|fb\.com/i.test(url)) {
-    // If it's already a plugins/video.php URL
-    let embedUrl = url;
-    if (!url.includes('facebook.com/plugins/video.php')) {
-      embedUrl = `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(url)}&show_text=0&autoplay=1&mute=0`;
-    }
-    return {
-      type: 'facebook',
-      embedUrl,
-      rawUrl: url,
-      thumbnailUrl: '',
-      platformName: 'Facebook'
-    };
-  }
-
-  // 3. Instagram Reels / Posts
-  const igMatch = url.match(/instagram\.com\/(?:p|reel|reels)\/([A-Za-z0-9_-]+)/i);
-  if (igMatch) {
-    const code = igMatch[1];
-    return {
-      type: 'instagram',
-      code,
-      embedUrl: `https://www.instagram.com/reel/${code}/embed/`,
-      rawUrl: url,
-      thumbnailUrl: '',
-      platformName: 'Instagram'
-    };
-  }
-
-  // 4. TikTok
+  // 2. TikTok
   const ttMatch = url.match(/tiktok\.com\/(?:@[\w.-]+\/video\/|v\/|embed\/v2\/)(\d+)/i);
   if (ttMatch) {
     const videoId = ttMatch[1];
@@ -79,6 +49,35 @@ export function parseVideoUrl(rawInput = '') {
     };
   }
 
+  // 3. Instagram Reels / Posts
+  const igMatch = url.match(/instagram\.com\/(?:p|reel|reels)\/([A-Za-z0-9_-]+)/i);
+  if (igMatch) {
+    const code = igMatch[1];
+    return {
+      type: 'instagram',
+      code,
+      embedUrl: `https://www.instagram.com/reel/${code}/embed/`,
+      rawUrl: url,
+      thumbnailUrl: '',
+      platformName: 'Instagram'
+    };
+  }
+
+  // 4. Facebook Reels / Videos / Share links
+  if (/facebook\.com|fb\.watch|fb\.com/i.test(url)) {
+    let embedUrl = url;
+    if (!url.includes('facebook.com/plugins/video.php')) {
+      embedUrl = `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(url)}&show_text=0&autoplay=1&mute=0`;
+    }
+    return {
+      type: 'facebook',
+      embedUrl,
+      rawUrl: url,
+      thumbnailUrl: '',
+      platformName: 'Facebook'
+    };
+  }
+
   // 5. Direct MP4 / WebM / Cloud Video
   return {
     type: 'direct',
@@ -90,7 +89,7 @@ export function parseVideoUrl(rawInput = '') {
   };
 }
 
-// ─── REEL PLAYER COMPONENT ────────────────────────────────────────────────────
+// ─── REEL PLAYER COMPONENT (CLEAN EDGE-TO-EDGE) ───────────────────────────────
 export default function ReelPlayer({ url, autoPlay = true, title = '', style = {} }) {
   const videoRef = useRef(null);
   const parsed = parseVideoUrl(url);
@@ -100,17 +99,17 @@ export default function ReelPlayer({ url, autoPlay = true, title = '', style = {
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         background: '#0D111A', color: '#5A6A7E', width: '100%', height: '100%',
-        borderRadius: '14px', fontSize: '0.85rem', ...style
+        fontSize: '0.85rem', ...style
       }}>
         لا يوجد رابط فيديو
       </div>
     );
   }
 
-  // 1. Direct MP4 / MOV Video File (Native High Performance)
+  // 1. Direct MP4 / MOV Video File (Pure Fullscreen)
   if (parsed.type === 'direct') {
     return (
-      <div style={{ width: '100%', height: '100%', background: '#000', borderRadius: '14px', overflow: 'hidden', ...style }}>
+      <div style={{ width: '100%', height: '100%', background: '#000', overflow: 'hidden', ...style }}>
         <video
           ref={videoRef}
           src={parsed.directUrl || url}
@@ -118,16 +117,16 @@ export default function ReelPlayer({ url, autoPlay = true, title = '', style = {
           autoPlay={autoPlay}
           loop
           playsInline
-          style={{ width: '100%', height: '100%', objectFit: 'contain', background: '#000', display: 'block' }}
+          style={{ width: '100%', height: '100%', objectFit: 'cover', background: '#000', display: 'block' }}
         />
       </div>
     );
   }
 
-  // 2. YouTube & YouTube Shorts Embed
+  // 2. YouTube & YouTube Shorts (Pure Fullscreen)
   if (parsed.type === 'youtube') {
     return (
-      <div style={{ width: '100%', height: '100%', background: '#000', borderRadius: '14px', overflow: 'hidden', ...style }}>
+      <div style={{ width: '100%', height: '100%', background: '#000', overflow: 'hidden', ...style }}>
         <iframe
           src={parsed.embedUrl}
           title={title || 'YouTube Video'}
@@ -139,9 +138,40 @@ export default function ReelPlayer({ url, autoPlay = true, title = '', style = {
     );
   }
 
-  // 3. Facebook, Instagram, TikTok Embeds with instant iframe
+  // 3. TikTok (Clipped clean to hide white footer card)
+  if (parsed.type === 'tiktok') {
+    return (
+      <div style={{
+        position: 'relative',
+        width: '100%',
+        height: '100%',
+        background: '#000',
+        overflow: 'hidden',
+        ...style
+      }}>
+        <iframe
+          src={parsed.embedUrl}
+          title={title || 'TikTok Reel'}
+          allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture; web-share"
+          allowFullScreen
+          style={{
+            width: '100%',
+            height: 'calc(100% + 150px)', // Crops out the bottom white footer card!
+            border: 'none',
+            background: '#000',
+            display: 'block',
+            position: 'absolute',
+            top: 0,
+            left: 0
+          }}
+        />
+      </div>
+    );
+  }
+
+  // 4. Facebook & Instagram
   return (
-    <div style={{ position: 'relative', width: '100%', height: '100%', background: '#000', borderRadius: '14px', overflow: 'hidden', ...style }}>
+    <div style={{ position: 'relative', width: '100%', height: '100%', background: '#000', overflow: 'hidden', ...style }}>
       <iframe
         src={parsed.embedUrl}
         title={title || `${parsed.platformName} Video`}

@@ -31,7 +31,7 @@ function FullscreenReelSlide({ reel, index, total }) {
   return (
     <div style={{
       position: 'relative',
-      width: '100%',
+      width: '100vw',
       height: '100dvh',
       scrollSnapAlign: 'start',
       scrollSnapStop: 'always',
@@ -40,49 +40,40 @@ function FullscreenReelSlide({ reel, index, total }) {
       alignItems: 'center',
       justifyContent: 'center',
       overflow: 'hidden',
-      boxSizing: 'border-box',
     }}>
 
-      {/* Video Player (Fills the screen) */}
+      {/* Pure Fullscreen Video Player */}
       <div style={{
         width: '100%',
-        maxWidth: '480px',
         height: '100%',
-        position: 'relative',
+        position: 'absolute',
+        inset: 0,
         background: '#000',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center'
       }}>
         <ReelPlayer
           url={reel.url}
           autoPlay={true}
           title={reel.title}
-          style={{ width: '100%', height: '100%', borderRadius: 0 }}
+          style={{ width: '100%', height: '100%' }}
         />
       </div>
 
-      {/* Gradient Overlays for Readability */}
+      {/* Subtle Bottom Vignette for Text Legibility */}
       <div style={{
-        position: 'absolute', top: 0, left: 0, right: 0, height: '120px',
-        background: 'linear-gradient(180deg, rgba(0,0,0,0.85) 0%, transparent 100%)',
-        pointerEvents: 'none', zIndex: 10
-      }} />
-      <div style={{
-        position: 'absolute', bottom: 0, left: 0, right: 0, height: '220px',
-        background: 'linear-gradient(0deg, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.6) 50%, transparent 100%)',
+        position: 'absolute', bottom: 0, left: 0, right: 0, height: '200px',
+        background: 'linear-gradient(0deg, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.5) 50%, transparent 100%)',
         pointerEvents: 'none', zIndex: 10
       }} />
 
-      {/* Right Side Action Bar (TikTok / Instagram Style) */}
+      {/* Right Side Action Column (TikTok / Instagram Style) */}
       <div style={{
         position: 'absolute',
         right: '12px',
-        bottom: '100px',
+        bottom: '80px',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        gap: '18px',
+        gap: '16px',
         zIndex: 25,
       }}>
         {/* Like Button */}
@@ -90,22 +81,21 @@ function FullscreenReelSlide({ reel, index, total }) {
           onClick={handleLike}
           style={{
             background: 'none', border: 'none', cursor: 'pointer',
-            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px',
             color: '#FFF', padding: 0
           }}
         >
           <div style={{
-            width: '46px', height: '46px', borderRadius: '50%',
-            background: liked ? 'rgba(255, 60, 60, 0.25)' : 'rgba(0, 0, 0, 0.5)',
-            backdropFilter: 'blur(10px)',
-            border: liked ? '1.5px solid #FF3B30' : '1.5px solid rgba(255,255,255,0.25)',
+            width: '44px', height: '44px', borderRadius: '50%',
+            background: liked ? 'rgba(255, 60, 60, 0.3)' : 'rgba(0, 0, 0, 0.6)',
+            backdropFilter: 'blur(8px)',
+            border: liked ? '1.5px solid #FF3B30' : '1.5px solid rgba(255,255,255,0.2)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: '1.4rem', color: liked ? '#FF3B30' : '#FFF',
-            transition: 'transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
+            fontSize: '1.3rem', color: liked ? '#FF3B30' : '#FFF'
           }}>
             {liked ? '❤️' : '🤍'}
           </div>
-          <span style={{ fontSize: '0.72rem', fontWeight: 800, textShadow: '0 2px 4px rgba(0,0,0,0.8)' }}>
+          <span style={{ fontSize: '0.72rem', fontWeight: 800, textShadow: '0 2px 4px rgba(0,0,0,0.9)' }}>
             {likeCount}
           </span>
         </button>
@@ -116,90 +106,75 @@ function FullscreenReelSlide({ reel, index, total }) {
           target="_blank"
           rel="noreferrer"
           style={{
-            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px',
             textDecoration: 'none', color: '#FFF'
           }}
         >
           <div style={{
-            width: '46px', height: '46px', borderRadius: '50%',
+            width: '44px', height: '44px', borderRadius: '50%',
             background: 'linear-gradient(135deg, #25D366, #128C7E)',
             boxShadow: '0 4px 15px rgba(37,211,102,0.4)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: '1.3rem'
+            fontSize: '1.2rem'
           }}>
             📤
           </div>
-          <span style={{ fontSize: '0.7rem', fontWeight: 800, textShadow: '0 2px 4px rgba(0,0,0,0.8)' }}>
+          <span style={{ fontSize: '0.68rem', fontWeight: 800, textShadow: '0 2px 4px rgba(0,0,0,0.9)' }}>
             واتساب
           </span>
         </a>
 
-        {/* Direct Platform Link */}
+        {/* Direct App Link */}
         {parsed.type !== 'direct' && (
           <a
             href={reel.url}
             target="_blank"
             rel="noreferrer"
             style={{
-              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px',
               textDecoration: 'none', color: '#FFF'
             }}
           >
             <div style={{
-              width: '46px', height: '46px', borderRadius: '50%',
-              background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(10px)',
-              border: '1.5px solid rgba(255,255,255,0.25)',
+              width: '40px', height: '40px', borderRadius: '50%',
+              background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)',
+              border: '1.5px solid rgba(255,255,255,0.2)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: '1.1rem'
+              fontSize: '1rem'
             }}>
               🔗
             </div>
-            <span style={{ fontSize: '0.68rem', fontWeight: 700, textShadow: '0 2px 4px rgba(0,0,0,0.8)' }}>
+            <span style={{ fontSize: '0.65rem', fontWeight: 700, textShadow: '0 2px 4px rgba(0,0,0,0.9)' }}>
               {parsed.platformName}
             </span>
           </a>
         )}
-
-        {/* Sport Icon Badge */}
-        <div style={{
-          width: '40px', height: '40px', borderRadius: '50%',
-          background: 'rgba(0,0,0,0.6)',
-          border: `1.5px solid ${sportColor}`,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: '1.1rem'
-        }}>
-          {sportIcon}
-        </div>
       </div>
 
-      {/* Bottom Info Overlay (Title, Sport, Academy Details) */}
+      {/* Bottom Info Overlay (Title & Sport Tag) */}
       <div style={{
         position: 'absolute',
-        bottom: '80px',
+        bottom: '72px',
         left: '16px',
         right: '72px',
         zIndex: 20,
         direction: 'rtl',
         textAlign: 'right'
       }}>
-        {/* Academy Profile & Sport Tag */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-          <div style={{
-            width: '32px', height: '32px', borderRadius: '50%',
-            background: 'linear-gradient(135deg, #FFC107, #FF9500)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: '0.9rem', fontWeight: 900, color: '#000'
+        {/* Sport Tag & Author */}
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+          <span style={{
+            background: 'rgba(0,0,0,0.7)',
+            border: `1px solid ${sportColor}88`,
+            backdropFilter: 'blur(6px)',
+            borderRadius: '8px', padding: '2px 8px',
+            color: '#FFF', fontSize: '0.75rem', fontWeight: 800
           }}>
-            ⭐
-          </div>
-          <div>
-            <div style={{ color: '#FFF', fontWeight: 900, fontSize: '0.88rem', lineHeight: 1.2 }}>
-              أكاديمية أولستار الرياضية
-            </div>
-            <div style={{ color: sportColor, fontSize: '0.72rem', fontWeight: 800 }}>
-              {sportIcon} {reel.sport || 'عام'} · ريل {index + 1} من {total}
-            </div>
-          </div>
+            {sportIcon} {reel.sport || 'عام'}
+          </span>
+          <span style={{ color: '#FFC107', fontWeight: 800, fontSize: '0.78rem' }}>
+            ⭐ All-Star
+          </span>
         </div>
 
         {/* Reel Title */}
@@ -208,10 +183,10 @@ function FullscreenReelSlide({ reel, index, total }) {
             color: '#FFFFFF',
             fontSize: '0.86rem',
             fontWeight: 700,
-            margin: '0 0 8px 0',
+            margin: 0,
             lineHeight: 1.4,
             textShadow: '0 2px 6px rgba(0,0,0,0.9)',
-            maxHeight: '48px',
+            maxHeight: '44px',
             overflow: 'hidden',
             textOverflow: 'ellipsis'
           }}>
@@ -232,7 +207,7 @@ function EmptyState() {
       display: 'flex', flexDirection: 'column', alignItems: 'center',
       justifyContent: 'center', height: '100dvh',
       fontFamily: '"Cairo", "Tajawal", sans-serif', textAlign: 'center',
-      padding: '40px 20px', background: '#05070D', color: '#FFF'
+      padding: '40px 20px', background: '#000', color: '#FFF'
     }}>
       <div style={{ fontSize: '4rem', marginBottom: '16px' }}>🎬</div>
       <h2 style={{ color: '#FFF', fontSize: '1.4rem', fontWeight: 900, margin: '0 0 8px' }}>
@@ -309,47 +284,29 @@ export default function Reels() {
       overflow: 'hidden',
       background: '#000'
     }}>
-      {/* Top Floating Header (Back + Title) */}
-      <div style={{
-        position: 'fixed', top: 'calc(env(safe-area-inset-top, 0px) + 12px)',
-        left: '16px', right: '16px',
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        zIndex: 9999, pointerEvents: 'auto'
-      }}>
-        {/* Back to Home Button */}
-        <button
-          onClick={() => navigate('/')}
-          style={{
-            width: '42px', height: '42px', borderRadius: '50%',
-            background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(12px)',
-            border: '1.5px solid rgba(255,255,255,0.25)',
-            color: '#FFF', fontSize: '1.2rem', cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 4px 15px rgba(0,0,0,0.5)'
-          }}
-        >
-          ←
-        </button>
-
-        {/* Reels Pill */}
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: '6px',
-          background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(12px)',
-          border: '1.5px solid rgba(255, 193, 7, 0.4)',
-          borderRadius: '999px', padding: '6px 16px',
-          color: '#FFC107', fontWeight: 900, fontSize: '0.82rem',
-          boxShadow: '0 4px 15px rgba(0,0,0,0.5)'
-        }}>
-          <span>🎬</span>
-          <span>REELS</span>
-        </div>
-      </div>
+      {/* Top Floating Back Arrow Only */}
+      <button
+        onClick={() => navigate('/')}
+        aria-label="Back"
+        style={{
+          position: 'fixed', top: 'calc(env(safe-area-inset-top, 0px) + 14px)',
+          left: '16px', zIndex: 99999,
+          width: '38px', height: '38px', borderRadius: '50%',
+          background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(8px)',
+          border: '1px solid rgba(255,255,255,0.25)',
+          color: '#FFF', fontSize: '1.2rem', cursor: 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.6)'
+        }}
+      >
+        ←
+      </button>
 
       {/* Fullscreen Vertical Snap Scroll Container */}
       <div
         ref={containerRef}
         style={{
-          width: '100%',
+          width: '100vw',
           height: '100dvh',
           overflowY: 'scroll',
           scrollSnapType: 'y mandatory',
