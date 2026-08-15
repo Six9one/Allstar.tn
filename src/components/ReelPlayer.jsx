@@ -67,7 +67,7 @@ function buildTikTokPlayerUrl(videoId) {
     rel: '0',
     native_context_menu: '0',
     autoplay: '1',
-    muted: '0',
+    muted: '1',
     loop: '1',
   });
   return `https://www.tiktok.com/player/v1/${videoId}?${params.toString()}`;
