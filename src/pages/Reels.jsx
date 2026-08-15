@@ -285,97 +285,55 @@ function ReelSlide({
               {shareCount}
             </span>
           </button>
-
-          {/* Quick Copy Link */}
-          <button
-            onClick={handleCopyLink}
-            aria-label="Copy Link"
-            style={{
-              background: isCopied ? 'rgba(0, 230, 118, 0.35)' : 'rgba(255,255,255,0.15)',
-              border: isCopied ? '1.5px solid #00E676' : '1px solid rgba(255,255,255,0.3)',
-              backdropFilter: 'blur(8px)',
-              width: '34px', height: '34px', borderRadius: '50%',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              cursor: 'pointer', color: isCopied ? '#00E676' : '#FFF', fontSize: '0.85rem'
-            }}
-          >
-            {isCopied ? '✓' : '🔗'}
-          </button>
         </div>
 
-        {/* ─── BOTTOM OVERLAY: ACADEMY PROFILE & TITLE (RTL) ────────────────── */}
-        <div style={{
-          position: 'absolute',
-          bottom: 'calc(env(safe-area-inset-bottom, 0px) + 82px)',
-          left: '16px',
-          right: '72px',
-          zIndex: 25,
-          direction: 'rtl',
-          textAlign: 'right',
-          pointerEvents: 'none'
-        }}>
-          {/* Academy Identity & Sport */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-            <div style={{
-              color: '#FFFFFF', fontWeight: 900, fontSize: '0.95rem',
-              lineHeight: 1.2, textShadow: '0 2px 6px rgba(0,0,0,0.9)',
-              display: 'flex', alignItems: 'center', gap: '6px'
-            }}>
-              <span>@allstar.sports.ac</span>
-              <span style={{ color: '#00E5FF', fontSize: '0.85rem' }}>✓</span>
-            </div>
-            <span style={{
-              fontSize: '0.68rem', fontWeight: 800, padding: '2px 8px', borderRadius: '4px',
-              background: 'rgba(255,193,7,0.2)', color: sportColor, border: `1px solid ${sportColor}`
-            }}>
-              {sportIcon} {reel.sport || 'عام'}
-            </span>
-          </div>
-
-          {/* Title */}
-          {reel.title && (
-            <p style={{
-              color: '#FFFFFF',
-              fontSize: '0.88rem',
-              fontWeight: 700,
-              margin: '0 0 4px 0',
-              lineHeight: 1.4,
-              textShadow: '0 2px 8px rgba(0,0,0,0.95)',
-              maxHeight: '44px',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis'
-            }}>
-              {reel.title}
-            </p>
-          )}
-
-          {/* Description */}
-          {reel.description && (
-            <p style={{
-              color: 'rgba(255,255,255,0.85)',
-              fontSize: '0.78rem',
-              fontWeight: 500,
-              margin: 0,
-              lineHeight: 1.3,
-              textShadow: '0 2px 6px rgba(0,0,0,0.95)',
-              maxHeight: '34px',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis'
-            }}>
-              {reel.description}
-            </p>
-          )}
-
-          {/* Sound Track Pill */}
+        {/* ─── BOTTOM OVERLAY: TITLE ONLY (CLEAN TIKTOK STYLE) ──────────────── */}
+        {(reel.title || reel.description) && (
           <div style={{
-            display: 'inline-flex', alignItems: 'center', gap: '6px',
-            marginTop: '6px', color: '#FFF', fontSize: '0.72rem',
-            opacity: 0.9, textShadow: '0 1px 4px rgba(0,0,0,0.8)'
+            position: 'absolute',
+            bottom: 'calc(env(safe-area-inset-bottom, 0px) + 82px)',
+            left: '16px',
+            right: '72px',
+            zIndex: 25,
+            direction: 'rtl',
+            textAlign: 'right',
+            pointerEvents: 'none'
           }}>
-            <span>🎵</span>
-            <span>الصوت الأصلي - أكاديمية أولستار الرياضية</span>
+            {/* Title */}
+            {reel.title && (
+              <p style={{
+                color: '#FFFFFF',
+                fontSize: '0.9rem',
+                fontWeight: 700,
+                margin: '0 0 4px 0',
+                lineHeight: 1.4,
+                textShadow: '0 2px 8px rgba(0,0,0,0.95)',
+                maxHeight: '44px',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis'
+              }}>
+                {reel.title}
+              </p>
+            )}
+
+            {/* Description */}
+            {reel.description && (
+              <p style={{
+                color: 'rgba(255,255,255,0.85)',
+                fontSize: '0.78rem',
+                fontWeight: 500,
+                margin: 0,
+                lineHeight: 1.3,
+                textShadow: '0 2px 6px rgba(0,0,0,0.95)',
+                maxHeight: '34px',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis'
+              }}>
+                {reel.description}
+              </p>
+            )}
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
