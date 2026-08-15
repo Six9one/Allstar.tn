@@ -3431,7 +3431,7 @@ export default function Admin() {
                               border: '1px solid currentColor',
                             }}>
                               {parsed.type === 'youtube'   ? '▶ YouTube Video/Shorts' :
-                               parsed.type === 'tiktok'    ? '🎵 TikTok' :
+                               parsed.type === 'tiktok'    ? '🎵 TikTok (شغال فوراً)' :
                                parsed.type === 'facebook'  ? '📘 Facebook Reel/Video' :
                                parsed.type === 'instagram' ? '📷 Instagram Reel' :
                                '🎥 MP4 مباشر'}
@@ -3442,6 +3442,16 @@ export default function Admin() {
                           ✓ تم التعرف على الفيديو وجاهز للنشر
                         </span>
                       </div>
+
+                      {newReelUrl.includes('facebook.com/share') && (
+                        <div style={{
+                          marginBottom: '10px', padding: '8px 12px', borderRadius: '10px',
+                          background: 'rgba(255,193,7,0.1)', border: '1px solid rgba(255,193,7,0.3)',
+                          fontSize: '0.75rem', color: '#FFC107', lineHeight: 1.4
+                        }}>
+                          💡 <strong>ملاحظة لروابط فيسبوك:</strong> إذا ظهر الفيديو أسود في فيسبوك، افتح الرابط في المتصفح وانسخ رابط الريل المباشر (الذي يحتوي على <code>facebook.com/reel/...</code> أو <code>watch/?v=...</code>) لأن فيسبوك يمنع روابط <code>share/r/</code> التوجيهية المؤقتة.
+                        </div>
+                      )}
 
                       {/* LIVE EMBED PREVIEW */}
                       <div style={{
