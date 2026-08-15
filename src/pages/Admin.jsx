@@ -1392,17 +1392,22 @@ export default function Admin() {
     }
   };
 
+  const [newReelDesc,  setNewReelDesc]  = useState('');
+
   const handleAddReel = async () => {
-    if (!newReelUrl.trim()) return;
-    const parsed = parseVideoUrl(newReelUrl);
-    const thumb = newReelThumb || parsed.thumbnailUrl || '';
+    const directUrl = newReelUrl.trim();
+    if (!directUrl) return;
+
     const newReel = {
       id: 'REEL-' + Date.now(),
-      url: newReelUrl.trim(),
-      type: parsed.type,
-      thumbnailUrl: thumb,
+      video_url: directUrl,
+      url: directUrl, // backwards compatibility
+      thumbnail_url: newReelThumb.trim(),
+      thumbnailUrl: newReelThumb.trim(), // backwards compatibility
       title: newReelTitle.trim(),
+      description: newReelDesc.trim(),
       sport: newReelSport,
+      active: true,
       createdAt: new Date().toISOString(),
     };
     const updated = [newReel, ...reels];
@@ -1413,8 +1418,8 @@ export default function Admin() {
     } catch (e) {
       showSuccess('🎬 تم حفظ الريل محلياً');
     }
-    setNewReelUrl(''); setNewReelType(''); setNewReelThumb('');
-    setNewReelTitle(''); setNewReelSport('General');
+    setNewReelUrl(''); setNewReelThumb('');
+    setNewReelTitle(''); setNewReelDesc(''); setNewReelSport('General');
   };
 
   const handleDeleteReel = async (id) => {
@@ -3331,29 +3336,29 @@ export default function Admin() {
                   background: 'rgba(255,193,7,0.12)', border: '1px solid rgba(255,193,7,0.3)',
                   color: '#FFC107', borderRadius: '12px', padding: '4px 10px', fontSize: '0.74rem', fontWeight: 800
                 }}>
-                  يظهر فوراً في قسم Reels والصفحة الرئيسية
+                  بث فيديو مباشر بدون أي إطارات أو صفحات خارجية
                 </span>
               </div>
               <p style={{ color: '#8E9BAE', fontSize: '0.84rem', marginBottom: '20px', lineHeight: 1.5 }}>
-                يمكنك لصق رابط من (YouTube / TikTok / Facebook / Instagram) أو رفع ملف فيديو MP4 مباشرة من هاتفك أو جهازك.
+                ارفع فيديو MP4 أو MOV من هاتفك/جهازك، أو أدخل رابط ملف فيديو مباشر. يتم تشغيل الفيديو بمشغل HTML5 المدمج داخل تطبيق الأكاديمية بنقاء وسرعة فائقة.
               </p>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
 
-                {/* Option 1: Direct File Upload */}
+                {/* Direct File Upload Banner */}
                 <div style={{
-                  padding: '16px', borderRadius: '16px',
-                  background: 'rgba(0, 230, 118, 0.04)', border: '1.5px dashed rgba(0, 230, 118, 0.3)',
+                  padding: '18px', borderRadius: '16px',
+                  background: 'rgba(0, 230, 118, 0.05)', border: '1.5px dashed rgba(0, 230, 118, 0.35)',
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px'
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <span style={{ fontSize: '1.8rem' }}>📁</span>
+                    <span style={{ fontSize: '2.2rem' }}>📁</span>
                     <div>
-                      <div style={{ fontWeight: 800, fontSize: '0.9rem', color: '#00E676' }}>
-                        رفع فيديو MP4 / MOV مباشرة
+                      <div style={{ fontWeight: 800, fontSize: '0.95rem', color: '#00E676' }}>
+                        رفع ملف فيديو MP4 / MOV مباشرة من جهازك
                       </div>
-                      <div style={{ fontSize: '0.74rem', color: '#8E9BAE' }}>
-                        تشغيل مباشر فائق السرعة وبدون إعلانات (حتى 60MB)
+                      <div style={{ fontSize: '0.75rem', color: '#8E9BAE' }}>
+                        يُرفع الفيديو إلى مساحة التخزين الخاصة بالأكاديمية ويُعرض بمشغل أصلي نقي
                       </div>
                     </div>
                   </div>
@@ -3371,9 +3376,9 @@ export default function Admin() {
                     disabled={isUploadingVideo}
                     onClick={() => videoFileInputRef.current?.click()}
                     style={{
-                      padding: '10px 20px', borderRadius: '12px',
+                      padding: '12px 24px', borderRadius: '12px',
                       background: isUploadingVideo ? 'rgba(255,255,255,0.1)' : 'linear-gradient(135deg, #00E676, #00B0FF)',
-                      border: 'none', color: '#000', fontWeight: 900, fontSize: '0.85rem',
+                      border: 'none', color: '#000', fontWeight: 900, fontSize: '0.88rem',
                       cursor: isUploadingVideo ? 'wait' : 'pointer',
                       fontFamily: '"Cairo", "Tajawal", sans-serif',
                       boxShadow: '0 4px 15px rgba(0,230,118,0.25)'
@@ -3384,12 +3389,12 @@ export default function Admin() {
                 </div>
 
                 <div style={{ textAlign: 'center', color: '#5A6A7E', fontSize: '0.78rem', fontWeight: 700 }}>
-                  — أو الصق رابط الفيديو أدناه —
+                  — أو ضع رابط فيديو مباشر (MP4/WebM) —
                 </div>
 
-                {/* Option 2: URL Input */}
+                {/* Direct Video URL Input */}
                 <div>
-                  <label style={labelStyle}>رابط الفيديو (YouTube Shorts / TikTok / Facebook Reel / Instagram / MP4 URL)</label>
+                  <label style={labelStyle}>رابط ملف الفيديو المباشر (Video URL)</label>
                   <input
                     type="url"
                     value={newReelUrl}
@@ -3400,70 +3405,28 @@ export default function Admin() {
                         if (m && m[1]) val = m[1].replace(/&amp;/g, '&');
                       }
                       setNewReelUrl(val);
-                      const parsed = parseVideoUrl(val);
-                      setNewReelType(parsed.type);
-                      if (parsed.thumbnailUrl && !newReelThumb) {
-                        setNewReelThumb(parsed.thumbnailUrl);
-                      }
                     }}
-                    placeholder="الصق رابط الفيديو أو كود التضمين (iframe) من YouTube / Facebook / TikTok / Instagram"
+                    placeholder="https://... رابط الفيديو (MP4 / WebM)"
                     style={inputStyle}
                   />
 
                   {newReelUrl && (
-                    <div style={{ marginTop: '12px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '10px' }}>
-                        {(() => {
-                          const parsed = parseVideoUrl(newReelUrl);
-                          return (
-                            <span style={{
-                              padding: '4px 12px', borderRadius: '8px', fontSize: '0.74rem', fontWeight: 800,
-                              background: parsed.type === 'youtube' ? 'rgba(255,0,0,0.15)' :
-                                          parsed.type === 'tiktok'  ? 'rgba(0,0,0,0.4)' :
-                                          parsed.type === 'facebook'? 'rgba(24,119,242,0.2)' :
-                                          parsed.type === 'instagram'? 'rgba(225,48,108,0.2)' :
-                                          'rgba(0,230,118,0.15)',
-                              color: parsed.type === 'youtube' ? '#FF4444' :
-                                     parsed.type === 'tiktok'  ? '#FFF' :
-                                     parsed.type === 'facebook'? '#4A9BFF' :
-                                     parsed.type === 'instagram'? '#FF6EA7' :
-                                     '#00E676',
-                              border: '1px solid currentColor',
-                            }}>
-                              {parsed.type === 'youtube'   ? '▶ YouTube Video/Shorts' :
-                               parsed.type === 'tiktok'    ? '🎵 TikTok (شغال فوراً)' :
-                               parsed.type === 'facebook'  ? '📘 Facebook Reel/Video' :
-                               parsed.type === 'instagram' ? '📷 Instagram Reel' :
-                               '🎥 MP4 مباشر'}
-                            </span>
-                          );
-                        })()}
-                        <span style={{ fontSize: '0.74rem', color: '#00E676', fontWeight: 700 }}>
-                          ✓ تم التعرف على الفيديو وجاهز للنشر
-                        </span>
-                      </div>
-
-                      {newReelUrl.includes('facebook.com/share') && (
-                        <div style={{
-                          marginBottom: '10px', padding: '8px 12px', borderRadius: '10px',
-                          background: 'rgba(255,193,7,0.1)', border: '1px solid rgba(255,193,7,0.3)',
-                          fontSize: '0.75rem', color: '#FFC107', lineHeight: 1.4
-                        }}>
-                          💡 <strong>ملاحظة لروابط فيسبوك:</strong> إذا ظهر الفيديو أسود في فيسبوك، افتح الرابط في المتصفح وانسخ رابط الريل المباشر (الذي يحتوي على <code>facebook.com/reel/...</code> أو <code>watch/?v=...</code>) لأن فيسبوك يمنع روابط <code>share/r/</code> التوجيهية المؤقتة.
-                        </div>
-                      )}
-
-                      {/* LIVE EMBED PREVIEW */}
+                    <div style={{ marginTop: '14px' }}>
                       <div style={{
                         borderRadius: '14px', overflow: 'hidden',
                         background: '#070A10', border: '1px solid rgba(255,255,255,0.12)',
-                        padding: '10px', display: 'flex', flexDirection: 'column', alignItems: 'center'
+                        padding: '12px', display: 'flex', flexDirection: 'column', alignItems: 'center'
                       }}>
-                        <div style={{ fontSize: '0.75rem', color: '#FFC107', fontWeight: 800, marginBottom: '8px' }}>
-                          👁️ معاينة مباشرة لتشغيل الفيديو:
+                        <div style={{ fontSize: '0.78rem', color: '#00E676', fontWeight: 800, marginBottom: '10px' }}>
+                          👁️ معاينة مباشرة لتشغيل الفيديو النقي (Native Player):
                         </div>
-                        <div style={{ width: '100%', maxWidth: '280px', height: '320px', borderRadius: '10px', overflow: 'hidden' }}>
-                          <ReelPlayer url={newReelUrl} autoPlay={false} />
+                        <div style={{ width: '100%', maxWidth: '240px', height: '340px', borderRadius: '12px', overflow: 'hidden', background: '#000' }}>
+                          <ReelPlayer
+                            url={newReelUrl}
+                            poster={newReelThumb}
+                            isActive={true}
+                            isMuted={true}
+                          />
                         </div>
                       </div>
                     </div>
@@ -3472,7 +3435,7 @@ export default function Admin() {
 
                 {/* Thumbnail input */}
                 <div>
-                  <label style={labelStyle}>الصورة المصغرة (تلقائية لـ YouTube — اختيارية لباقي المنصات)</label>
+                  <label style={labelStyle}>رابط الصورة المصغرة / الغلاف (Poster Image - اختياري)</label>
                   <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
                     {newReelThumb ? (
                       <img
@@ -3487,14 +3450,14 @@ export default function Admin() {
                         background: 'rgba(255,255,255,0.04)', border: '1px dashed rgba(255,255,255,0.15)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', flexShrink: 0
                       }}>
-                        🎬
+                        🖼️
                       </div>
                     )}
                     <input
                       type="url"
                       value={newReelThumb}
                       onChange={e => setNewReelThumb(e.target.value)}
-                      placeholder="https://... رابط الصورة المصغرة (اختياري)"
+                      placeholder="https://... رابط صورة الغلاف (اختياري)"
                       style={{ ...inputStyle, flex: 1 }}
                     />
                   </div>
@@ -3503,7 +3466,7 @@ export default function Admin() {
                 {/* Title + Sport */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                   <div>
-                    <label style={labelStyle}>عنوان الريل (اختياري)</label>
+                    <label style={labelStyle}>عنوان الريل</label>
                     <input
                       type="text"
                       value={newReelTitle}
@@ -3529,6 +3492,18 @@ export default function Admin() {
                   </div>
                 </div>
 
+                {/* Description */}
+                <div>
+                  <label style={labelStyle}>وصف قصير أو تفاصيل (اختياري)</label>
+                  <input
+                    type="text"
+                    value={newReelDesc}
+                    onChange={e => setNewReelDesc(e.target.value)}
+                    placeholder="مثال: تمارين التحكم بالكرة والتسديد بالمركب البلدي بتطاوين"
+                    style={inputStyle}
+                  />
+                </div>
+
                 {/* Submit button */}
                 <button
                   type="button"
@@ -3537,18 +3512,18 @@ export default function Admin() {
                   style={{
                     padding: '16px',
                     background: newReelUrl.trim()
-                      ? 'linear-gradient(135deg, #FF3D00, #FF9500)'
+                      ? 'linear-gradient(135deg, #FFC107, #FF9500)'
                       : 'rgba(255,255,255,0.06)',
                     border: 'none', borderRadius: '14px',
-                    color: newReelUrl.trim() ? '#FFF' : '#5A6A7E',
+                    color: newReelUrl.trim() ? '#000' : '#5A6A7E',
                     fontWeight: 900, fontSize: '1rem',
                     cursor: newReelUrl.trim() ? 'pointer' : 'default',
                     fontFamily: '"Cairo", "Tajawal", sans-serif',
-                    boxShadow: newReelUrl.trim() ? '0 8px 25px rgba(255,61,0,0.35)' : 'none',
+                    boxShadow: newReelUrl.trim() ? '0 8px 25px rgba(255,193,7,0.35)' : 'none',
                     transition: 'all 0.2s'
                   }}
                 >
-                  🚀 نشر الريل على الموقع فوراً
+                  🚀 نشر الريل على تطبيق الأكاديمية فوراً
                 </button>
               </div>
             </div>
@@ -3566,16 +3541,16 @@ export default function Admin() {
                     rel="noreferrer"
                     style={{ color: '#FFC107', fontSize: '0.8rem', fontWeight: 800, textDecoration: 'none' }}
                   >
-                    ↗ معاينة صفحة الريلز
+                    ↗ معاينة شاشة Reels الأصلية
                   </a>
                 </div>
 
                 {reels.map((reel, idx) => {
-                  const parsed = parseVideoUrl(reel.url);
-                  const thumb = reel.thumbnailUrl || parsed.thumbnailUrl;
+                  const videoSrc = reel.video_url || reel.url || '';
+                  const thumb = reel.thumbnail_url || reel.thumbnailUrl;
                   return (
                     <div
-                      key={reel.id}
+                      key={reel.id || idx}
                       style={{
                         ...cardStyle,
                         display: 'flex', alignItems: 'center', gap: '14px', padding: '14px 18px'
@@ -3591,7 +3566,7 @@ export default function Admin() {
                       ) : (
                         <div style={{
                           width: '48px', height: '64px', borderRadius: '8px',
-                          background: 'rgba(255,61,0,0.12)', border: '1px solid rgba(255,61,0,0.2)',
+                          background: 'rgba(255,193,7,0.12)', border: '1px solid rgba(255,193,7,0.2)',
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
                           fontSize: '1.3rem', flexShrink: 0
                         }}>
@@ -3605,14 +3580,14 @@ export default function Admin() {
                           {reel.title || `ريل ${idx + 1}`}
                         </div>
                         <div style={{ fontSize: '0.74rem', color: '#8E9BAE', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', direction: 'ltr', textAlign: 'left' }}>
-                          {reel.url}
+                          {videoSrc}
                         </div>
                         <div style={{ marginTop: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                           <span style={{
                             fontSize: '0.68rem', fontWeight: 800, padding: '2px 8px', borderRadius: '6px',
-                            background: 'rgba(255,61,0,0.12)', color: '#FF6E40', border: '1px solid rgba(255,61,0,0.25)'
+                            background: 'rgba(0,230,118,0.12)', color: '#00E676', border: '1px solid rgba(0,230,118,0.25)'
                           }}>
-                            {parsed.platformName}
+                            فيديو مباشر
                           </span>
                           <span style={{ fontSize: '0.68rem', color: '#5A6A7E' }}>
                             {reel.sport || 'عام'}
@@ -3641,7 +3616,7 @@ export default function Admin() {
                 <div style={{ fontSize: '3rem', marginBottom: '12px' }}>🎬</div>
                 <h3 style={{ color: '#FFF', margin: '0 0 8px' }}>لا توجد أي ريلز منشورة بعد</h3>
                 <p style={{ margin: 0, fontSize: '0.85rem' }}>
-                  الصق أول رابط (YouTube Shorts / TikTok / Facebook) أو ارفع ملف MP4 أعلاه لنشره فوراً!
+                  ارفع أول ملف فيديو MP4 أعلاه لنشره فوراً على شاشة Reels!
                 </p>
               </div>
             )}

@@ -386,8 +386,8 @@ export default function Home() {
               WebkitOverflowScrolling: 'touch'
             }}>
               {reels.map((reel) => {
-                const parsed = parseVideoUrl(reel.url);
-                const thumb = reel.thumbnailUrl || parsed.thumbnailUrl;
+                const videoSrc = reel.video_url || reel.url || '';
+                const thumb = reel.thumbnail_url || reel.thumbnailUrl || '';
                 return (
                   <div
                     key={reel.id}
@@ -419,8 +419,8 @@ export default function Home() {
                         display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '6px'
                       }}>
                         <span style={{ fontSize: '2rem' }}>🎬</span>
-                        <span style={{ fontSize: '0.65rem', color: '#8E9BAE', fontWeight: 700 }}>
-                          {parsed.platformName}
+                        <span style={{ fontSize: '0.65rem', color: '#FFC107', fontWeight: 800 }}>
+                          {reel.sport || 'ريل'}
                         </span>
                       </div>
                     )}
@@ -490,15 +490,21 @@ export default function Home() {
 
             <div style={{
               width: '100%', maxWidth: '420px', height: '75vh', maxHeight: '720px',
-              borderRadius: '16px', overflow: 'hidden', background: '#000',
+              borderRadius: '20px', overflow: 'hidden', background: '#000',
               boxShadow: '0 20px 50px rgba(0,0,0,0.9)'
             }}>
-              <ReelPlayer url={activeReel.url} autoPlay={true} title={activeReel.title} />
+              <ReelPlayer
+                url={activeReel.video_url || activeReel.url}
+                poster={activeReel.thumbnail_url || activeReel.thumbnailUrl}
+                isActive={true}
+                isMuted={false}
+                title={activeReel.title}
+              />
             </div>
 
             <div style={{ marginTop: '16px', display: 'flex', gap: '12px' }}>
               <a
-                href={`https://wa.me/?text=${encodeURIComponent(`🎬 شاهد هذا الريل من أكاديمية أولستار الرياضية!\n${activeReel.url}`)}`}
+                href={`https://wa.me/?text=${encodeURIComponent(`🎬 شاهد هذا الريل من أكاديمية أولستار الرياضية!\n${activeReel.video_url || activeReel.url}`)}`}
                 target="_blank"
                 rel="noreferrer"
                 style={{
