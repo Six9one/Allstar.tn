@@ -1,7 +1,7 @@
 import { Routes, Route, useLocation } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { LanguageProvider } from './context/LanguageContext'
-import DrawerMenu, { DrawerProvider } from './components/DrawerMenu'
+import DrawerRoot from './components/DrawerMenu'
 import Navbar from './components/Navbar'
 import BottomNav from './components/BottomNav'
 import InstallPrompt from './components/InstallPrompt'
@@ -68,58 +68,55 @@ export default function App() {
 
   return (
     <LanguageProvider>
-      <DrawerProvider>
-        <div className="app-root-layout">
-          <ScrollToTop />
+      <DrawerRoot currentUser={currentUser}>
+        <ScrollToTop />
 
-          {/* 1. FIXED TOP NAVBAR */}
-          {!isReelsPage && (
-            <Navbar onOpenOnboarding={() => setShowOnboarding(true)} currentUser={currentUser} />
-          )}
+        {/* 1. FIXED TOP NAVBAR */}
+        {!isReelsPage && (
+          <Navbar onOpenOnboarding={() => setShowOnboarding(true)} currentUser={currentUser} />
+        )}
 
-          {/* 2. MAIN SCROLLABLE CONTENT WITH HARD PADDING */}
-          <main className={isReelsPage ? 'reels-fullscreen-main' : 'main-content'}>
-            <Routes>
-              <Route path="/" element={<Home currentUser={currentUser} onOpenOnboarding={() => setShowOnboarding(true)} />} />
-              <Route path="/programs" element={<Programs />} />
-              <Route path="/academy" element={<Academy />} />
-              <Route path="/register" element={<Register />} />
-              <Route path="/schedule" element={<Schedule />} />
-              <Route path="/contact" element={<Contact />} />
-              <Route path="/gallery" element={<Gallery />} />
-              <Route path="/events" element={<Events />} />
-              <Route path="/pricing" element={<Pricing />} />
-              <Route path="/shop" element={<Shop />} />
-              <Route path="/portal" element={<Portal currentUser={currentUser} />} />
-              <Route path="/coach-portal" element={<CoachPortal currentUser={currentUser} />} />
-              <Route path="/admin" element={<Admin />} />
-              <Route path="/drills" element={<Drills />} />
-              <Route path="/player-cards" element={<PlayerCards />} />
-              <Route path="/weather-status" element={<WeatherStatus />} />
-              <Route path="/feedback" element={<Feedback />} />
-              <Route path="/reels" element={<Reels />} />
-              <Route path="/certificates" element={<Certificates />} />
-            </Routes>
-          </main>
+        {/* 2. MAIN SCROLLABLE CONTENT WITH HARD PADDING */}
+        <main className={isReelsPage ? 'reels-fullscreen-main' : 'main-content'}>
+          <Routes>
+            <Route path="/" element={<Home currentUser={currentUser} onOpenOnboarding={() => setShowOnboarding(true)} />} />
+            <Route path="/programs" element={<Programs />} />
+            <Route path="/academy" element={<Academy />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/schedule" element={<Schedule />} />
+            <Route path="/contact" element={<Contact />} />
+            <Route path="/gallery" element={<Gallery />} />
+            <Route path="/events" element={<Events />} />
+            <Route path="/pricing" element={<Pricing />} />
+            <Route path="/shop" element={<Shop />} />
+            <Route path="/portal" element={<Portal currentUser={currentUser} />} />
+            <Route path="/coach-portal" element={<CoachPortal currentUser={currentUser} />} />
+            <Route path="/admin" element={<Admin />} />
+            <Route path="/drills" element={<Drills />} />
+            <Route path="/player-cards" element={<PlayerCards />} />
+            <Route path="/weather-status" element={<WeatherStatus />} />
+            <Route path="/feedback" element={<Feedback />} />
+            <Route path="/reels" element={<Reels />} />
+            <Route path="/certificates" element={<Certificates />} />
+          </Routes>
+        </main>
 
-          {/* 3. FIXED BOTTOM NAVIGATION BAR */}
-          <BottomNav />
+        {/* 3. FIXED BOTTOM NAVIGATION BAR */}
+        <BottomNav />
 
-          {/* 4. FLOATING OVERLAY DRAWER MENU */}
-          <DrawerMenu currentUser={currentUser} />
+        {/* 4. MODALS & POPUPS */}
+        <OnboardingModal
+          isOpen={showOnboarding}
+          onClose={() => setShowOnboarding(false)}
+          onLoginSuccess={handleLoginSuccess}
+        />
+      </DrawerRoot>
 
-          {/* 5. MODALS & POPUPS */}
-          <OnboardingModal
-            isOpen={showOnboarding}
-            onClose={() => setShowOnboarding(false)}
-            onLoginSuccess={handleLoginSuccess}
-          />
-          <AutoUpdater />
-          <InstallPrompt />
-          <PushNotificationBanner />
-          <PWAInstalledNotificationModal />
-        </div>
-      </DrawerProvider>
+      {/* Floating System Modals - rendered outside drawer transform */}
+      <AutoUpdater />
+      <InstallPrompt />
+      <PushNotificationBanner />
+      <PWAInstalledNotificationModal />
     </LanguageProvider>
   )
 }
