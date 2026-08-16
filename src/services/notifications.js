@@ -453,6 +453,139 @@ class NotificationService {
     window.open(smsUrl, '_blank');
   }
 
+  getNotificationConfig() {
+    try {
+      const siteContent = db.getSiteContent();
+      if (siteContent?.notification_config) {
+        return siteContent.notification_config;
+      }
+      const local = JSON.parse(localStorage.getItem('allstar_notification_config'));
+      if (local) return local;
+    } catch {}
+    return {
+      logoUrl: '',
+      soundType: 'tri-tone',
+      customSoundUrl: '',
+      appTitle: 'ALL-STAR SPORTS ACADEMY',
+      appSubtitle: 'أكاديمية أولستار تطاوين 🇹🇳'
+    };
+  }
+
+  saveNotificationConfig(config) {
+    try {
+      localStorage.setItem('allstar_notification_config', JSON.stringify(config));
+      const currentSite = db.getSiteContent();
+      db.saveSiteContent({
+        ...currentSite,
+        notification_config: config
+      });
+      if (this.broadcastChannel) {
+        this.broadcastChannel.postMessage({ type: 'CONFIG_UPDATED', config });
+      }
+      this.notifyListeners();
+    } catch (e) {
+      console.warn('Error saving notification config:', e);
+    }
+  }
+
+  playConfiguredSound(customConfig) {
+    const config = customConfig || this.getNotificationConfig();
+    const soundType = config.soundType || 'tri-tone';
+
+    if (soundType === 'custom' && config.customSoundUrl) {
+      try {
+        const audio = new Audio(config.customSoundUrl);
+        audio.volume = 0.7;
+        const p = audio.play();
+        if (p !== undefined) {
+          p.catch(() => this.playTriToneSound());
+        }
+        return;
+      } catch {
+        this.playTriToneSound();
+        return;
+      }
+    }
+
+    if (soundType === 'whistle') {
+      this.playWhistleSound();
+    } else if (soundType === 'crystal') {
+      this.playCrystalSound();
+    } else {
+      this.playTriToneSound();
+    }
+  }
+
+  playTriToneSound() {
+    try {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContext) return;
+      const ctx = new AudioContext();
+      const notes = [
+        { freq: 783.99, delay: 0.0,  duration: 0.35, gain: 0.22 },
+        { freq: 987.77, delay: 0.08, duration: 0.40, gain: 0.20 },
+        { freq: 1318.51, delay: 0.16, duration: 0.65, gain: 0.28 },
+      ];
+      const master = ctx.createGain();
+      master.gain.setValueAtTime(0.7, ctx.currentTime);
+      master.connect(ctx.destination);
+      notes.forEach(({ freq, delay, duration, gain }) => {
+        const osc = ctx.createOscillator();
+        const g = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, ctx.currentTime + delay);
+        g.gain.setValueAtTime(0.001, ctx.currentTime + delay);
+        g.gain.exponentialRampToValueAtTime(gain, ctx.currentTime + delay + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + delay + duration);
+        osc.connect(g);
+        g.connect(master);
+        osc.start(ctx.currentTime + delay);
+        osc.stop(ctx.currentTime + delay + duration + 0.05);
+      });
+    } catch {}
+  }
+
+  playWhistleSound() {
+    try {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContext) return;
+      const ctx = new AudioContext();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(2200, ctx.currentTime);
+      osc.frequency.linearRampToValueAtTime(2600, ctx.currentTime + 0.08);
+      osc.frequency.linearRampToValueAtTime(2300, ctx.currentTime + 0.25);
+      gain.gain.setValueAtTime(0.01, ctx.currentTime);
+      gain.gain.linearRampToValueAtTime(0.25, ctx.currentTime + 0.05);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.36);
+    } catch {}
+  }
+
+  playCrystalSound() {
+    try {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContext) return;
+      const ctx = new AudioContext();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(1046.5, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(2093.0, ctx.currentTime + 0.12);
+      gain.gain.setValueAtTime(0.01, ctx.currentTime);
+      gain.gain.linearRampToValueAtTime(0.3, ctx.currentTime + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.4);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.42);
+    } catch {}
+  }
+
   subscribe(listener) {
     this.listeners.push(listener);
     return () => {

@@ -4,66 +4,7 @@ import { notificationService } from '../services/notifications';
 import logoLight from '../assets/logo-light.png';
 import logoBadge from '../assets/logo-badge.jpg';
 
-// High-Definition Logo source: uses crisp logoLight transparent PNG with logoBadge fallback
-const HD_NOTIFICATION_LOGO = logoLight || logoBadge || '/icon.png';
-
-// ─── LUXURY CHIME SOUND ENGINE (Apple Tri-Tone Harmonic Chord + Custom MP3 Support) ───
-function playNotificationChime() {
-  // 1. Try custom MP3 in /public folder first
-  try {
-    const audio = new Audio('/notification.mp3');
-    audio.volume = 0.6;
-    const playPromise = audio.play();
-    if (playPromise !== undefined) {
-      playPromise.catch(() => {
-        // Fallback to Web Audio Harmonic Bell Chime
-        playAcousticBellChime();
-      });
-      return;
-    }
-  } catch {
-    playAcousticBellChime();
-  }
-}
-
-function playAcousticBellChime() {
-  try {
-    const AudioContext = window.AudioContext || window.webkitAudioContext;
-    if (!AudioContext) return;
-    const ctx = new AudioContext();
-
-    // Silky Apple Tri-Tone Chord: G5 (784Hz), B5 (987.7Hz), E6 (1318.5Hz)
-    const notes = [
-      { freq: 783.99, delay: 0.0,  duration: 0.35, gain: 0.22 },
-      { freq: 987.77, delay: 0.08, duration: 0.40, gain: 0.20 },
-      { freq: 1318.51, delay: 0.16, duration: 0.65, gain: 0.28 },
-    ];
-
-    const masterGain = ctx.createGain();
-    masterGain.gain.setValueAtTime(0.7, ctx.currentTime);
-    masterGain.connect(ctx.destination);
-
-    notes.forEach(({ freq, delay, duration, gain }) => {
-      const osc = ctx.createOscillator();
-      const noteGain = ctx.createGain();
-
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(freq, ctx.currentTime + delay);
-
-      noteGain.gain.setValueAtTime(0.001, ctx.currentTime + delay);
-      noteGain.gain.exponentialRampToValueAtTime(gain, ctx.currentTime + delay + 0.02);
-      noteGain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + delay + duration);
-
-      osc.connect(noteGain);
-      noteGain.connect(masterGain);
-
-      osc.start(ctx.currentTime + delay);
-      osc.stop(ctx.currentTime + delay + duration + 0.05);
-    });
-  } catch (e) {
-    console.log('Audio chime error:', e);
-  }
-}
+const DEFAULT_HD_LOGO = logoLight || logoBadge || '/icon.png';
 
 export default function PushNotificationBanner() {
   const [activeNotification, setActiveNotification] = useState(null);
@@ -71,6 +12,7 @@ export default function PushNotificationBanner() {
   const [permissionState, setPermissionState] = useState('default');
   const [isRequesting, setIsRequesting] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
+  const [notifConfig, setNotifConfig] = useState(() => notificationService.getNotificationConfig());
   const autoDismissTimerRef = useRef(null);
   const navigate = useNavigate();
 
@@ -96,8 +38,10 @@ export default function PushNotificationBanner() {
 
       setActiveNotification(latest);
 
-      // Play our new crystal-clear luxury chime
-      playNotificationChime();
+      // Play configured sound (Tri-Tone, Whistle, Crystal, or Custom MP3)
+      const currentConfig = notificationService.getNotificationConfig();
+      setNotifConfig(currentConfig);
+      notificationService.playConfiguredSound(currentConfig);
 
       // Trigger subtle haptic vibration on phone
       if ('vibrate' in navigator) {
@@ -127,6 +71,7 @@ export default function PushNotificationBanner() {
       if (latest && (!activeNotification || activeNotification.id !== latest.id)) {
         handleNewNotification(latest);
       }
+      setNotifConfig(notificationService.getNotificationConfig());
     };
 
     const unsubscribe = notificationService.subscribe(() => {
@@ -134,7 +79,7 @@ export default function PushNotificationBanner() {
     });
 
     const handleStorage = (e) => {
-      if (e.key === 'allstar_notifications_list') {
+      if (e.key === 'allstar_notifications_list' || e.key === 'allstar_notification_config') {
         checkUnread();
       }
     };
@@ -182,7 +127,7 @@ export default function PushNotificationBanner() {
       if (granted) {
         setPermissionState('granted');
         setShowPermissionPrompt(false);
-        playNotificationChime();
+        notificationService.playConfiguredSound(notifConfig);
       } else if ('Notification' in window) {
         setPermissionState(Notification.permission);
       }
@@ -192,6 +137,10 @@ export default function PushNotificationBanner() {
       setIsRequesting(false);
     }
   };
+
+  const bannerLogo = notifConfig?.logoUrl || DEFAULT_HD_LOGO;
+  const appTitle = notifConfig?.appTitle || 'ALL-STAR SPORTS ACADEMY';
+  const appSubtitle = notifConfig?.appSubtitle || 'أكاديمية أولستار تطاوين 🇹🇳';
 
   return (
     <>
@@ -208,7 +157,7 @@ export default function PushNotificationBanner() {
             transform: 'translateX(-50%)',
             width: 'calc(100% - 24px)',
             maxWidth: '430px',
-            zIndex: 2147483647, // Above everything on screen
+            zIndex: 2147483647,
             background: 'rgba(14, 20, 32, 0.96)',
             backdropFilter: 'blur(35px)',
             WebkitBackdropFilter: 'blur(35px)',
@@ -238,8 +187,8 @@ export default function PushNotificationBanner() {
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <div
                 style={{
-                  width: '32px',
-                  height: '32px',
+                  width: '34px',
+                  height: '34px',
                   borderRadius: '10px',
                   background: 'linear-gradient(135deg, rgba(255, 193, 7, 0.25), rgba(0, 0, 0, 0.8))',
                   border: '1.5px solid #FFC107',
@@ -252,7 +201,7 @@ export default function PushNotificationBanner() {
                 }}
               >
                 <img
-                  src={HD_NOTIFICATION_LOGO}
+                  src={bannerLogo}
                   alt="All-Star Logo"
                   style={{
                     width: '100%',
@@ -273,9 +222,9 @@ export default function PushNotificationBanner() {
                     lineHeight: 1.2,
                   }}
                 >
-                  ALL-STAR SPORTS ACADEMY
+                  {appTitle}
                 </span>
-                <span style={{ fontSize: '0.68rem', color: '#90A4AE', fontWeight: 600 }}>أكاديمية أولستار تطاوين 🇹🇳</span>
+                <span style={{ fontSize: '0.68rem', color: '#90A4AE', fontWeight: 600 }}>{appSubtitle}</span>
               </div>
             </div>
 

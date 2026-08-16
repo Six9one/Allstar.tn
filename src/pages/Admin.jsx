@@ -1715,6 +1715,44 @@ export default function Admin() {
     }
   };
 
+  // ── Notification Appearance & Sound Config ───────────────────────────────
+  const [notifConfig, setNotifConfig] = useState(() => notificationService.getNotificationConfig());
+  const notifLogoFileInputRef = useRef(null);
+  const notifAudioFileInputRef = useRef(null);
+
+  const handleSaveNotifConfig = (e) => {
+    e?.preventDefault();
+    notificationService.saveNotificationConfig(notifConfig);
+    showSuccess('💾 تم حفظ وتطبيق إعدادات الشعار والصوت لجميع الإشعارات بنجاح!');
+  };
+
+  const handleTestNotifSound = () => {
+    notificationService.playConfiguredSound(notifConfig);
+    showSuccess(`🔊 تم تشغيل الصوت التجريبي: ${notifConfig.soundType === 'whistle' ? 'صفارة الملاعب' : notifConfig.soundType === 'crystal' ? 'كريستال ناعم' : notifConfig.soundType === 'custom' ? 'رنة مخصصة' : 'Apple Tri-Tone'}`);
+  };
+
+  const handleNotifLogoUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      setNotifConfig(prev => ({ ...prev, logoUrl: ev.target.result }));
+      showSuccess('🖼️ تم اختيار الشعار الجديد بنجاح (معاينة مباشرة)!');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleNotifAudioUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      setNotifConfig(prev => ({ ...prev, soundType: 'custom', customSoundUrl: ev.target.result }));
+      showSuccess('🎵 تم تحميل الملف الصوتي المخصص بنجاح!');
+    };
+    reader.readAsDataURL(file);
+  };
+
   // ── Account Management Handlers ───────────────────────────────────────────
   const [accounts, setAccounts] = useState(() => db.getAccounts());
   const [newAccRole, setNewAccRole] = useState('parent');
@@ -3607,6 +3645,284 @@ export default function Admin() {
                     }}
                   >
                     📱 إرسال رسالة نصية SMS
+                  </button>
+                </div>
+              </div>
+
+              {/* ─── NOTIFICATION BRANDING & SOUND STUDIO ────────────────────────── */}
+              <div style={{ marginTop: '28px', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '20px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
+                  <h3 style={{ fontSize: '1.1rem', color: '#00E676', fontWeight: 900, margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span>🎨</span>
+                    <span>تخصيص شعار وصوت وهوية الإشعارات (Notification Studio)</span>
+                  </h3>
+                  <span style={{ fontSize: '0.75rem', color: '#8E9BAE', background: 'rgba(255,255,255,0.05)', padding: '4px 10px', borderRadius: '8px' }}>
+                    تطبق فوراً على جميع الأجهزة
+                  </span>
+                </div>
+
+                {/* LIVE NOTIFICATION PREVIEW ON PHONE */}
+                <div style={{
+                  background: 'rgba(0,0,0,0.5)',
+                  border: '1.5px solid rgba(255,193,7,0.3)',
+                  borderRadius: '20px',
+                  padding: '16px 18px',
+                  marginBottom: '20px',
+                  boxShadow: '0 8px 30px rgba(0,0,0,0.7)',
+                }}>
+                  <div style={{ fontSize: '0.72rem', color: '#FFC107', fontWeight: 800, marginBottom: '10px' }}>
+                    📱 معاينة مباشرة لشكل الإشعار على هواتف الأولياء (Live Preview):
+                  </div>
+
+                  <div style={{
+                    background: 'rgba(14, 20, 32, 0.96)',
+                    border: '1.5px solid rgba(255, 193, 7, 0.45)',
+                    borderRadius: '20px',
+                    padding: '12px 16px',
+                    color: '#FFF',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '6px'
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div style={{
+                          width: '28px', height: '28px', borderRadius: '8px',
+                          background: 'linear-gradient(135deg, rgba(255, 193, 7, 0.25), rgba(0, 0, 0, 0.8))',
+                          border: '1px solid #FFC107',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          overflow: 'hidden'
+                        }}>
+                          <img
+                            src={notifConfig.logoUrl || '/icon.png'}
+                            alt="Logo Preview"
+                            style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                            onError={(e) => { e.target.src = '/icon.png'; }}
+                          />
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '0.74rem', fontWeight: 900, color: '#FFC107', lineHeight: 1.2 }}>
+                            {notifConfig.appTitle || 'ALL-STAR SPORTS ACADEMY'}
+                          </div>
+                          <div style={{ fontSize: '0.64rem', color: '#90A4AE' }}>
+                            {notifConfig.appSubtitle || 'أكاديمية أولستار تطاوين 🇹🇳'}
+                          </div>
+                        </div>
+                      </div>
+                      <span style={{ fontSize: '0.66rem', color: '#8E9BAE', fontWeight: 700 }}>الآن • Now</span>
+                    </div>
+                    <div style={{ fontSize: '0.88rem', fontWeight: 900, color: '#FFF' }}>
+                      {notifTitle || '⚽ تذكير بموعد التدريب الرسمي'}
+                    </div>
+                    <div style={{ fontSize: '0.78rem', color: '#CFD8DC' }}>
+                      {notifBody || 'سيتم إجراء الحصة التدريبية بالملعب الرئيسي في تمام الساعة 16:00.'}
+                    </div>
+                  </div>
+                </div>
+
+                {/* LOGO CUSTOMIZATION */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '20px' }}>
+                  <div>
+                    <label style={labelStyle}>🖼️ شعار الإشعار (Notification Logo / Avatar)</label>
+                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+                      <input
+                        type="text"
+                        value={notifConfig.logoUrl || ''}
+                        onChange={e => setNotifConfig(prev => ({ ...prev, logoUrl: e.target.value }))}
+                        placeholder="رابط صورة الشعار (https://... أو /icon.png)"
+                        style={{ ...inputStyle, flex: 1, minWidth: '220px' }}
+                      />
+                      <input
+                        type="file"
+                        ref={notifLogoFileInputRef}
+                        accept="image/*"
+                        onChange={handleNotifLogoUpload}
+                        style={{ display: 'none' }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => notifLogoFileInputRef.current?.click()}
+                        style={{
+                          padding: '12px 18px', borderRadius: '12px',
+                          background: 'linear-gradient(135deg, #00E676, #00B0FF)',
+                          border: 'none', color: '#000', fontWeight: 900, fontSize: '0.82rem',
+                          cursor: 'pointer', fontFamily: '"Cairo", "Tajawal", sans-serif',
+                          display: 'flex', alignItems: 'center', gap: '6px'
+                        }}
+                      >
+                        <span>📁</span>
+                        <span>رفع صورة جديدة</span>
+                      </button>
+                    </div>
+
+                    {/* Logo Quick Presets */}
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '10px' }}>
+                      <span style={{ fontSize: '0.75rem', color: '#8E9BAE', alignSelf: 'center' }}>شعارات جاهزة:</span>
+                      <button
+                        type="button"
+                        onClick={() => setNotifConfig(prev => ({ ...prev, logoUrl: '/logo-light.png' }))}
+                        style={{
+                          background: notifConfig.logoUrl === '/logo-light.png' ? 'rgba(255,193,7,0.2)' : 'rgba(255,255,255,0.06)',
+                          border: `1px solid ${notifConfig.logoUrl === '/logo-light.png' ? '#FFC107' : 'rgba(255,255,255,0.1)'}`,
+                          color: '#FFF', padding: '4px 10px', borderRadius: '8px', fontSize: '0.72rem', cursor: 'pointer'
+                        }}
+                      >
+                        🌟 الشعار المضيء (PNG)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setNotifConfig(prev => ({ ...prev, logoUrl: '/logo-badge.jpg' }))}
+                        style={{
+                          background: notifConfig.logoUrl === '/logo-badge.jpg' ? 'rgba(255,193,7,0.2)' : 'rgba(255,255,255,0.06)',
+                          border: `1px solid ${notifConfig.logoUrl === '/logo-badge.jpg' ? '#FFC107' : 'rgba(255,255,255,0.1)'}`,
+                          color: '#FFF', padding: '4px 10px', borderRadius: '8px', fontSize: '0.72rem', cursor: 'pointer'
+                        }}
+                      >
+                        🏅 درع أولستار الذهبي
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setNotifConfig(prev => ({ ...prev, logoUrl: '/star-ball.png' }))}
+                        style={{
+                          background: notifConfig.logoUrl === '/star-ball.png' ? 'rgba(255,193,7,0.2)' : 'rgba(255,255,255,0.06)',
+                          border: `1px solid ${notifConfig.logoUrl === '/star-ball.png' ? '#FFC107' : 'rgba(255,255,255,0.1)'}`,
+                          color: '#FFF', padding: '4px 10px', borderRadius: '8px', fontSize: '0.72rem', cursor: 'pointer'
+                        }}
+                      >
+                        ⚽ كرة النجمة
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setNotifConfig(prev => ({ ...prev, logoUrl: '' }))}
+                        style={{
+                          background: !notifConfig.logoUrl ? 'rgba(0,230,118,0.2)' : 'rgba(255,255,255,0.06)',
+                          border: `1px solid ${!notifConfig.logoUrl ? '#00E676' : 'rgba(255,255,255,0.1)'}`,
+                          color: '#FFF', padding: '4px 10px', borderRadius: '8px', fontSize: '0.72rem', cursor: 'pointer'
+                        }}
+                      >
+                        🔄 الشعار الافتراضي
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* SOUND CUSTOMIZATION */}
+                  <div>
+                    <label style={labelStyle}>🔔 نغمة الإشعار (Notification Sound Chime)</label>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px', marginBottom: '12px' }}>
+                      {[
+                        { id: 'tri-tone', label: '🔔 Apple Tri-Tone (نغمة آبل الفاخرة الهادئة)', desc: 'ثلاثي النغمات الكريستالي الناعم' },
+                        { id: 'whistle', label: '⚽ Stadium Whistle (صفارة الملاعب الرياضية)', desc: 'صفارة كروية رياضية واضحة' },
+                        { id: 'crystal', label: '💎 Crystal Pop (نغمة بوب خفيفة)', desc: 'نغمة مائية سريعة ولطيفة' },
+                        { id: 'custom', label: '🎵 رنة MP3 مخصصة', desc: 'استخدام ملفك الصوتي الخاص' }
+                      ].map(sound => (
+                        <div
+                          key={sound.id}
+                          onClick={() => setNotifConfig(prev => ({ ...prev, soundType: sound.id }))}
+                          style={{
+                            padding: '12px', borderRadius: '12px', cursor: 'pointer',
+                            background: notifConfig.soundType === sound.id ? 'rgba(0, 230, 118, 0.15)' : 'rgba(255,255,255,0.03)',
+                            border: `1.5px solid ${notifConfig.soundType === sound.id ? '#00E676' : 'rgba(255,255,255,0.08)'}`,
+                            transition: 'all 0.2s ease'
+                          }}
+                        >
+                          <div style={{ fontWeight: 800, fontSize: '0.84rem', color: notifConfig.soundType === sound.id ? '#00E676' : '#FFF' }}>
+                            {sound.label}
+                          </div>
+                          <div style={{ fontSize: '0.7rem', color: '#8E9BAE', marginTop: '2px' }}>{sound.desc}</div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Custom MP3 upload / URL if soundType === 'custom' */}
+                    {notifConfig.soundType === 'custom' && (
+                      <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap' }}>
+                        <input
+                          type="text"
+                          value={notifConfig.customSoundUrl || ''}
+                          onChange={e => setNotifConfig(prev => ({ ...prev, customSoundUrl: e.target.value }))}
+                          placeholder="رابط ملف MP3 الصوتي (https://... أو /notification.mp3)"
+                          style={{ ...inputStyle, flex: 1, minWidth: '220px' }}
+                        />
+                        <input
+                          type="file"
+                          ref={notifAudioFileInputRef}
+                          accept="audio/*"
+                          onChange={handleNotifAudioUpload}
+                          style={{ display: 'none' }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => notifAudioFileInputRef.current?.click()}
+                          style={{
+                            padding: '12px 18px', borderRadius: '12px',
+                            background: 'linear-gradient(135deg, #FFC107, #FF9500)',
+                            border: 'none', color: '#000', fontWeight: 900, fontSize: '0.82rem',
+                            cursor: 'pointer', fontFamily: '"Cairo", "Tajawal", sans-serif',
+                            display: 'flex', alignItems: 'center', gap: '6px'
+                          }}
+                        >
+                          <span>🎵</span>
+                          <span>رفع ملف صوتي (MP3)</span>
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Test Sound Button */}
+                    <button
+                      type="button"
+                      onClick={handleTestNotifSound}
+                      style={{
+                        padding: '10px 18px', borderRadius: '12px',
+                        background: 'rgba(255, 193, 7, 0.15)', border: '1.5px solid #FFC107',
+                        color: '#FFC107', fontWeight: 900, fontSize: '0.82rem',
+                        cursor: 'pointer', fontFamily: '"Cairo", "Tajawal", sans-serif',
+                        display: 'inline-flex', alignItems: 'center', gap: '8px'
+                      }}
+                    >
+                      <span>▶️</span>
+                      <span>تجربة واستماع للصوت المختار الآن</span>
+                    </button>
+                  </div>
+
+                  {/* APP TITLE & SUBTITLE */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                    <div>
+                      <label style={labelStyle}>اسم التطبيق في شريط الإشعار (App Title)</label>
+                      <input
+                        type="text"
+                        value={notifConfig.appTitle || ''}
+                        onChange={e => setNotifConfig(prev => ({ ...prev, appTitle: e.target.value }))}
+                        placeholder="ALL-STAR SPORTS ACADEMY"
+                        style={inputStyle}
+                      />
+                    </div>
+                    <div>
+                      <label style={labelStyle}>الوصف الفرعي (Subtitle)</label>
+                      <input
+                        type="text"
+                        value={notifConfig.appSubtitle || ''}
+                        onChange={e => setNotifConfig(prev => ({ ...prev, appSubtitle: e.target.value }))}
+                        placeholder="أكاديمية أولستار تطاوين 🇹🇳"
+                        style={inputStyle}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Save Notification Config Button */}
+                  <button
+                    type="button"
+                    onClick={handleSaveNotifConfig}
+                    style={{
+                      padding: '14px', borderRadius: '14px',
+                      background: 'linear-gradient(135deg, #00E676, #00B0FF)',
+                      border: 'none', color: '#000', fontWeight: 900, fontSize: '0.95rem',
+                      cursor: 'pointer', fontFamily: '"Cairo", "Tajawal", sans-serif',
+                      boxShadow: '0 4px 16px rgba(0,230,118,0.4)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px'
+                    }}
+                  >
+                    <span>💾</span>
+                    <span>حفظ وتطبيق إعدادات الشعار والصوت لجميع الإشعارات</span>
                   </button>
                 </div>
               </div>
