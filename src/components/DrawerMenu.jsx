@@ -225,17 +225,17 @@ function UnderlyingMenuCanvas({ currentUser, isOpen, onClose, dir }) {
             width: '100%',
             display: 'flex', alignItems: 'center', gap: '12px',
             padding: '13px 16px', borderRadius: '14px',
-            border: '1px solid rgba(255, 193, 7, 0.3)',
-            background: 'rgba(255, 193, 7, 0.08)',
+            border: '1px solid rgba(255, 193, 7, 0.4)',
+            background: 'rgba(255, 193, 7, 0.1)',
             color: '#FFC107', cursor: 'pointer',
-            textAlign: 'right', marginTop: '8px', marginBottom: '4px',
+            textAlign: lang === 'ar' ? 'right' : 'left', marginTop: '8px', marginBottom: '4px',
             fontFamily: '"Cairo", "Tajawal", sans-serif',
             fontWeight: 800, fontSize: '0.92rem',
             transition: 'all 0.18s ease',
           }}
         >
           <span style={{ fontSize: '1.1rem' }}>🌐</span>
-          <span>{lang === 'ar' ? 'English (🇬🇧)' : 'العربية (🇹🇳)'}</span>
+          <span>{lang === 'ar' ? 'EN — English (🇬🇧)' : 'AR — العربية (🇹🇳)'}</span>
         </button>
       </nav>
 
