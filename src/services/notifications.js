@@ -61,6 +61,8 @@ class NotificationService {
   }
 
   init() {
+    this.initOneSignal();
+
     if (!localStorage.getItem(NOTIF_KEY)) {
       localStorage.setItem(NOTIF_KEY, JSON.stringify(INITIAL_NOTIFS));
     }
@@ -428,6 +430,38 @@ class NotificationService {
       }
     }
 
+    // 4. OneSignal REST API Broadcast to closed devices/iPhones
+    try {
+      const config = this.getNotificationConfig();
+      const appId = config.oneSignalAppId;
+      const apiKey = config.oneSignalApiKey;
+      if (appId && apiKey) {
+        const response = await fetch('https://onesignal.com/api/v1/notifications', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json; charset=utf-8',
+            'Authorization': `Basic ${apiKey}`
+          },
+          body: JSON.stringify({
+            app_id: appId,
+            included_segments: ['Total Subscriptions'],
+            headings: { en: title, ar: title },
+            contents: { en: body, ar: body },
+            url: targetUrl.startsWith('http') ? targetUrl : `https://allstar.tn${targetUrl}`,
+            chrome_web_image: imageUrl || undefined,
+            big_picture: imageUrl || undefined
+          })
+        });
+        const osData = await response.json();
+        if (osData?.recipients) {
+          sentCount = Math.max(sentCount, osData.recipients);
+          successMessage = `تم بث الإشعار إلى ${sentCount} جهاز بنجاح (شامل الهواتف المغلقة)`;
+        }
+      }
+    } catch (osErr) {
+      console.warn('OneSignal dispatch notice:', osErr);
+    }
+
     return {
       success: true,
       sentCount: sentCount || 1,
@@ -534,6 +568,31 @@ class NotificationService {
     window.open(smsUrl, '_blank');
   }
 
+  initOneSignal() {
+    if (typeof window === 'undefined') return;
+    try {
+      window.OneSignalDeferred = window.OneSignalDeferred || [];
+      const config = this.getNotificationConfig();
+      const appId = config?.oneSignalAppId;
+      if (appId) {
+        window.OneSignalDeferred.push(async function(OneSignal) {
+          try {
+            await OneSignal.init({
+              appId: appId,
+              allowLocalhostAsSecureOrigin: true,
+              notifyButton: { enable: false },
+            });
+            console.log('✅ OneSignal Push Engine Initialized for Background Delivery');
+          } catch (e) {
+            console.log('OneSignal init notice:', e);
+          }
+        });
+      }
+    } catch (e) {
+      console.log('OneSignal deferred error:', e);
+    }
+  }
+
   getNotificationConfig() {
     try {
       const siteContent = db.getSiteContent();
@@ -548,7 +607,9 @@ class NotificationService {
       soundType: 'tri-tone',
       customSoundUrl: '',
       appTitle: 'ALL-STAR SPORTS ACADEMY',
-      appSubtitle: 'أكاديمية أولستار تطاوين 🇹🇳'
+      appSubtitle: 'أكاديمية أولستار تطاوين 🇹🇳',
+      oneSignalAppId: '',
+      oneSignalApiKey: ''
     };
   }
 

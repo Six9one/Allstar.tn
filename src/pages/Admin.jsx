@@ -4024,6 +4024,50 @@ export default function Admin() {
                     </div>
                   </div>
 
+                  {/* ONESIGNAL BACKGROUND CLOUD ENGINE */}
+                  <div style={{
+                    background: 'rgba(255, 152, 0, 0.08)',
+                    border: '1px solid rgba(255, 152, 0, 0.3)',
+                    borderRadius: '16px',
+                    padding: '16px',
+                    marginTop: '4px'
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: '6px' }}>
+                      <div style={{ fontWeight: 800, fontSize: '0.88rem', color: '#FF9800', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span>⚡</span>
+                        <span>محرك OneSignal للبث إلى الهواتف المغلقة (Background Lock-Screen Push)</span>
+                      </div>
+                      <span style={{ fontSize: '0.7rem', color: '#00E676', background: 'rgba(0,230,118,0.15)', padding: '2px 8px', borderRadius: '6px', fontWeight: 800 }}>
+                        iOS 16.4+ & Android Lock Screen
+                      </span>
+                    </div>
+                    <p style={{ fontSize: '0.76rem', color: '#CFD8DC', margin: '0 0 12px 0', lineHeight: 1.45 }}>
+                      يتيح إيقاظ هواتف iPhone و Android وعرض الإشعار بالصوت على شاشة القفل (Lock Screen) حتى عندما يكون التطبيق مغلقاً تماماً وممسوحاً من الذاكرة.
+                    </p>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '10px' }}>
+                      <div>
+                        <label style={{ ...labelStyle, fontSize: '0.74rem' }}>OneSignal App ID (معرف التطبيق)</label>
+                        <input
+                          type="text"
+                          value={notifConfig.oneSignalAppId || ''}
+                          onChange={e => setNotifConfig(prev => ({ ...prev, oneSignalAppId: e.target.value.trim() }))}
+                          placeholder="مثال: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                          style={{ ...inputStyle, fontSize: '0.8rem', padding: '10px' }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ ...labelStyle, fontSize: '0.74rem' }}>OneSignal REST API Key (مفتاح الإرسال السحابي)</label>
+                        <input
+                          type="password"
+                          value={notifConfig.oneSignalApiKey || ''}
+                          onChange={e => setNotifConfig(prev => ({ ...prev, oneSignalApiKey: e.target.value.trim() }))}
+                          placeholder="os_v2_app_xxxxxxxx..."
+                          style={{ ...inputStyle, fontSize: '0.8rem', padding: '10px' }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
                   {/* Save Notification Config Button */}
                   <button
                     type="button"
