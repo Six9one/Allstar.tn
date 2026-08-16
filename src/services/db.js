@@ -1280,6 +1280,24 @@ class DBService {
     return data;
   }
 
+  async uploadCarouselImage(file) {
+    if (!supabase) throw new Error('Supabase is not configured.');
+    const ext = file.name ? file.name.split('.').pop().toLowerCase() : (file.type === 'image/png' ? 'png' : 'jpg');
+    const uniqueId = globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const fileName = `slides/${uniqueId}.${ext}`;
+
+    const { error: uploadErr } = await supabase.storage
+      .from('carousel')
+      .upload(fileName, file, { contentType: file.type || 'image/jpeg', upsert: true, cacheControl: '31536000' });
+
+    if (uploadErr) throw uploadErr;
+
+    const { data: urlData } = supabase.storage.from('carousel').getPublicUrl(fileName);
+    if (!urlData?.publicUrl) throw new Error('Could not get public URL from Supabase Storage.');
+
+    return urlData.publicUrl;
+  }
+
   saveSiteContent(contentData) {
     const save = this.siteContentSaveQueue.then(() => this.saveSiteContentNow(contentData));
     this.siteContentSaveQueue = save.catch(() => {});

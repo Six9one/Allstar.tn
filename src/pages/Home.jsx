@@ -66,28 +66,31 @@ export default function Home() {
     };
   }, []);
 
+  const activeSlides = slides && slides.length > 0 ? slides : FALLBACK_SLIDES
+  const totalSlides = activeSlides.length
+
   // Auto-Glide Carousel Timer (Glides every 4 seconds when not hovered or actively touched)
   useEffect(() => {
-    if (slides.length <= 1 || isHovered || isTouching) return
+    if (totalSlides <= 1 || isHovered || isTouching) return
 
     autoPlayRef.current = setInterval(() => {
-      setCurrentIndex((prev) => (prev + 1) % slides.length)
+      setCurrentIndex((prev) => (prev + 1) % totalSlides)
     }, 4000)
 
     return () => {
       if (autoPlayRef.current) clearInterval(autoPlayRef.current)
     }
-  }, [slides.length, isHovered, isTouching])
+  }, [totalSlides, isHovered, isTouching])
 
   const handleNext = () => {
-    setCurrentIndex((prev) => (prev + 1) % slides.length)
+    setCurrentIndex((prev) => (prev + 1) % totalSlides)
   }
 
   const handlePrev = () => {
-    setCurrentIndex((prev) => (prev - 1 + slides.length) % slides.length)
+    setCurrentIndex((prev) => (prev - 1 + totalSlides) % totalSlides)
   }
 
-  const currentSlide = slides[currentIndex] || slides[0]
+  const currentSlide = activeSlides[currentIndex] || activeSlides[0] || FALLBACK_SLIDES[0]
 
   return (
     <div
@@ -236,7 +239,7 @@ export default function Home() {
           }}
         >
           {/* STACKED CROSS-FADE SLIDES */}
-          {slides.map((slide, idx) => {
+          {activeSlides.map((slide, idx) => {
             const isActive = idx === currentIndex
             return (
               <div
@@ -294,7 +297,7 @@ export default function Home() {
           })}
 
           {/* PREV / NEXT COMPACT ARROW BUTTONS */}
-          {slides.length > 1 && (
+          {activeSlides.length > 1 && (
             <>
               <button
                 type="button"
@@ -411,7 +414,7 @@ export default function Home() {
                 pointerEvents: 'auto'
               }}
             >
-              {slides.map((_, i) => (
+              {activeSlides.map((_, i) => (
                 <button
                   type="button"
                   key={i}

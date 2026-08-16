@@ -183,6 +183,159 @@ function ImageUploader({ label = 'Image Photo', value, onChange, size = 75 }) {
   );
 }
 
+function CarouselSlideCard({ img, idx, total, onUpdate, onDelete, onMoveUp, onMoveDown, showSuccess }) {
+  const fileInputRef = useRef(null);
+  const [isUploading, setIsUploading] = useState(false);
+
+  const handleFile = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploading(true);
+    try {
+      showSuccess(`⚡ جاري رفع الصورة #${idx + 1} بدقة فائقة إلى السيرفر...`);
+      const publicUrl = await db.uploadCarouselImage(file);
+      onUpdate({ ...img, url: publicUrl });
+      showSuccess(`✅ تم رفع الصورة #${idx + 1} بنجاح بدقة كاملة!`);
+    } catch (err) {
+      console.error('Slide upload error:', err);
+      showSuccess('❌ فشل رفع الصورة - يرجى التحقق من الملف أو الاتصال');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  return (
+    <div style={{
+      background: 'linear-gradient(145deg, rgba(20, 26, 40, 0.9) 0%, rgba(10, 16, 28, 0.95) 100%)',
+      border: '1.5px solid rgba(224, 64, 251, 0.35)',
+      borderRadius: '20px', padding: '18px', display: 'flex', flexDirection: 'column', gap: '14px',
+      position: 'relative', boxShadow: '0 10px 30px rgba(0,0,0,0.5)'
+    }}>
+      {/* HEADER: Title, Order buttons, Delete button */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ background: 'rgba(224,64,251,0.2)', color: '#E040FB', padding: '4px 12px', borderRadius: '10px', fontSize: '0.82rem', fontWeight: 900 }}>
+            Slide #{idx + 1}
+          </span>
+          {onMoveUp && (
+            <button
+              type="button"
+              onClick={onMoveUp}
+              disabled={idx === 0}
+              title="Move Up"
+              style={{
+                background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)',
+                color: '#FFF', borderRadius: '8px', padding: '3px 8px', cursor: idx === 0 ? 'not-allowed' : 'pointer',
+                opacity: idx === 0 ? 0.3 : 1, fontSize: '0.75rem'
+              }}
+            >
+              ⬆️
+            </button>
+          )}
+          {onMoveDown && (
+            <button
+              type="button"
+              onClick={onMoveDown}
+              disabled={idx === total - 1}
+              title="Move Down"
+              style={{
+                background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)',
+                color: '#FFF', borderRadius: '8px', padding: '3px 8px', cursor: idx === total - 1 ? 'not-allowed' : 'pointer',
+                opacity: idx === total - 1 ? 0.3 : 1, fontSize: '0.75rem'
+              }}
+            >
+              ⬇️
+            </button>
+          )}
+        </div>
+
+        <button
+          type="button"
+          onClick={onDelete}
+          style={{
+            background: 'rgba(255,61,0,0.15)', border: '1px solid #FF3D00', color: '#FF3D00',
+            borderRadius: '10px', padding: '5px 12px', cursor: 'pointer', fontWeight: 800, fontSize: '0.8rem',
+            display: 'flex', alignItems: 'center', gap: '4px'
+          }}
+        >
+          🗑️ Delete
+        </button>
+      </div>
+
+      {/* IMAGE PREVIEW WITH BANNER ASPECT RATIO */}
+      <div style={{
+        width: '100%', height: '140px', borderRadius: '14px', overflow: 'hidden',
+        background: '#070B12', border: '1.5px solid rgba(255,255,255,0.1)',
+        position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center'
+      }}>
+        {isUploading ? (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', color: '#00E676' }}>
+            <span style={{ fontSize: '1.8rem', animation: 'spin 1s linear infinite' }}>⚡</span>
+            <span style={{ fontSize: '0.82rem', fontWeight: 800 }}>Uploading HD Banner...</span>
+          </div>
+        ) : img.url ? (
+          <img
+            src={img.url}
+            alt={img.caption || 'Slide'}
+            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+          />
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', color: '#8E9BAE', gap: '4px' }}>
+            <span style={{ fontSize: '2rem' }}>📷</span>
+            <span style={{ fontSize: '0.78rem', fontWeight: 700 }}>No Image Selected</span>
+          </div>
+        )}
+      </div>
+
+      {/* UPLOAD FILE & URL INPUT */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        <input
+          type="file"
+          ref={fileInputRef}
+          accept="image/*"
+          style={{ display: 'none' }}
+          onChange={handleFile}
+        />
+        <button
+          type="button"
+          onClick={() => fileInputRef.current && fileInputRef.current.click()}
+          disabled={isUploading}
+          style={{
+            width: '100%', padding: '11px', borderRadius: '12px',
+            background: 'linear-gradient(135deg, #FFC107 0%, #FF9500 100%)',
+            border: 'none', color: '#000', fontWeight: 900, fontSize: '0.88rem',
+            cursor: isUploading ? 'not-allowed' : 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+            boxShadow: '0 4px 12px rgba(255,193,7,0.25)'
+          }}
+        >
+          <span>📁</span>
+          <span>{isUploading ? 'جاري الرفع...' : 'Select HD Banner Image'}</span>
+        </button>
+
+        {/* OR PASTE DIRECT URL */}
+        <input
+          style={{ ...inputStyle, padding: '8px 12px', fontSize: '0.78rem', opacity: 0.8 }}
+          value={img.url || ''}
+          placeholder="Or paste Direct Image URL (https://...)"
+          onChange={(e) => onUpdate({ ...img, url: e.target.value })}
+        />
+      </div>
+
+      {/* CAPTION */}
+      <div>
+        <label style={labelStyle}>Slide Caption / Title</label>
+        <input
+          style={inputStyle}
+          value={img.caption || ''}
+          placeholder="e.g. ⚽ تدريبات وبطولات أولستار"
+          onChange={(e) => onUpdate({ ...img, caption: e.target.value })}
+        />
+      </div>
+    </div>
+  );
+}
+
 // ─── PLAYER EDIT MODAL ────────────────────────────────────────────────────────
 function PlayerEditModal({ player, coaches, onSave, onClose }) {
   const [form, setForm] = useState({
@@ -2362,37 +2515,54 @@ export default function Admin() {
                   🖼️ Hero Carousel & Photo Gallery Manager
                 </h2>
                 <p style={{ color: '#8E9BAE', fontSize: '0.88rem', margin: '4px 0 0 0' }}>
-                  Upload local images, edit slide captions, and control the main homepage photo carousel in real-time
+                  Upload local HD images, edit slide captions, and control the main homepage photo carousel in real-time
                 </p>
               </div>
               <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                 <button
-                  onClick={async () => {
+                  type="button"
+                  onClick={() => {
                     const gi = [...(siteForm.gallery_images || [])];
-                    gi.push({ id: 'SLIDE-' + Date.now(), url: '', caption: '⚽ صور الأكاديمية الجديدة' });
+                    gi.push({ id: 'SLIDE-' + Date.now(), url: '', caption: '⚽ صور الأكاديمية الرسمية' });
                     setSiteForm(f => ({ ...f, gallery_images: gi }));
-                    await db.saveSiteContent({ ...siteForm, gallery_images: gi });
-                    showSuccess('➕ تم إضافة شريحة جديدة وتحديث البث المباشر');
+                    showSuccess('➕ تم إضافة شريحة جديدة - قم باختيار الصورة الآن');
                   }}
                   style={{
                     background: 'linear-gradient(135deg, #E040FB, #7B1FA2)',
                     border: 'none', color: '#FFF', padding: '12px 22px', borderRadius: '14px',
                     fontWeight: 900, cursor: 'pointer', fontSize: '0.9rem',
-                    boxShadow: '0 4px 15px rgba(224, 64, 251, 0.35)'
+                    boxShadow: '0 4px 15px rgba(224, 64, 251, 0.35)',
+                    display: 'flex', alignItems: 'center', gap: '8px'
                   }}
                 >
-                  ➕ Add New Carousel Slide
+                  <span>➕</span>
+                  <span>Add New Carousel Slide</span>
                 </button>
                 <button
-                  onClick={handleSaveSiteContent}
+                  type="button"
+                  onClick={async () => {
+                    const validImages = (siteForm.gallery_images || []).filter(img => img.url && img.url.trim());
+                    showSuccess('⚡ جاري نشر وتأكيد صور الكاروسيل على جميع الهواتف...');
+                    try {
+                      const updated = await db.saveSiteContent({ ...siteForm, gallery_images: validImages });
+                      setSiteForm(updated);
+                      setSiteContent(updated);
+                      showSuccess(`✅ تم نشر وتحديث ${validImages.length} شرائح بنجاح!`);
+                    } catch (e) {
+                      console.error('Publish error:', e);
+                      showSuccess('❌ خطأ في النشر - يرجى المحاولة ثانية');
+                    }
+                  }}
                   style={{
                     background: 'linear-gradient(135deg, #00E676, #00B0FF)',
                     border: 'none', color: '#000', padding: '12px 24px', borderRadius: '14px',
                     fontWeight: 900, cursor: 'pointer', fontSize: '0.9rem',
-                    boxShadow: '0 4px 15px rgba(0, 230, 118, 0.35)'
+                    boxShadow: '0 4px 15px rgba(0, 230, 118, 0.35)',
+                    display: 'flex', alignItems: 'center', gap: '8px'
                   }}
                 >
-                  💾 Save & Publish Live Carousel
+                  <span>💾</span>
+                  <span>Save & Publish Live Carousel</span>
                 </button>
               </div>
             </div>
@@ -2400,82 +2570,97 @@ export default function Admin() {
             {/* UPLOAD & CAROUSEL CARDS GRID */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px' }}>
               {(siteForm.gallery_images || []).map((img, idx) => (
-                <div key={img.id || idx} style={{
-                  background: 'rgba(20, 26, 40, 0.85)',
-                  border: '1.5px solid rgba(224, 64, 251, 0.35)',
-                  borderRadius: '20px', padding: '18px', display: 'flex', flexDirection: 'column', gap: '12px',
-                  position: 'relative', boxShadow: '0 10px 30px rgba(0,0,0,0.4)'
-                }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ background: 'rgba(224,64,251,0.2)', color: '#E040FB', padding: '3px 12px', borderRadius: '10px', fontSize: '0.78rem', fontWeight: 900 }}>
-                      Slide #{idx + 1}
-                    </span>
-                    <button
-                      onClick={async () => {
-                        const gi = siteForm.gallery_images.filter((_, i) => i !== idx);
-                        setSiteForm(f => ({ ...f, gallery_images: gi }));
-                        await db.saveSiteContent({ ...siteForm, gallery_images: gi });
-                        showSuccess(`🗑️ تم حذف الصورة #${idx + 1} وتحديث الكاروسيل على الهواتف`);
-                      }}
-                      style={{
-                        background: 'rgba(255,61,0,0.2)', border: '1px solid #FF3D00', color: '#FF3D00',
-                        borderRadius: '8px', padding: '4px 10px', cursor: 'pointer', fontWeight: 800, fontSize: '0.78rem'
-                      }}
-                    >
-                      🗑️ Delete
-                    </button>
-                  </div>
-
-                  {/* IMAGE PREVIEW */}
-                  {img.url ? (
-                    <img
-                      src={img.url}
-                      alt={img.caption || 'Carousel slide'}
-                      style={{ width: '100%', height: '180px', borderRadius: '14px', objectFit: 'cover', border: '1.5px solid rgba(255,255,255,0.1)' }}
-                    />
-                  ) : (
-                    <div style={{ width: '100%', height: '180px', borderRadius: '14px', background: 'rgba(255,255,255,0.04)', border: '2px dashed rgba(224,64,251,0.4)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#8E9BAE' }}>
-                      <span style={{ fontSize: '2rem' }}>📷</span>
-                      <span style={{ fontSize: '0.8rem', marginTop: '6px' }}>Upload Image or Paste URL</span>
-                    </div>
-                  )}
-
-                  {/* FILE UPLOADER CONTROL - AUTO SAVES & PUBLISHES TO CLOUD IMMEDIATELY */}
-                  <ImageUploader
-                    label="Upload Image File (Auto-Syncs Live to Phones)"
-                    value={img.url}
-                    onChange={async (val) => {
-                      const g = [...siteForm.gallery_images];
-                      g[idx] = { ...img, url: val };
-                      setSiteForm(f => ({ ...f, gallery_images: g }));
-                      await db.saveSiteContent({ ...siteForm, gallery_images: g });
-                      showSuccess(`🚀 تم رفع ونشر الصورة #${idx + 1} بنجاح على جميع الهواتف!`);
-                    }}
-                    size={50}
-                  />
-
-                  <div>
-                    <label style={labelStyle}>Slide Caption / Title</label>
-                    <input
-                      style={inputStyle}
-                      value={img.caption || ''}
-                      placeholder="e.g. ⚽ All-Star U12 Match Photos"
-                      onChange={async (e) => {
-                        const newCap = e.target.value;
-                        const g = [...siteForm.gallery_images];
-                        g[idx] = { ...img, caption: newCap };
-                        setSiteForm(f => ({ ...f, gallery_images: g }));
-                        await db.saveSiteContent({ ...siteForm, gallery_images: g });
-                      }}
-                    />
-                  </div>
-                </div>
+                <CarouselSlideCard
+                  key={img.id || idx}
+                  img={img}
+                  idx={idx}
+                  total={(siteForm.gallery_images || []).length}
+                  onUpdate={async (newSlide) => {
+                    const g = [...(siteForm.gallery_images || [])];
+                    g[idx] = newSlide;
+                    setSiteForm(f => ({ ...f, gallery_images: g }));
+                    try {
+                      const updated = await db.saveSiteContent({ ...siteForm, gallery_images: g });
+                      setSiteForm(updated);
+                      setSiteContent(updated);
+                    } catch (err) {
+                      console.error('Slide update error:', err);
+                    }
+                  }}
+                  onDelete={async () => {
+                    const g = siteForm.gallery_images.filter((_, i) => i !== idx);
+                    setSiteForm(f => ({ ...f, gallery_images: g }));
+                    try {
+                      const updated = await db.saveSiteContent({ ...siteForm, gallery_images: g });
+                      setSiteForm(updated);
+                      setSiteContent(updated);
+                      showSuccess(`🗑️ تم حذف الشريحة #${idx + 1} وتحديث الموقع فوراً!`);
+                    } catch (err) {
+                      console.error('Slide delete error:', err);
+                      showSuccess('❌ خطأ في الحذف');
+                    }
+                  }}
+                  onMoveUp={idx > 0 ? async () => {
+                    const g = [...(siteForm.gallery_images || [])];
+                    const [moved] = g.splice(idx, 1);
+                    g.splice(idx - 1, 0, moved);
+                    setSiteForm(f => ({ ...f, gallery_images: g }));
+                    try {
+                      const updated = await db.saveSiteContent({ ...siteForm, gallery_images: g });
+                      setSiteForm(updated);
+                      setSiteContent(updated);
+                      showSuccess('⬆️ تم تقديم الشريحة');
+                    } catch (err) {
+                      console.error('Reorder error:', err);
+                    }
+                  } : null}
+                  onMoveDown={idx < (siteForm.gallery_images || []).length - 1 ? async () => {
+                    const g = [...(siteForm.gallery_images || [])];
+                    const [moved] = g.splice(idx, 1);
+                    g.splice(idx + 1, 0, moved);
+                    setSiteForm(f => ({ ...f, gallery_images: g }));
+                    try {
+                      const updated = await db.saveSiteContent({ ...siteForm, gallery_images: g });
+                      setSiteForm(updated);
+                      setSiteContent(updated);
+                      showSuccess('⬇️ تم تأخير الشريحة');
+                    } catch (err) {
+                      console.error('Reorder error:', err);
+                    }
+                  } : null}
+                  showSuccess={showSuccess}
+                />
               ))}
             </div>
 
+            {/* EMPTY STATE */}
+            {(!siteForm.gallery_images || siteForm.gallery_images.length === 0) && (
+              <div style={{
+                textAlign: 'center', padding: '60px 20px', borderRadius: '20px',
+                background: 'rgba(255,255,255,0.02)', border: '2px dashed rgba(255,255,255,0.1)'
+              }}>
+                <span style={{ fontSize: '3rem', display: 'block', marginBottom: '12px' }}>🖼️</span>
+                <h3 style={{ color: '#FFF', fontSize: '1.2rem', fontWeight: 800, margin: 0 }}>لا توجد شرائح حالياً في المعرض</h3>
+                <p style={{ color: '#8E9BAE', fontSize: '0.88rem', marginTop: '6px' }}>اضغط على زر "Add New Carousel Slide" لإضافة شرائح جديدة</p>
+              </div>
+            )}
+
             <div style={{ marginTop: '24px' }}>
               <button
-                onClick={handleSaveSiteContent}
+                type="button"
+                onClick={async () => {
+                  const validImages = (siteForm.gallery_images || []).filter(img => img.url && img.url.trim());
+                  showSuccess('⚡ جاري نشر وتأكيد صور الكاروسيل على جميع الهواتف...');
+                  try {
+                    const updated = await db.saveSiteContent({ ...siteForm, gallery_images: validImages });
+                    setSiteForm(updated);
+                    setSiteContent(updated);
+                    showSuccess(`✅ تم نشر وتحديث ${validImages.length} شرائح بنجاح!`);
+                  } catch (e) {
+                    console.error('Publish error:', e);
+                    showSuccess('❌ خطأ في النشر - يرجى المحاولة ثانية');
+                  }
+                }}
                 style={{
                   width: '100%', padding: '16px', borderRadius: '16px',
                   background: 'linear-gradient(135deg, #00E676 0%, #00B0FF 100%)',
