@@ -1719,17 +1719,43 @@ export default function Admin() {
   const [notifConfig, setNotifConfig] = useState(() => notificationService.getNotificationConfig());
   const notifLogoFileInputRef = useRef(null);
   const notifAudioFileInputRef = useRef(null);
-  const notifPostImageInputRef = useRef(null);
+  const compressImageFile = (file, maxWidth = 800, quality = 0.75) => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+          if (width > maxWidth) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          }
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', quality));
+        };
+        img.onerror = () => resolve(e.target.result);
+        img.src = e.target.result;
+      };
+      reader.onerror = () => resolve('');
+      reader.readAsDataURL(file);
+    });
+  };
 
-  const handleNotifPostImageUpload = (e) => {
+  const handleNotifPostImageUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      setNotifImageUrl(ev.target.result);
-      showSuccess('🖼️ تم اختيار صورة الإشعار بنجاح (تظهر في المعاينة الآن)!');
-    };
-    reader.readAsDataURL(file);
+    try {
+      const compressedDataUrl = await compressImageFile(file, 800, 0.75);
+      setNotifImageUrl(compressedDataUrl);
+      showSuccess('🖼️ تم ضغط ورفع صورة الإشعار بنجاح (معاينة فورية)!');
+    } catch {
+      showSuccess('❌ فشل تحميل الصورة، يرجى تجربة صورة أخرى');
+    }
   };
 
   const handleSaveNotifConfig = (e) => {
@@ -1743,20 +1769,25 @@ export default function Admin() {
     showSuccess(`🔊 تم تشغيل الصوت التجريبي: ${notifConfig.soundType === 'whistle' ? 'صفارة الملاعب' : notifConfig.soundType === 'crystal' ? 'كريستال ناعم' : notifConfig.soundType === 'custom' ? 'رنة مخصصة' : 'Apple Tri-Tone'}`);
   };
 
-  const handleNotifLogoUpload = (e) => {
+  const handleNotifLogoUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      setNotifConfig(prev => ({ ...prev, logoUrl: ev.target.result }));
-      showSuccess('🖼️ تم اختيار الشعار الجديد بنجاح (معاينة مباشرة)!');
-    };
-    reader.readAsDataURL(file);
+    try {
+      const compressedLogo = await compressImageFile(file, 256, 0.85);
+      setNotifConfig(prev => ({ ...prev, logoUrl: compressedLogo }));
+      showSuccess('🖼️ تم اختيار وضغط الشعار الجديد بنجاح!');
+    } catch {
+      showSuccess('❌ فشل تحميل الشعار');
+    }
   };
 
   const handleNotifAudioUpload = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      showSuccess('⚠️ حجم الملف الصوتي كبير جداً (يجب أن يكون أقل من 2 ميغابايت)');
+      return;
+    }
     const reader = new FileReader();
     reader.onload = (ev) => {
       setNotifConfig(prev => ({ ...prev, soundType: 'custom', customSoundUrl: ev.target.result }));

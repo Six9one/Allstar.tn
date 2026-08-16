@@ -44,6 +44,30 @@ function urlBase64ToUint8Array(base64String) {
   return outputArray;
 }
 
+function safeSetStorage(key, value) {
+  try {
+    localStorage.setItem(key, value);
+  } catch (e) {
+    console.warn('LocalStorage quota handling for key:', key, e);
+    try {
+      if (key === NOTIF_KEY) {
+        const parsed = JSON.parse(value);
+        if (Array.isArray(parsed)) {
+          const sanitized = parsed.slice(0, 10).map(item => ({
+            ...item,
+            image_url: item.image_url?.startsWith('data:') ? undefined : item.image_url,
+            custom_sound_url: undefined
+          }));
+          localStorage.setItem(key, JSON.stringify(sanitized));
+          return;
+        }
+      }
+      localStorage.removeItem(NOTIF_LOG_KEY);
+      localStorage.setItem(key, value);
+    } catch {}
+  }
+}
+
 class NotificationService {
   constructor() {
     this.listeners = [];
@@ -64,10 +88,10 @@ class NotificationService {
     this.initOneSignal();
 
     if (!localStorage.getItem(NOTIF_KEY)) {
-      localStorage.setItem(NOTIF_KEY, JSON.stringify(INITIAL_NOTIFS));
+      safeSetStorage(NOTIF_KEY, JSON.stringify(INITIAL_NOTIFS));
     }
     if (!localStorage.getItem(PROCESSED_IDS_KEY)) {
-      localStorage.setItem(PROCESSED_IDS_KEY, JSON.stringify(['n-1', 'n-2']));
+      safeSetStorage(PROCESSED_IDS_KEY, JSON.stringify(['n-1', 'n-2']));
     }
 
     // 1. Set up Local BroadcastChannel for inter-tab & PWA app windows on same device
@@ -360,12 +384,12 @@ class NotificationService {
     // 1. Mark as processed on sender so sender doesn't re-trigger itself
     const processedIds = JSON.parse(localStorage.getItem(PROCESSED_IDS_KEY)) || [];
     processedIds.push(notifItem.id);
-    localStorage.setItem(PROCESSED_IDS_KEY, JSON.stringify(processedIds));
+    safeSetStorage(PROCESSED_IDS_KEY, JSON.stringify(processedIds));
 
     // 2. INSTANT LOCAL & REALTIME DISPATCH (0ms latency for all open apps/phones)
     const notifs = this.getNotifications();
     notifs.unshift(notifItem);
-    localStorage.setItem(NOTIF_KEY, JSON.stringify(notifs));
+    safeSetStorage(NOTIF_KEY, JSON.stringify(notifs));
 
     if (this.realtimeChannel) {
       try {
@@ -431,13 +455,22 @@ class NotificationService {
         });
 
         // Save to Cloud Site Content for background polling
-        const currentSite = await db.getSiteContentAsync();
-        const existingAnnouncements = currentSite?.announcements || [];
-        await db.saveSiteContent({
-          ...currentSite,
-          announcements: [notifItem, ...existingAnnouncements],
-          latest_announcement: notifItem
-        });
+        try {
+          const currentSite = await db.getSiteContentAsync();
+          const existingAnnouncements = (currentSite?.announcements || []).slice(0, 15);
+          const cleanNotifItem = {
+            ...notifItem,
+            image_url: notifItem.image_url?.startsWith('data:') ? undefined : notifItem.image_url,
+            custom_sound_url: notifItem.custom_sound_url?.startsWith('data:') ? undefined : notifItem.custom_sound_url
+          };
+          await db.saveSiteContent({
+            ...currentSite,
+            announcements: [cleanNotifItem, ...existingAnnouncements],
+            latest_announcement: cleanNotifItem
+          });
+        } catch (dbErr) {
+          console.warn('Site content notification save notice:', dbErr);
+        }
 
         const { data, error } = await supabase.functions.invoke('send-push-notification', {
           body: pushPayload
