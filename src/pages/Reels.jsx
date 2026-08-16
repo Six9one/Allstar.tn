@@ -461,6 +461,20 @@ export default function Reels() {
 
     loadReels();
 
+    // Background auto-sync check if TikTok account is connected
+    db.getTikTokSyncState().then((syncState) => {
+      if (syncState?.connected_username && syncState.auto_sync_enabled !== false) {
+        const lastSync = syncState.last_sync_at ? new Date(syncState.last_sync_at).getTime() : 0;
+        const now = Date.now();
+        // If never synced or last sync was > 20 mins ago, trigger background sync
+        if (now - lastSync > 20 * 60 * 1000) {
+          db.triggerTikTokSync()
+            .then(() => { if (mounted) loadReels(); })
+            .catch(() => {});
+        }
+      }
+    }).catch(() => {});
+
     const unsub = db.subscribeToRealtime(null, null, (live) => {
       if (live && mounted) loadReels();
     });

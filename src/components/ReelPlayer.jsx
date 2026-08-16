@@ -59,11 +59,16 @@ function buildTikTokPlayerUrl(videoId) {
     autoplay: '1',
     loop: '1',
     muted: '1',
+    play_button: '0',
     controls: '0',
-    rel: '0',
-    description: '0',
-    music_info: '0',
+    progress_bar: '0',
+    volume_control: '0',
+    fullscreen_button: '0',
     timestamp: '0',
+    music_info: '0',
+    description: '0',
+    rel: '0',
+    native_context_menu: '0',
   });
   return `https://www.tiktok.com/player/v1/${videoId}?${params.toString()}`;
 }
@@ -140,13 +145,17 @@ function TikTokPlayer({ videoId, isActive, isMuted, posterUrl, onReady, onError 
       sendPlayerMessage('unMute');
     }
 
-    // Ping play twice in the first 400ms to guarantee autoplay start
-    const t1 = setTimeout(() => sendPlayerMessage('play'), 150);
-    const t2 = setTimeout(() => sendPlayerMessage('play'), 350);
+    // Ping play repeatedly to guarantee smooth instant autoplay on scroll
+    const t1 = setTimeout(() => sendPlayerMessage('play'), 50);
+    const t2 = setTimeout(() => sendPlayerMessage('play'), 180);
+    const t3 = setTimeout(() => sendPlayerMessage('play'), 400);
+    const t4 = setTimeout(() => sendPlayerMessage('play'), 800);
 
     return () => {
       clearTimeout(t1);
       clearTimeout(t2);
+      clearTimeout(t3);
+      clearTimeout(t4);
     };
   }, [isActive, isMuted, sendPlayerMessage]);
 

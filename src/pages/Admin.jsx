@@ -1140,7 +1140,16 @@ export default function Admin() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState(null);
   const [manualTikTokId, setManualTikTokId] = useState('');
+  const [bulkTikTokText, setBulkTikTokText] = useState('');
+  const [tikTokInputMode, setTikTokInputMode] = useState('bulk');
+  const [isBulkImporting, setIsBulkImporting] = useState(false);
   const [academyReels, setAcademyReels] = useState([]);
+  const [reelsFilterSport, setReelsFilterSport] = useState('all');
+  const [reelsSearchQuery, setReelsSearchQuery] = useState('');
+  const [previewModalReel, setPreviewModalReel] = useState(null);
+  const [editingReelId, setEditingReelId] = useState(null);
+  const [editingReelTitle, setEditingReelTitle] = useState('');
+  const [editingReelSport, setEditingReelSport] = useState('General');
 
   // Customizer / Website Editor
   const [siteForm, setSiteForm] = useState({});
@@ -1511,9 +1520,34 @@ export default function Admin() {
       if (Array.isArray(reelsData)) setAcademyReels(reelsData);
       showSuccess('🎬 تم إضافة ريل TikTok يدوياً!');
       setManualTikTokId('');
-      setNewReelTitle(''); setNewReelDesc(''); setNewReelSport('General');
     } catch (e) {
       showSuccess('❌ خطأ: ' + e.message);
+    }
+  };
+
+  const extractAllTikTokIds = (text) => {
+    if (!text) return [];
+    const matches = text.match(/\d{15,25}/g) || [];
+    return Array.from(new Set(matches));
+  };
+
+  const handleBulkAddTikTokReels = async () => {
+    const ids = extractAllTikTokIds(bulkTikTokText);
+    if (ids.length === 0) {
+      showSuccess('❌ لم يتم العثور على أي معرّفات TikTok في النص المدخل');
+      return;
+    }
+    setIsBulkImporting(true);
+    try {
+      await db.addBulkTikTokReels(ids, newReelSport);
+      const reelsData = await db.getAcademyReels();
+      if (Array.isArray(reelsData)) setAcademyReels(reelsData);
+      showSuccess(`🚀 تم استيراد وحفظ ${ids.length} فيديو TikTok بنجاح!`);
+      setBulkTikTokText('');
+    } catch (e) {
+      showSuccess('❌ فشل الاستيراد المجمّع: ' + e.message);
+    } finally {
+      setIsBulkImporting(false);
     }
   };
 
@@ -1550,6 +1584,90 @@ export default function Admin() {
       showSuccess('🗑️ تم حذف الريل');
     } catch (e) {
       showSuccess('❌ خطأ في الحذف: ' + e.message);
+    }
+  };
+
+  const handlePinReelToTop = async (id) => {
+    try {
+      await db.pinAcademyReelToTop(id);
+      const reelsData = await db.getAcademyReels();
+      if (Array.isArray(reelsData)) setAcademyReels(reelsData);
+      showSuccess('🔝 تم تثبيت هذا الفيديو في المرتبة الأولى (القمة)!');
+    } catch (e) {
+      showSuccess('❌ خطأ: ' + e.message);
+    }
+  };
+
+  const handleMoveReelUp = async (index, currentList) => {
+    if (index <= 0) return;
+    const current = currentList[index];
+    const prev = currentList[index - 1];
+    if (!current || !prev) return;
+
+    // Optimistic UI update
+    setAcademyReels(prevList => {
+      const idxA = prevList.findIndex(r => r.id === current.id);
+      const idxB = prevList.findIndex(r => r.id === prev.id);
+      if (idxA === -1 || idxB === -1) return prevList;
+      const copy = [...prevList];
+      const temp = copy[idxA];
+      copy[idxA] = copy[idxB];
+      copy[idxB] = temp;
+      return copy;
+    });
+
+    try {
+      await db.swapAcademyReelOrder(current, prev);
+      const reelsData = await db.getAcademyReels();
+      if (Array.isArray(reelsData)) setAcademyReels(reelsData);
+    } catch (e) {
+      showSuccess('❌ خطأ في تغيير الترتيب: ' + e.message);
+      const reelsData = await db.getAcademyReels();
+      if (Array.isArray(reelsData)) setAcademyReels(reelsData);
+    }
+  };
+
+  const handleMoveReelDown = async (index, currentList) => {
+    if (index >= currentList.length - 1) return;
+    const current = currentList[index];
+    const next = currentList[index + 1];
+    if (!current || !next) return;
+
+    // Optimistic UI update
+    setAcademyReels(prevList => {
+      const idxA = prevList.findIndex(r => r.id === current.id);
+      const idxB = prevList.findIndex(r => r.id === next.id);
+      if (idxA === -1 || idxB === -1) return prevList;
+      const copy = [...prevList];
+      const temp = copy[idxA];
+      copy[idxA] = copy[idxB];
+      copy[idxB] = temp;
+      return copy;
+    });
+
+    try {
+      await db.swapAcademyReelOrder(current, next);
+      const reelsData = await db.getAcademyReels();
+      if (Array.isArray(reelsData)) setAcademyReels(reelsData);
+    } catch (e) {
+      showSuccess('❌ خطأ في تغيير الترتيب: ' + e.message);
+      const reelsData = await db.getAcademyReels();
+      if (Array.isArray(reelsData)) setAcademyReels(reelsData);
+    }
+  };
+
+  const handleSaveReelEdit = async (id) => {
+    try {
+      await db.updateAcademyReelDetails(id, {
+        title: editingReelTitle.trim() || null,
+        sport: editingReelSport,
+      });
+      const reelsData = await db.getAcademyReels();
+      if (Array.isArray(reelsData)) setAcademyReels(reelsData);
+      showSuccess('✅ تم حفظ بيانات الفيديو');
+      setEditingReelId(null);
+    } catch (e) {
+      showSuccess('❌ خطأ: ' + e.message);
     }
   };
 
@@ -3676,125 +3794,542 @@ export default function Admin() {
               </div>
             </div>
 
-            {/* ─── SECTION C: ADD TIKTOK REEL MANUALLY ─────────────────────────── */}
+            {/* ─── SECTION C: ADD TIKTOK REELS (BULK + SINGLE) ───────────────── */}
             <div style={{ ...cardStyle, marginBottom: '20px' }}>
-              <h3 style={{ color: '#FF3D00', fontSize: '1.05rem', fontWeight: 900, margin: '0 0 12px' }}>
-                🎵 إضافة ريل TikTok يدوياً
-              </h3>
-              <p style={{ color: '#8E9BAE', fontSize: '0.8rem', marginBottom: '14px', lineHeight: 1.5 }}>
-                أدخل معرّف فيديو TikTok (الرقم الطويل من الرابط) لإضافته مباشرة. يتم تشغيله عبر مشغل TikTok الرسمي.
-              </p>
-              <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-end' }}>
-                <div style={{ flex: 1 }}>
-                  <label style={labelStyle}>TikTok Video ID</label>
-                  <input
-                    type="text"
-                    value={manualTikTokId}
-                    onChange={e => setManualTikTokId(e.target.value)}
-                    placeholder="7234567890123456789"
-                    style={{ ...inputStyle, direction: 'ltr', textAlign: 'left', fontFamily: 'monospace' }}
-                  />
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
+                <h3 style={{ color: '#FF3D00', fontSize: '1.05rem', fontWeight: 900, margin: 0 }}>
+                  🎵 إضافة فيديوهات TikTok
+                </h3>
+                <div style={{ display: 'flex', gap: '6px', background: 'rgba(255,255,255,0.04)', padding: '4px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.08)' }}>
+                  <button
+                    type="button"
+                    onClick={() => setTikTokInputMode('bulk')}
+                    style={{
+                      padding: '6px 12px', borderRadius: '8px', border: 'none',
+                      background: tikTokInputMode === 'bulk' ? 'linear-gradient(135deg, #FF3D00, #FF6E40)' : 'transparent',
+                      color: tikTokInputMode === 'bulk' ? '#FFF' : '#8E9BAE',
+                      fontWeight: 800, fontSize: '0.75rem', cursor: 'pointer', fontFamily: '"Cairo", "Tajawal", sans-serif'
+                    }}
+                  >
+                    📋 استيراد مجمّع (قائمة كاملة)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTikTokInputMode('single')}
+                    style={{
+                      padding: '6px 12px', borderRadius: '8px', border: 'none',
+                      background: tikTokInputMode === 'single' ? 'linear-gradient(135deg, #FF3D00, #FF6E40)' : 'transparent',
+                      color: tikTokInputMode === 'single' ? '#FFF' : '#8E9BAE',
+                      fontWeight: 800, fontSize: '0.75rem', cursor: 'pointer', fontFamily: '"Cairo", "Tajawal", sans-serif'
+                    }}
+                  >
+                    🎵 إضافة فردية
+                  </button>
                 </div>
-                <button
-                  onClick={handleAddManualTikTokReel}
-                  disabled={!manualTikTokId.trim()}
-                  style={{
-                    padding: '12px 20px', borderRadius: '10px', flexShrink: 0,
-                    background: manualTikTokId.trim() ? 'linear-gradient(135deg, #FF3D00, #FF6E40)' : 'rgba(255,255,255,0.06)',
-                    border: 'none', color: manualTikTokId.trim() ? '#FFF' : '#5A6A7E',
-                    fontWeight: 900, fontSize: '0.84rem', cursor: manualTikTokId.trim() ? 'pointer' : 'default',
-                    fontFamily: '"Cairo", "Tajawal", sans-serif'
-                  }}
-                >
-                  ➕ إضافة
-                </button>
               </div>
-              {manualTikTokId.trim() && (
-                <div style={{ marginTop: '14px', padding: '12px', borderRadius: '12px', background: '#070A10', border: '1px solid rgba(255,255,255,0.1)' }}>
-                  <div style={{ fontSize: '0.75rem', color: '#FF6E40', fontWeight: 800, marginBottom: '8px' }}>👁️ معاينة مشغل TikTok:</div>
-                  <div style={{ width: '100%', maxWidth: '220px', height: '320px', borderRadius: '10px', overflow: 'hidden', background: '#000', margin: '0 auto' }}>
-                    <iframe
-                      src={`https://www.tiktok.com/player/v1/${manualTikTokId.trim()}?controls=0&progress_bar=0&play_button=0&volume_control=0&fullscreen_button=0&timestamp=0&music_info=0&description=0&rel=0&native_context_menu=0&autoplay=0&loop=1`}
-                      allow="autoplay; fullscreen"
-                      style={{ width: '100%', height: '100%', border: 0, background: '#000' }}
-                      title="TikTok Preview"
+
+              {tikTokInputMode === 'bulk' ? (
+                /* BULK IMPORT MODE */
+                <div>
+                  <p style={{ color: '#8E9BAE', fontSize: '0.8rem', marginBottom: '12px', lineHeight: 1.5 }}>
+                    الصق قائمة كاملة من معرّفات فيديوهات TikTok أو روابطها. سيتم استخراج المعرّفات تلقائياً وإضافتها دفعة واحدة دون الحاجة لإضافتها واحداً تلو الآخر!
+                  </p>
+
+                  <div style={{ marginBottom: '12px' }}>
+                    <label style={labelStyle}>
+                      قائمة الفيديوهات (معرّفات أو روابط فيديو - كل سطر معرّف أو رابط):
+                    </label>
+                    <textarea
+                      rows={6}
+                      value={bulkTikTokText}
+                      onChange={e => setBulkTikTokText(e.target.value)}
+                      placeholder={`7631315676799503624\n7636461592170827015\nhttps://www.tiktok.com/@allstar/video/7640507908458827015`}
+                      style={{
+                        ...inputStyle,
+                        fontFamily: 'monospace',
+                        fontSize: '0.82rem',
+                        lineHeight: 1.4,
+                        direction: 'ltr',
+                        textAlign: 'left',
+                        minHeight: '120px'
+                      }}
                     />
                   </div>
+
+                  {/* Detected count */}
+                  {(() => {
+                    const detected = extractAllTikTokIds(bulkTikTokText);
+                    return (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
+                        <div style={{
+                          fontSize: '0.8rem', fontWeight: 800,
+                          color: detected.length > 0 ? '#00E676' : '#8E9BAE',
+                          display: 'flex', alignItems: 'center', gap: '6px'
+                        }}>
+                          {detected.length > 0 ? `✨ تم اكتشاف ${detected.length} فيديو جاهز للإضافة` : '💡 الصق قائمة المعرّفات أو الروابط أعلاه'}
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ fontSize: '0.75rem', color: '#8E9BAE' }}>الرياضة:</span>
+                          <select
+                            value={newReelSport}
+                            onChange={e => setNewReelSport(e.target.value)}
+                            style={{
+                              padding: '6px 12px', borderRadius: '8px',
+                              background: '#0D131F', border: '1px solid rgba(255,255,255,0.15)',
+                              color: '#FFF', fontSize: '0.78rem', fontWeight: 700,
+                              fontFamily: '"Cairo", "Tajawal", sans-serif'
+                            }}
+                          >
+                            <option value="General">🎬 عام</option>
+                            <option value="Football">⚽ كرة قدم</option>
+                            <option value="Basketball">🏀 كرة سلة</option>
+                            <option value="Handball">🤾 كرة يد</option>
+                            <option value="Event">🏆 احتفال</option>
+                            <option value="Training">💪 تدريبات</option>
+                          </select>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  <button
+                    type="button"
+                    onClick={handleBulkAddTikTokReels}
+                    disabled={isBulkImporting || extractAllTikTokIds(bulkTikTokText).length === 0}
+                    style={{
+                      width: '100%', padding: '13px', borderRadius: '12px',
+                      background: extractAllTikTokIds(bulkTikTokText).length > 0
+                        ? 'linear-gradient(135deg, #FF3D00, #FF6E40)'
+                        : 'rgba(255,255,255,0.06)',
+                      border: 'none',
+                      color: extractAllTikTokIds(bulkTikTokText).length > 0 ? '#FFF' : '#5A6A7E',
+                      fontWeight: 900, fontSize: '0.92rem',
+                      cursor: (isBulkImporting || extractAllTikTokIds(bulkTikTokText).length === 0) ? 'default' : 'pointer',
+                      fontFamily: '"Cairo", "Tajawal", sans-serif',
+                      boxShadow: extractAllTikTokIds(bulkTikTokText).length > 0 ? '0 4px 16px rgba(255,61,0,0.35)' : 'none'
+                    }}
+                  >
+                    {isBulkImporting
+                      ? '⏳ جاري إضافة الفيديوهات...'
+                      : `🚀 استيراد وإضافة ${extractAllTikTokIds(bulkTikTokText).length || ''} فيديو دفعة واحدة`}
+                  </button>
+                </div>
+              ) : (
+                /* SINGLE IMPORT MODE */
+                <div>
+                  <p style={{ color: '#8E9BAE', fontSize: '0.8rem', marginBottom: '14px', lineHeight: 1.5 }}>
+                    أدخل معرّف فيديو TikTok (الرقم الطويل من الرابط) لإضافته مباشرة. يتم تشغيله عبر مشغل TikTok الرسمي.
+                  </p>
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-end' }}>
+                    <div style={{ flex: 1 }}>
+                      <label style={labelStyle}>TikTok Video ID</label>
+                      <input
+                        type="text"
+                        value={manualTikTokId}
+                        onChange={e => setManualTikTokId(e.target.value)}
+                        placeholder="7234567890123456789"
+                        style={{ ...inputStyle, direction: 'ltr', textAlign: 'left', fontFamily: 'monospace' }}
+                      />
+                    </div>
+                    <button
+                      onClick={handleAddManualTikTokReel}
+                      disabled={!manualTikTokId.trim()}
+                      style={{
+                        padding: '12px 20px', borderRadius: '10px', flexShrink: 0,
+                        background: manualTikTokId.trim() ? 'linear-gradient(135deg, #FF3D00, #FF6E40)' : 'rgba(255,255,255,0.06)',
+                        border: 'none', color: manualTikTokId.trim() ? '#FFF' : '#5A6A7E',
+                        fontWeight: 900, fontSize: '0.84rem', cursor: manualTikTokId.trim() ? 'pointer' : 'default',
+                        fontFamily: '"Cairo", "Tajawal", sans-serif'
+                      }}
+                    >
+                      ➕ إضافة
+                    </button>
+                  </div>
+                  {manualTikTokId.trim() && (
+                    <div style={{ marginTop: '14px', padding: '12px', borderRadius: '12px', background: '#070A10', border: '1px solid rgba(255,255,255,0.1)' }}>
+                      <div style={{ fontSize: '0.75rem', color: '#FF6E40', fontWeight: 800, marginBottom: '8px' }}>👁️ معاينة مشغل TikTok:</div>
+                      <div style={{ width: '100%', maxWidth: '220px', height: '320px', borderRadius: '10px', overflow: 'hidden', background: '#000', margin: '0 auto' }}>
+                        <iframe
+                          src={`https://www.tiktok.com/player/v1/${manualTikTokId.trim()}?controls=0&progress_bar=0&play_button=0&volume_control=0&fullscreen_button=0&timestamp=0&music_info=0&description=0&rel=0&native_context_menu=0&autoplay=0&loop=1`}
+                          allow="autoplay; fullscreen"
+                          style={{ width: '100%', height: '100%', border: 0, background: '#000' }}
+                          title="TikTok Preview"
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
 
-            {/* ─── SECTION D: ALL REELS LIST ────────────────────────────────────── */}
+            {/* ─── SECTION D: ALL REELS LIST (WITH PREVIEWS & REORDERING) ──── */}
             {(academyReels.length > 0 || reels.length > 0) ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <h3 style={{ color: '#FFF', fontSize: '1.05rem', fontWeight: 900, margin: 0 }}>
-                    جميع الريلز ({academyReels.length || reels.length})
-                  </h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                  <div>
+                    <h3 style={{ color: '#FFF', fontSize: '1.1rem', fontWeight: 900, margin: '0 0 4px' }}>
+                      🎬 ترتيب وإدارة الريلز ({academyReels.length || reels.length})
+                    </h3>
+                    <div style={{ fontSize: '0.75rem', color: '#8E9BAE' }}>
+                      الفيديو رقم <strong style={{ color: '#00E676' }}>#1</strong> هو أول فيديو يظهر للمستخدمين في قمة التطبيق. يمكنك تغيير الترتيب وتثبيت أي فيديو في القمة!
+                    </div>
+                  </div>
                   <a href="/reels" target="_blank" rel="noreferrer"
-                    style={{ color: '#FFC107', fontSize: '0.78rem', fontWeight: 800, textDecoration: 'none' }}>
-                    ↗ معاينة Reels
+                    style={{
+                      color: '#000', background: 'linear-gradient(135deg, #FFC107, #FF9500)',
+                      padding: '8px 16px', borderRadius: '10px', fontSize: '0.8rem', fontWeight: 900,
+                      textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '6px'
+                    }}>
+                    ↗ تجربة ومعاينة Reels
                   </a>
                 </div>
 
-                {/* Academy reels (new table) */}
-                {academyReels.map((reel) => {
-                  const isTikTok = reel.playback_type === 'tiktok';
-                  const thumb = reel.cover_image_url;
-                  return (
-                    <div key={reel.id} style={{
-                      ...cardStyle, display: 'flex', alignItems: 'center', gap: '14px', padding: '12px 16px'
-                    }}>
-                      {thumb ? (
-                        <img src={thumb} alt="" style={{ width: '46px', height: '62px', objectFit: 'cover', borderRadius: '8px', flexShrink: 0, border: '1px solid rgba(255,255,255,0.1)' }} />
-                      ) : (
-                        <div style={{
-                          width: '46px', height: '62px', borderRadius: '8px', flexShrink: 0,
-                          background: isTikTok ? 'rgba(255,61,0,0.12)' : 'rgba(0,230,118,0.12)',
-                          border: `1px solid ${isTikTok ? 'rgba(255,61,0,0.25)' : 'rgba(0,230,118,0.25)'}`,
-                          display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem'
-                        }}>
-                          {isTikTok ? '🎵' : '🎬'}
-                        </div>
-                      )}
+                {/* Filter & Search Bar */}
+                <div style={{
+                  display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap',
+                  background: 'rgba(255,255,255,0.03)', padding: '12px 14px', borderRadius: '14px',
+                  border: '1px solid rgba(255,255,255,0.08)'
+                }}>
+                  <div style={{ flex: 1, minWidth: '180px' }}>
+                    <input
+                      type="text"
+                      value={reelsSearchQuery}
+                      onChange={e => setReelsSearchQuery(e.target.value)}
+                      placeholder="🔍 بحث بالمعرّف أو العنوان..."
+                      style={{ ...inputStyle, padding: '8px 12px', fontSize: '0.82rem' }}
+                    />
+                  </div>
 
-                      <div style={{ flex: 1, overflow: 'hidden' }}>
-                        <div style={{ fontWeight: 900, fontSize: '0.88rem', color: '#FFF', marginBottom: '3px' }}>
-                          {reel.title || (isTikTok ? `TikTok ${reel.tiktok_video_id?.slice(-6) || ''}` : 'ريل')}
-                        </div>
-                        <div style={{ fontSize: '0.7rem', color: '#8E9BAE', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', direction: 'ltr', textAlign: 'left' }}>
-                          {isTikTok ? `tiktok:${reel.tiktok_video_id}` : (reel.video_url || '')}
-                        </div>
-                        <div style={{ marginTop: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <span style={{
-                            fontSize: '0.65rem', fontWeight: 800, padding: '2px 7px', borderRadius: '6px',
-                            background: isTikTok ? 'rgba(255,61,0,0.12)' : 'rgba(0,230,118,0.12)',
-                            color: isTikTok ? '#FF6E40' : '#00E676',
-                            border: `1px solid ${isTikTok ? 'rgba(255,61,0,0.25)' : 'rgba(0,230,118,0.25)'}`,
-                          }}>
-                            {isTikTok ? '🎵 TikTok Player' : '✓ MP4 مباشر'}
-                          </span>
-                          <span style={{ fontSize: '0.65rem', color: '#5A6A7E' }}>{reel.sport || 'عام'}</span>
-                          <span style={{ fontSize: '0.65rem', color: '#5A6A7E' }}>{reel.source === 'tiktok_sync' ? '(مزامنة)' : reel.source === 'upload' ? '(رفع)' : '(يدوي)'}</span>
-                        </div>
-                      </div>
-
+                  <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '2px' }}>
+                    {[
+                      { id: 'all', label: 'الكل' },
+                      { id: 'Football', label: '⚽ كرة قدم' },
+                      { id: 'Basketball', label: '🏀 كرة سلة' },
+                      { id: 'Handball', label: '🤾 كرة يد' },
+                      { id: 'Event', label: '🏆 احتفال' },
+                      { id: 'Training', label: '💪 تدريب' },
+                      { id: 'General', label: '⭐ عام' }
+                    ].map(tab => (
                       <button
-                        onClick={() => handleDeleteAcademyReel(reel.id)}
+                        key={tab.id}
+                        type="button"
+                        onClick={() => setReelsFilterSport(tab.id)}
                         style={{
-                          background: 'rgba(255,61,0,0.12)', border: '1px solid rgba(255,61,0,0.3)',
-                          borderRadius: '8px', color: '#FF5252', padding: '7px 12px',
-                          fontWeight: 800, cursor: 'pointer', fontSize: '0.78rem', flexShrink: 0,
+                          padding: '6px 12px', borderRadius: '8px', border: 'none',
+                          background: reelsFilterSport === tab.id ? 'rgba(255,193,7,0.2)' : 'rgba(255,255,255,0.05)',
+                          border: reelsFilterSport === tab.id ? '1px solid #FFC107' : '1px solid transparent',
+                          color: reelsFilterSport === tab.id ? '#FFC107' : '#8E9BAE',
+                          fontWeight: 800, fontSize: '0.74rem', cursor: 'pointer', whiteSpace: 'nowrap',
                           fontFamily: '"Cairo", "Tajawal", sans-serif'
                         }}
                       >
-                        🗑️
+                        {tab.label}
                       </button>
-                    </div>
-                  );
-                })}
+                    ))}
+                  </div>
+                </div>
 
-                {/* Legacy reels (from embedded JSON) */}
+                {/* Academy reels list */}
+                {(() => {
+                  let filtered = [...academyReels];
+                  if (reelsFilterSport !== 'all') {
+                    filtered = filtered.filter(r => (r.sport || 'General').toLowerCase() === reelsFilterSport.toLowerCase());
+                  }
+                  if (reelsSearchQuery.trim()) {
+                    const q = reelsSearchQuery.trim().toLowerCase();
+                    filtered = filtered.filter(r =>
+                      (r.title && r.title.toLowerCase().includes(q)) ||
+                      (r.tiktok_video_id && r.tiktok_video_id.includes(q)) ||
+                      (r.description && r.description.toLowerCase().includes(q))
+                    );
+                  }
+
+                  if (filtered.length === 0) {
+                    return (
+                      <div style={{ textAlign: 'center', padding: '30px', color: '#8E9BAE', fontSize: '0.85rem' }}>
+                        لا توجد نتائج مطابقة للبحث أو التصفية.
+                      </div>
+                    );
+                  }
+
+                  return filtered.map((reel, idx) => {
+                    const isTikTok = reel.playback_type === 'tiktok';
+                    const isTop = idx === 0 && reelsFilterSport === 'all' && !reelsSearchQuery;
+                    const isEditing = editingReelId === reel.id;
+
+                    return (
+                      <div
+                        key={reel.id}
+                        style={{
+                          ...cardStyle,
+                          padding: '14px 16px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '12px',
+                          border: isTop ? '1.5px solid rgba(0,230,118,0.5)' : '1px solid rgba(255,255,255,0.08)',
+                          background: isTop ? 'linear-gradient(135deg, rgba(0,230,118,0.06), rgba(0,0,0,0.4))' : cardStyle.background,
+                          boxShadow: isTop ? '0 4px 20px rgba(0,230,118,0.15)' : 'none',
+                          transition: 'all 0.2s ease'
+                        }}
+                      >
+                        {/* Top row: Rank badge + Video thumbnail preview + Info */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                          {/* Rank Badge */}
+                          <div style={{
+                            width: '42px', height: '42px', borderRadius: '10px',
+                            background: isTop ? 'linear-gradient(135deg, #00E676, #00B0FF)' : 'rgba(255,255,255,0.06)',
+                            border: `1px solid ${isTop ? '#00E676' : 'rgba(255,255,255,0.15)'}`,
+                            color: isTop ? '#000' : '#FFF',
+                            fontWeight: 900, fontSize: isTop ? '0.85rem' : '0.8rem',
+                            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                            flexShrink: 0
+                          }}>
+                            <span>#{idx + 1}</span>
+                            {isTop && <span style={{ fontSize: '0.6rem', fontWeight: 900 }}>القمة</span>}
+                          </div>
+
+                          {/* Video Thumbnail / Mini Preview Trigger */}
+                          <div
+                            onClick={() => setPreviewModalReel(reel)}
+                            title="انقر لمعاينة وتشغيل الفيديو"
+                            style={{
+                              width: '54px', height: '74px', borderRadius: '10px',
+                              overflow: 'hidden', background: '#000', flexShrink: 0,
+                              border: '1.5px solid rgba(255,255,255,0.2)',
+                              position: 'relative', cursor: 'pointer',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center'
+                            }}
+                          >
+                            {reel.cover_image_url ? (
+                              <img src={reel.cover_image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            ) : isTikTok ? (
+                              <div style={{
+                                width: '100%', height: '100%',
+                                background: 'linear-gradient(135deg, #120A1A, #2A0818)',
+                                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                                gap: '2px'
+                              }}>
+                                <span style={{ fontSize: '1.3rem' }}>🎵</span>
+                                <span style={{ fontSize: '0.55rem', color: '#FF6E40', fontWeight: 800 }}>TikTok</span>
+                              </div>
+                            ) : (
+                              <span style={{ fontSize: '1.4rem' }}>🎬</span>
+                            )}
+                            {/* Play Overlay Icon */}
+                            <div style={{
+                              position: 'absolute', inset: 0,
+                              background: 'rgba(0,0,0,0.35)',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              color: '#FFF', fontSize: '1.1rem'
+                            }}>
+                              ▶
+                            </div>
+                          </div>
+
+                          {/* Content / Info */}
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            {isEditing ? (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                <input
+                                  type="text"
+                                  value={editingReelTitle}
+                                  onChange={e => setEditingReelTitle(e.target.value)}
+                                  placeholder="عنوان الفيديو..."
+                                  style={{ ...inputStyle, padding: '6px 10px', fontSize: '0.82rem' }}
+                                />
+                                <div style={{ display: 'flex', gap: '8px' }}>
+                                  <select
+                                    value={editingReelSport}
+                                    onChange={e => setEditingReelSport(e.target.value)}
+                                    style={{
+                                      padding: '6px 10px', borderRadius: '8px',
+                                      background: '#0D131F', border: '1px solid rgba(255,255,255,0.15)',
+                                      color: '#FFF', fontSize: '0.78rem', fontFamily: '"Cairo", "Tajawal", sans-serif'
+                                    }}
+                                  >
+                                    <option value="General">🎬 عام</option>
+                                    <option value="Football">⚽ كرة قدم</option>
+                                    <option value="Basketball">🏀 كرة سلة</option>
+                                    <option value="Handball">🤾 كرة يد</option>
+                                    <option value="Event">🏆 احتفال</option>
+                                    <option value="Training">💪 تدريبات</option>
+                                  </select>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleSaveReelEdit(reel.id)}
+                                    style={{
+                                      padding: '6px 14px', borderRadius: '8px', border: 'none',
+                                      background: 'linear-gradient(135deg, #00E676, #00B0FF)',
+                                      color: '#000', fontWeight: 900, fontSize: '0.78rem', cursor: 'pointer'
+                                    }}
+                                  >
+                                    ✓ حفظ
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setEditingReelId(null)}
+                                    style={{
+                                      padding: '6px 10px', borderRadius: '8px',
+                                      background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)',
+                                      color: '#8E9BAE', fontSize: '0.78rem', cursor: 'pointer'
+                                    }}
+                                  >
+                                    إلغاء
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '4px' }}>
+                                  <span style={{ fontWeight: 900, fontSize: '0.9rem', color: '#FFF' }}>
+                                    {reel.title || (isTikTok ? `TikTok ${reel.tiktok_video_id?.slice(-8) || ''}` : 'ريل بدون عنوان')}
+                                  </span>
+                                  {isTop && (
+                                    <span style={{
+                                      background: 'rgba(0,230,118,0.15)', border: '1px solid #00E676',
+                                      color: '#00E676', borderRadius: '8px', padding: '2px 8px', fontSize: '0.68rem', fontWeight: 900
+                                    }}>
+                                      ⭐ معروض في البداية
+                                    </span>
+                                  )}
+                                </div>
+
+                                <div style={{ fontSize: '0.72rem', color: '#8E9BAE', fontFamily: 'monospace', direction: 'ltr', textAlign: 'left', marginBottom: '6px' }}>
+                                  {isTikTok ? `tiktok.com/@allstar/video/${reel.tiktok_video_id}` : (reel.video_url || '')}
+                                </div>
+
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                                  <span style={{
+                                    fontSize: '0.68rem', fontWeight: 800, padding: '2px 8px', borderRadius: '6px',
+                                    background: isTikTok ? 'rgba(255,61,0,0.12)' : 'rgba(0,230,118,0.12)',
+                                    color: isTikTok ? '#FF6E40' : '#00E676',
+                                    border: `1px solid ${isTikTok ? 'rgba(255,61,0,0.25)' : 'rgba(0,230,118,0.25)'}`,
+                                  }}>
+                                    {isTikTok ? '🎵 TikTok' : '✓ MP4'}
+                                  </span>
+                                  <span style={{
+                                    fontSize: '0.68rem', fontWeight: 700, padding: '2px 8px', borderRadius: '6px',
+                                    background: 'rgba(255,255,255,0.06)', color: '#FFC107'
+                                  }}>
+                                    {reel.sport || 'عام'}
+                                  </span>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Bottom Row: Reordering & Action Buttons */}
+                        <div style={{
+                          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                          paddingTop: '10px', borderTop: '1px solid rgba(255,255,255,0.06)',
+                          flexWrap: 'wrap', gap: '8px'
+                        }}>
+                          {/* Order Action Buttons */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                            <button
+                              type="button"
+                              onClick={() => handlePinReelToTop(reel.id)}
+                              disabled={isTop}
+                              title="تثبيت هذا الفيديو في المرتبة الأولى (القمة)"
+                              style={{
+                                padding: '6px 12px', borderRadius: '8px',
+                                background: isTop ? 'rgba(255,255,255,0.05)' : 'linear-gradient(135deg, #00E676, #00B0FF)',
+                                border: 'none', color: isTop ? '#5A6A7E' : '#000',
+                                fontWeight: 900, fontSize: '0.75rem', cursor: isTop ? 'default' : 'pointer',
+                                display: 'flex', alignItems: 'center', gap: '4px',
+                                fontFamily: '"Cairo", "Tajawal", sans-serif'
+                              }}
+                            >
+                              🔝 {isTop ? 'في القمة حالياً' : 'تثبيت في القمة'}
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => handleMoveReelUp(idx, filtered)}
+                              disabled={idx === 0}
+                              title="تقديم خطوة للأعلى"
+                              style={{
+                                padding: '6px 10px', borderRadius: '8px',
+                                background: idx === 0 ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.08)',
+                                border: '1px solid rgba(255,255,255,0.12)',
+                                color: idx === 0 ? '#4A5568' : '#FFF',
+                                fontWeight: 800, fontSize: '0.78rem', cursor: idx === 0 ? 'default' : 'pointer'
+                              }}
+                            >
+                              ⬆️ للأعلى
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => handleMoveReelDown(idx, filtered)}
+                              disabled={idx === filtered.length - 1}
+                              title="تأخير خطوة للأسفل"
+                              style={{
+                                padding: '6px 10px', borderRadius: '8px',
+                                background: idx === filtered.length - 1 ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.08)',
+                                border: '1px solid rgba(255,255,255,0.12)',
+                                color: idx === filtered.length - 1 ? '#4A5568' : '#FFF',
+                                fontWeight: 800, fontSize: '0.78rem', cursor: idx === filtered.length - 1 ? 'default' : 'pointer'
+                              }}
+                            >
+                              ⬇️ للأسفل
+                            </button>
+                          </div>
+
+                          {/* Extra Action Buttons */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <button
+                              type="button"
+                              onClick={() => setPreviewModalReel(reel)}
+                              style={{
+                                padding: '6px 12px', borderRadius: '8px',
+                                background: 'rgba(255,193,7,0.12)', border: '1px solid rgba(255,193,7,0.3)',
+                                color: '#FFC107', fontWeight: 800, fontSize: '0.75rem', cursor: 'pointer',
+                                fontFamily: '"Cairo", "Tajawal", sans-serif'
+                              }}
+                            >
+                              👁️ معاينة وتشغيل
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingReelId(reel.id);
+                                setEditingReelTitle(reel.title || '');
+                                setEditingReelSport(reel.sport || 'General');
+                              }}
+                              style={{
+                                padding: '6px 10px', borderRadius: '8px',
+                                background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)',
+                                color: '#8E9BAE', fontWeight: 800, fontSize: '0.75rem', cursor: 'pointer',
+                                fontFamily: '"Cairo", "Tajawal", sans-serif'
+                              }}
+                            >
+                              ✏️ تعديل
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteAcademyReel(reel.id)}
+                              style={{
+                                background: 'rgba(255,61,0,0.12)', border: '1px solid rgba(255,61,0,0.3)',
+                                borderRadius: '8px', color: '#FF5252', padding: '6px 10px',
+                                fontWeight: 800, cursor: 'pointer', fontSize: '0.75rem',
+                                fontFamily: '"Cairo", "Tajawal", sans-serif'
+                              }}
+                            >
+                              🗑️
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  });
+                })()}
+
+                {/* Legacy reels fallback */}
                 {academyReels.length === 0 && reels.map((reel, idx) => {
                   const videoSrc = reel.video_url || reel.url || '';
                   const thumb = reel.thumbnail_url || reel.thumbnailUrl;
@@ -3841,7 +4376,92 @@ export default function Admin() {
               <div style={{ ...cardStyle, textAlign: 'center', padding: '40px', color: '#8E9BAE' }}>
                 <div style={{ fontSize: '3rem', marginBottom: '12px' }}>🎬</div>
                 <h3 style={{ color: '#FFF', margin: '0 0 8px' }}>لا توجد أي ريلز بعد</h3>
-                <p style={{ margin: 0, fontSize: '0.85rem' }}>ارفع فيديو MP4 أو اربط حساب TikTok للمزامنة التلقائية</p>
+                <p style={{ margin: 0, fontSize: '0.85rem' }}>ارفع فيديو MP4 أو استورد قائمة فيديوهات TikTok أعلاه</p>
+              </div>
+            )}
+
+            {/* ─── MODAL: VIDEO PREVIEW POPUP ───────────────────────────────── */}
+            {previewModalReel && (
+              <div
+                onClick={() => setPreviewModalReel(null)}
+                style={{
+                  position: 'fixed', inset: 0, zIndex: 999999,
+                  background: 'rgba(0,0,0,0.85)',
+                  backdropFilter: 'blur(12px)',
+                  WebkitBackdropFilter: 'blur(12px)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  padding: '20px', direction: 'rtl'
+                }}
+              >
+                <div
+                  onClick={e => e.stopPropagation()}
+                  style={{
+                    background: '#0B0F19', border: '1.5px solid rgba(255,255,255,0.15)',
+                    borderRadius: '20px', padding: '20px', maxWidth: '380px', width: '100%',
+                    boxShadow: '0 20px 60px rgba(0,0,0,0.9)', display: 'flex', flexDirection: 'column',
+                    alignItems: 'center', gap: '14px', maxHeight: '90vh', overflowY: 'auto'
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                    <div style={{ fontWeight: 900, fontSize: '0.95rem', color: '#FFF' }}>
+                      {previewModalReel.title || `معاينة ريل (${previewModalReel.tiktok_video_id || ''})`}
+                    </div>
+                    <button
+                      onClick={() => setPreviewModalReel(null)}
+                      style={{
+                        background: 'rgba(255,255,255,0.1)', border: 'none', color: '#FFF',
+                        borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem'
+                      }}
+                    >
+                      ✕
+                    </button>
+                  </div>
+
+                  {/* Player Frame */}
+                  <div style={{
+                    width: '100%', maxWidth: '280px', height: '420px', borderRadius: '14px',
+                    overflow: 'hidden', background: '#000', boxShadow: '0 8px 30px rgba(0,0,0,0.8)',
+                    position: 'relative'
+                  }}>
+                    {previewModalReel.playback_type === 'tiktok' && previewModalReel.tiktok_video_id ? (
+                      <iframe
+                        src={`https://www.tiktok.com/player/v1/${previewModalReel.tiktok_video_id}?controls=1&progress_bar=1&play_button=1&volume_control=1&fullscreen_button=1&timestamp=0&music_info=0&description=0&rel=0&autoplay=1&loop=1`}
+                        allow="autoplay; fullscreen"
+                        style={{ width: '100%', height: '100%', border: 0, background: '#000' }}
+                        title="TikTok Modal Preview"
+                      />
+                    ) : (
+                      <video
+                        src={previewModalReel.video_url}
+                        controls
+                        autoPlay
+                        loop
+                        playsInline
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      />
+                    )}
+                  </div>
+
+                  {/* Modal Action Buttons */}
+                  <div style={{ display: 'flex', gap: '10px', width: '100%' }}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handlePinReelToTop(previewModalReel.id);
+                        setPreviewModalReel(null);
+                      }}
+                      style={{
+                        flex: 1, padding: '12px', borderRadius: '12px',
+                        background: 'linear-gradient(135deg, #00E676, #00B0FF)',
+                        border: 'none', color: '#000', fontWeight: 900, fontSize: '0.85rem',
+                        cursor: 'pointer', fontFamily: '"Cairo", "Tajawal", sans-serif'
+                      }}
+                    >
+                      🔝 تثبيت هذا الفيديو في القمة (#1)
+                    </button>
+                  </div>
+                </div>
               </div>
             )}
           </div>

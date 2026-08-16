@@ -1108,6 +1108,32 @@ class DBService {
   }
 
   /**
+   * Add multiple TikTok reels in bulk with upsert.
+   */
+  async addBulkTikTokReels(videoIds, sport = 'General') {
+    if (!supabase) throw new Error('Supabase is not connected');
+    if (!Array.isArray(videoIds) || videoIds.length === 0) return [];
+
+    const uniqueIds = Array.from(new Set(videoIds.map(id => String(id).trim()).filter(Boolean)));
+    const rows = uniqueIds.map((id, idx) => ({
+      playback_type: 'tiktok',
+      tiktok_video_id: id,
+      sport: sport || 'General',
+      source: 'manual',
+      is_active: true,
+      display_order: uniqueIds.length - idx,
+    }));
+
+    const { data, error } = await supabase
+      .from('academy_reels')
+      .upsert(rows, { onConflict: 'tiktok_video_id' })
+      .select();
+
+    if (error) throw error;
+    return data;
+  }
+
+  /**
    * Soft-delete a reel (set is_active = false).
    */
   async deleteAcademyReel(id) {
@@ -1134,16 +1160,76 @@ class DBService {
   }
 
   /**
-   * Toggle a reel's active state.
+   * Update reel display order.
    */
-  async toggleAcademyReel(id, isActive) {
+  async updateAcademyReelOrder(id, displayOrder) {
     if (!supabase) throw new Error('Supabase is not connected');
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('academy_reels')
-      .update({ is_active: isActive })
-      .eq('id', id);
+      .update({ display_order: Number(displayOrder) || 0 })
+      .eq('id', id)
+      .select();
     if (error) throw error;
+    return data;
+  }
+
+  /**
+   * Pin a reel to the absolute top of the feed.
+   */
+  async pinAcademyReelToTop(id) {
+    if (!supabase) throw new Error('Supabase is not connected');
+    const { data: topRows } = await supabase
+      .from('academy_reels')
+      .select('display_order')
+      .order('display_order', { ascending: false })
+      .limit(1);
+
+    const highest = topRows?.[0]?.display_order ?? 0;
+    const newOrder = highest + 10;
+    const { data, error } = await supabase
+      .from('academy_reels')
+      .update({ display_order: newOrder })
+      .eq('id', id)
+      .select();
+    if (error) throw error;
+    return data;
+  }
+
+  /**
+   * Swap order between two reels.
+   */
+  async swapAcademyReelOrder(reelA, reelB) {
+    if (!supabase) throw new Error('Supabase is not connected');
+    const orderA = reelA.display_order ?? 0;
+    const orderB = reelB.display_order ?? 0;
+    const newOrderA = orderA === orderB ? orderB + 1 : orderB;
+    const newOrderB = orderA === orderB ? orderB : orderA;
+
+    const [res1, res2] = await Promise.all([
+      supabase.from('academy_reels').update({ display_order: newOrderA }).eq('id', reelA.id),
+      supabase.from('academy_reels').update({ display_order: newOrderB }).eq('id', reelB.id)
+    ]);
+    if (res1.error) throw res1.error;
+    if (res2.error) throw res2.error;
     return true;
+  }
+
+  /**
+   * Update reel details (title, sport, description).
+   */
+  async updateAcademyReelDetails(id, updates) {
+    if (!supabase) throw new Error('Supabase is not connected');
+    const { data, error } = await supabase
+      .from('academy_reels')
+      .update({
+        title: updates.title !== undefined ? updates.title : undefined,
+        sport: updates.sport !== undefined ? updates.sport : undefined,
+        description: updates.description !== undefined ? updates.description : undefined,
+      })
+      .eq('id', id)
+      .select();
+    if (error) throw error;
+    return data;
   }
 
   /**
