@@ -58,6 +58,7 @@ function buildTikTokPlayerUrl(videoId) {
   const params = new URLSearchParams({
     autoplay: '1',
     loop: '1',
+    muted: '1',
     play_button: '0',
     controls: '0',
     progress_bar: '0',
@@ -173,6 +174,26 @@ function TikTokPlayer({ videoId, isActive, isMuted = false, posterUrl, onReady, 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
   }, [videoId, onReady, onError, sendPlayerMessage]);
+
+  // PWA / Mobile Instant Audio Unlock on any screen touch/gesture
+  useEffect(() => {
+    const handleScreenTouch = () => {
+      if (isActiveRef.current && isReadyRef.current) {
+        sendPlayerMessage('play');
+        if (!isMutedRef.current) {
+          sendPlayerMessage('unMute');
+          sendPlayerMessage('setVolume', 1);
+        }
+      }
+    };
+
+    window.addEventListener('touchstart', handleScreenTouch, { passive: true });
+    window.addEventListener('pointerdown', handleScreenTouch, { passive: true });
+    return () => {
+      window.removeEventListener('touchstart', handleScreenTouch);
+      window.removeEventListener('pointerdown', handleScreenTouch);
+    };
+  }, [sendPlayerMessage]);
 
   // 2. Lifecycle when active status changes
   useEffect(() => {
