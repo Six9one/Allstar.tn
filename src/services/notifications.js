@@ -334,6 +334,11 @@ class NotificationService {
 
   // Send Push Notification from Admin via Supabase Edge Function with instant local/realtime dispatch
   async sendPushNotification({ title, body, targetUrl = '/', imageUrl = null, targetAudience = 'الجميع' }) {
+    const config = this.getNotificationConfig();
+    const notifIcon = (config.logoUrl && config.logoUrl.startsWith('http'))
+      ? config.logoUrl
+      : (config.logoUrl ? config.logoUrl : 'https://allstar.tn/logo-light.png');
+
     const notifItem = {
       id: 'notif-' + Date.now(),
       title,
@@ -341,6 +346,11 @@ class NotificationService {
       target_url: targetUrl || '/',
       target_role: targetAudience || 'الجميع',
       image_url: imageUrl,
+      logo_url: config.logoUrl || null,
+      app_title: config.appTitle || 'ALL-STAR SPORTS ACADEMY',
+      app_subtitle: config.appSubtitle || 'أكاديمية أولستار تطاوين 🇹🇳',
+      sound_type: config.soundType || 'tri-tone',
+      custom_sound_url: config.customSoundUrl || null,
       date: 'الآن',
       type: 'notification',
       read: false,
@@ -386,8 +396,8 @@ class NotificationService {
     const pushPayload = {
       title,
       body,
-      icon: 'https://allstar.tn/icon.png',
-      badge: 'https://allstar.tn/icon.png',
+      icon: notifIcon,
+      badge: 'https://allstar.tn/logo-light.png',
       imageUrl: imageUrl || undefined,
       image: imageUrl || undefined,
       targetUrl: targetUrl || '/',
@@ -397,7 +407,11 @@ class NotificationService {
       renotify: true,
       data: {
         url: targetUrl || '/',
-        dateOfArrival: Date.now()
+        dateOfArrival: Date.now(),
+        customSoundUrl: config.customSoundUrl || undefined,
+        soundType: config.soundType || 'tri-tone',
+        logoUrl: config.logoUrl || undefined,
+        imageUrl: imageUrl || undefined,
       }
     };
 
@@ -440,7 +454,6 @@ class NotificationService {
 
     // 4. OneSignal REST API Broadcast to closed devices/iPhones
     try {
-      const config = this.getNotificationConfig();
       const appId = config.oneSignalAppId || 'dedea313-29ed-453f-810f-f7a2a164ad8e';
       const apiKey = config.oneSignalApiKey;
       if (appId && apiKey) {
@@ -458,14 +471,31 @@ class NotificationService {
             contents: { en: body, ar: body },
             url: targetUrl.startsWith('http') ? targetUrl : `https://allstar.tn${targetUrl}`,
             chrome_web_image: imageUrl || undefined,
-            big_picture: imageUrl || undefined
+            big_picture: imageUrl || undefined,
+            chrome_web_icon: notifIcon,
+            chrome_web_badge: 'https://allstar.tn/logo-light.png',
+            firefox_icon: notifIcon,
+            small_icon: 'https://allstar.tn/icon.png',
+            large_icon: notifIcon,
+            ios_attachments: imageUrl ? { id1: imageUrl } : undefined,
+            adm_big_picture: imageUrl || undefined,
+            ios_sound: 'notification.mp3',
+            android_sound: 'notification',
+            data: {
+              customSoundUrl: config.customSoundUrl || undefined,
+              soundType: config.soundType || 'tri-tone',
+              imageUrl: imageUrl || undefined,
+              logoUrl: config.logoUrl || undefined,
+              appTitle: config.appTitle || undefined,
+              appSubtitle: config.appSubtitle || undefined,
+            }
           })
         });
         const osData = await response.json();
         console.log('⚡ OneSignal Push Response:', osData);
         if (osData?.recipients || osData?.id) {
           sentCount = Math.max(sentCount, osData.recipients || 1);
-          successMessage = `تم بث الإشعار إلى ${sentCount} جهاز بنجاح (بما في ذلك الهواتف المقفلة)`;
+          successMessage = `تم بث الإشعار إلى ${sentCount} جهاز بنجاح (بما في ذلك الهواتف المقفلة عبر OneSignal)`;
         }
       }
     } catch (osErr) {
@@ -533,6 +563,13 @@ class NotificationService {
       localStorage.setItem(NOTIF_KEY, JSON.stringify(notifs));
       this.notifyListeners();
 
+      // Play configured custom sound chime
+      const soundConfig = {
+        soundType: notification.sound_type || this.getNotificationConfig().soundType || 'tri-tone',
+        customSoundUrl: notification.custom_sound_url || this.getNotificationConfig().customSoundUrl || ''
+      };
+      this.playConfiguredSound(soundConfig);
+
       // Direct instant UI pop
       this.receiveCallbacks.forEach(cb => {
         try { cb(notification); } catch (e) { console.warn('Receive callback error:', e); }
@@ -541,7 +578,7 @@ class NotificationService {
       this.showNativePush(
         notification.title,
         notification.body,
-        notification.image_url || '/icon.png',
+        notification.logo_url || 'https://allstar.tn/logo-light.png',
         { url: notification.target_url || '/' }
       );
     }

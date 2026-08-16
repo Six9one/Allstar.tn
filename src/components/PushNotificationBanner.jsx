@@ -138,9 +138,9 @@ export default function PushNotificationBanner() {
     }
   };
 
-  const bannerLogo = notifConfig?.logoUrl || DEFAULT_HD_LOGO;
-  const appTitle = notifConfig?.appTitle || 'ALL-STAR SPORTS ACADEMY';
-  const appSubtitle = notifConfig?.appSubtitle || 'أكاديمية أولستار تطاوين 🇹🇳';
+  const bannerLogo = activeNotification?.logo_url || notifConfig?.logoUrl || DEFAULT_HD_LOGO;
+  const appTitle = activeNotification?.app_title || notifConfig?.appTitle || 'ALL-STAR SPORTS ACADEMY';
+  const appSubtitle = activeNotification?.app_subtitle || notifConfig?.appSubtitle || 'أكاديمية أولستار تطاوين 🇹🇳';
 
   return (
     <>
