@@ -53,14 +53,9 @@ export default function PWAInstalledNotificationModal() {
       const granted = await notificationService.requestPermission();
       if (granted) {
         setIsSuccess(true);
-        // Show immediate test native push
-        notificationService.showNativePush(
-          '🎉 مرحباً بك في تطبيق أولستار!',
-          'تم تفعيل إشعارات الهاتف بنجاح. ستصلك التنبيهات المباشرة فوراً.'
-        );
         setTimeout(() => {
           setIsOpen(false);
-        }, 1800);
+        }, 1200);
       } else {
         setIsOpen(false);
       }

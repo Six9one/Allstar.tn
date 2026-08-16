@@ -89,8 +89,31 @@ class NotificationService {
         this.realtimeChannel
           .on('broadcast', { event: 'admin_notification' }, (payload) => {
             console.log('⚡ Received live Supabase WebSocket push on mobile device:', payload);
-            if (payload && payload.notification) {
-              this.handleIncomingNotification(payload.notification);
+            const notif = payload?.payload?.notification || payload?.notification;
+            if (notif) {
+              this.handleIncomingNotification(notif);
+            }
+          })
+          .subscribe();
+
+        // Also listen to direct PostgreSQL INSERT events on notifications_log
+        this.dbLogChannel = supabase
+          .channel('allstar_notif_log_db')
+          .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications_log' }, (payload) => {
+            if (payload?.new) {
+              const log = payload.new;
+              const notif = {
+                id: 'notif-log-' + log.id,
+                title: log.title,
+                body: log.body,
+                target_url: log.target_url || '/',
+                target_role: log.target_role || 'الجميع',
+                image_url: log.image_url || null,
+                date: 'الآن',
+                read: false,
+                timestamp: Date.now()
+              };
+              this.handleIncomingNotification(notif);
             }
           })
           .subscribe();
@@ -99,7 +122,7 @@ class NotificationService {
       }
     }
 
-    // 3. Listen for storage events & Cloud Polling Fallback
+    // 3. Listen for visibility changes (App opened / foregrounded on iPhone) & Cloud Polling
     if (typeof window !== 'undefined') {
       window.addEventListener('storage', (e) => {
         if (e.key === NOTIF_KEY || e.key === 'allstar_db_site_content') {
@@ -108,10 +131,20 @@ class NotificationService {
         }
       });
 
-      // Periodic check
+      // Immediate check when phone screen unlocks or user switches back to the app
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+          this.checkCloudAnnouncements();
+        }
+      });
+      window.addEventListener('focus', () => {
+        this.checkCloudAnnouncements();
+      });
+
+      // Periodic check every 3 seconds for bulletproof real-time reception
       setInterval(() => {
         this.checkCloudAnnouncements();
-      }, 5000);
+      }, 3000);
 
       // Auto-register push subscription if permission already granted
       if ('Notification' in window && Notification.permission === 'granted') {
@@ -120,10 +153,44 @@ class NotificationService {
     }
   }
 
-  checkCloudAnnouncements() {
+  async checkCloudAnnouncements() {
     try {
-      const siteContent = db.getSiteContent();
-      const latestAnn = siteContent.latest_announcement;
+      // 1. Check Supabase notifications_log table directly
+      if (supabase) {
+        const { data: logs } = await supabase
+          .from('notifications_log')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(1);
+
+        if (logs && logs.length > 0) {
+          const latest = logs[0];
+          const notifId = 'notif-db-' + latest.id;
+          const processedIds = JSON.parse(localStorage.getItem(PROCESSED_IDS_KEY)) || [];
+          if (!processedIds.includes(notifId) && !processedIds.includes(latest.id?.toString())) {
+            processedIds.push(notifId);
+            if (latest.id) processedIds.push(latest.id.toString());
+            localStorage.setItem(PROCESSED_IDS_KEY, JSON.stringify(processedIds));
+
+            this.handleIncomingNotification({
+              id: notifId,
+              title: latest.title,
+              body: latest.body,
+              target_url: latest.target_url || '/',
+              target_role: latest.target_role || 'الجميع',
+              image_url: latest.image_url || null,
+              date: 'الآن',
+              read: false,
+              timestamp: new Date(latest.created_at || Date.now()).getTime()
+            });
+            return;
+          }
+        }
+      }
+
+      // 2. Check site_content async
+      const siteContent = await db.getSiteContentAsync();
+      const latestAnn = siteContent?.latest_announcement;
       if (!latestAnn || !latestAnn.id) return;
 
       const processedIds = JSON.parse(localStorage.getItem(PROCESSED_IDS_KEY)) || [];
@@ -135,7 +202,7 @@ class NotificationService {
         this.handleIncomingNotification(latestAnn);
       }
     } catch (e) {
-      console.log('Cloud announcement sync error:', e);
+      // Silently handle
     }
   }
 
@@ -151,14 +218,14 @@ class NotificationService {
         // Register Web Push subscription in background
         await this.registerPushSubscription();
 
-        this.showNativePush(
-          '🔔 تم تفعيل إشعارات الأكاديمية بنجاح!',
-          'ستصلك التنبيهات المباشرة ومواعيد التمارين والطقس فور صدورها.'
-        );
-        this.sendLocalNotification(
-          '🔔 تم تفعيل الإشعارات بنجاح / Notifications Enabled',
-          'ستصلك إشعارات حول المواعيد والطقس في تطاوين.'
-        );
+        // Show single welcome notification if not already shown
+        if (!localStorage.getItem('allstar_welcome_notif_sent')) {
+          localStorage.setItem('allstar_welcome_notif_sent', 'true');
+          this.showNativePush(
+            '🔔 تم تفعيل إشعارات الأكاديمية بنجاح!',
+            'ستصلك التنبيهات المباشرة ومواعيد التمارين والطقس فور صدورها.'
+          );
+        }
         return true;
       }
     } catch (e) {
@@ -226,8 +293,8 @@ class NotificationService {
 
     const options = {
       body,
-      icon,
-      badge: icon,
+      icon: 'https://allstar.tn/icon.png',
+      badge: 'https://allstar.tn/icon.png',
       vibrate: [200, 100, 200, 100, 200],
       tag: 'allstar-notification-' + Date.now(),
       renotify: true,
@@ -270,7 +337,12 @@ class NotificationService {
       timestamp: Date.now()
     };
 
-    // 1. INSTANT LOCAL & REALTIME DISPATCH (0ms latency for all open apps/phones)
+    // 1. Mark as processed on sender so sender doesn't re-trigger itself
+    const processedIds = JSON.parse(localStorage.getItem(PROCESSED_IDS_KEY)) || [];
+    processedIds.push(notifItem.id);
+    localStorage.setItem(PROCESSED_IDS_KEY, JSON.stringify(processedIds));
+
+    // 2. INSTANT LOCAL & REALTIME DISPATCH (0ms latency for all open apps/phones)
     const notifs = this.getNotifications();
     notifs.unshift(notifItem);
     localStorage.setItem(NOTIF_KEY, JSON.stringify(notifs));
@@ -298,11 +370,9 @@ class NotificationService {
       }
     }
 
-    // Trigger local native push on sender device immediately
-    this.showNativePush(title, body, imageUrl || '/icon.png', { url: targetUrl });
     this.notifyListeners();
 
-    // 2. PARALLEL EDGE FUNCTION DISPATCH (for locked screens & background devices)
+    // 3. PARALLEL EDGE FUNCTION & DATABASE PERSISTENCE
     const pushPayload = {
       title,
       body,
@@ -326,10 +396,21 @@ class NotificationService {
 
     if (supabase) {
       try {
+        // Save directly to notifications_log table
+        await supabase.from('notifications_log').insert({
+          title,
+          body,
+          target_role: targetAudience || 'الجميع',
+          target_url: targetUrl || '/',
+          image_url: imageUrl || null,
+          sent_count: 1
+        });
+
         // Save to Cloud Site Content for background polling
-        const currentSite = db.getSiteContent();
-        const existingAnnouncements = currentSite.announcements || [];
-        db.saveSiteContent({
+        const currentSite = await db.getSiteContentAsync();
+        const existingAnnouncements = currentSite?.announcements || [];
+        await db.saveSiteContent({
+          ...currentSite,
           announcements: [notifItem, ...existingAnnouncements],
           latest_announcement: notifItem
         });
@@ -343,7 +424,7 @@ class NotificationService {
           successMessage = data.message || `تم إرسال الإشعار بنجاح إلى ${sentCount} جهاز`;
         }
       } catch (invokeErr) {
-        console.warn('Edge function invoke error:', invokeErr);
+        console.warn('Edge function invoke notice:', invokeErr);
       }
     }
 
