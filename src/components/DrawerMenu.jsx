@@ -176,13 +176,13 @@ function UnderlyingMenuCanvas({ currentUser, onClose, dir, lang }) {
         padding: '52px 24px 28px',
         borderBottom: '1px solid rgba(255,255,255,0.07)',
         background: 'linear-gradient(180deg, rgba(0,230,118,0.07) 0%, transparent 100%)',
-        /* Row layout: avatar on the physical-left, text beside it */
+        /* Row layout: avatar on correct side per language */
         display: 'flex',
         flexDirection: 'row',
         alignItems: 'center',
         gap: '16px',
-        /* Always physical LTR inside the header so avatar is truly left */
-        direction: 'ltr',
+        /* RTL → avatar on RIGHT; LTR → avatar on LEFT */
+        direction: isRTL ? 'rtl' : 'ltr',
         unicodeBidi: 'isolate',
       }}>
         {/* Avatar circle — always on the physical LEFT */}
