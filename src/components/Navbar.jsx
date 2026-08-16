@@ -1,9 +1,9 @@
-import React, { useState } from 'react'
+import React from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import logoMain from '../assets/logo-light.png'
+import { HamburgerButton } from './DrawerMenu'
 
 export default function Navbar({ onOpenOnboarding, currentUser }) {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const location = useLocation()
   const navigate = useNavigate()
 
@@ -58,7 +58,7 @@ export default function Navbar({ onOpenOnboarding, currentUser }) {
           direction: 'ltr'
         }}
       >
-        {/* TOP LEFT: LOGO ONLY (STRICTLY LEFT) */}
+        {/* TOP LEFT: LOGO */}
         <Link
           to="/"
           style={{
@@ -121,43 +121,10 @@ export default function Navbar({ onOpenOnboarding, currentUser }) {
           })}
         </nav>
 
-        {/* TOP RIGHT: CONNECTION BUTTON & MOBILE TOGGLE */}
+        {/* TOP RIGHT: USER BUTTON + 3D DRAWER HAMBURGER */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', direction: 'rtl' }}>
-          {/* MOBILE TOGGLE BUTTON (3 LINES MENU ICON - PERFECTLY CENTERED & ALIGNED) */}
-          <button
-            className="mobile-toggle"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            aria-label="Toggle Navigation Menu"
-            style={{
-              width: '42px',
-              height: '42px',
-              minWidth: '42px',
-              minHeight: '42px',
-              borderRadius: '12px',
-              backgroundColor: 'rgba(255, 255, 255, 0.08)',
-              border: '1px solid rgba(255, 255, 255, 0.15)',
-              color: '#FFF',
-              display: 'none',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              direction: 'ltr',
-              padding: 0,
-              lineHeight: 1,
-              boxSizing: 'border-box',
-              flexShrink: 0
-            }}
-          >
-            {mobileMenuOpen ? (
-              <span style={{ fontSize: '1.2rem', fontWeight: 900, lineHeight: 1 }}>✕</span>
-            ) : (
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'block', margin: '0 auto' }}>
-                <line x1="4" y1="6" x2="20" y2="6"></line>
-                <line x1="4" y1="12" x2="20" y2="12"></line>
-                <line x1="4" y1="18" x2="20" y2="18"></line>
-              </svg>
-            )}
-          </button>
+          {/* 3D DRAWER HAMBURGER — opens the scale-down sliding drawer on mobile */}
+          <HamburgerButton className="mobile-toggle" />
 
           {currentUser ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -200,7 +167,7 @@ export default function Navbar({ onOpenOnboarding, currentUser }) {
                   fontSize: '0.82rem',
                   display: 'inline-flex',
                   alignItems: 'center',
-                  justify: 'center'
+                  justifyContent: 'center'
                 }}
               >
                 🚪
@@ -223,7 +190,7 @@ export default function Navbar({ onOpenOnboarding, currentUser }) {
                 boxShadow: '0 4px 16px rgba(255, 193, 7, 0.4)',
                 display: 'inline-flex',
                 alignItems: 'center',
-                justify: 'center',
+                justifyContent: 'center',
                 gap: '6px',
                 whiteSpace: 'nowrap',
                 flexShrink: 0
@@ -236,47 +203,6 @@ export default function Navbar({ onOpenOnboarding, currentUser }) {
           )}
         </div>
       </div>
-
-      {/* MOBILE DRAWER */}
-      {mobileMenuOpen && (
-        <div
-          style={{
-            backgroundColor: '#0D1017',
-            borderTop: '1px solid rgba(255, 255, 255, 0.1)',
-            padding: '16px',
-            marginTop: '8px',
-            borderRadius: '16px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '8px'
-          }}
-        >
-          {navLinks.map((link) => {
-            const isActive = location.pathname === link.path
-            return (
-              <Link
-                key={link.path}
-                to={link.path}
-                onClick={() => setMobileMenuOpen(false)}
-                style={{
-                  minHeight: '48px',
-                  padding: '0 16px',
-                  borderRadius: '12px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  textDecoration: 'none',
-                  color: isActive ? '#00E676' : '#FFFFFF',
-                  backgroundColor: isActive ? 'rgba(0, 230, 118, 0.15)' : 'rgba(255, 255, 255, 0.04)',
-                  fontWeight: 800,
-                  fontSize: '0.95rem'
-                }}
-              >
-                {link.label}
-              </Link>
-            )
-          })}
-        </div>
-      )}
     </header>
   )
 }

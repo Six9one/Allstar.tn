@@ -267,14 +267,16 @@ function NativePlayer({ videoUrl, posterUrl, isActive, isMuted, onToggleMute }) 
   const [playerState, setPlayerState] = useState(PLAYER_STATE.INITIALIZING);
   const [showPlayIcon, setShowPlayIcon] = useState(false);
 
-  // Playback State Machine Execution
+  // ─── PLAYBACK STATE MACHINE: Driven ONLY by isActive + videoUrl ─────────────
+  // Rule: Always start play() muted — browsers block unmuted autoplay.
+  // Rule: After play() resolves, apply the real isMuted value.
   useEffect(() => {
     const video = videoRef.current;
     if (!video || !videoUrl) return;
 
     if (isActive) {
-      // 1. Set Muted state for frictionless autoplay compliance
-      video.muted = isMuted;
+      // 1. Force muted first — satisfies browser autoplay policy
+      video.muted = true;
       setPlayerState(PLAYER_STATE.MUTED);
 
       const playPromise = video.play();
@@ -282,12 +284,17 @@ function NativePlayer({ videoUrl, posterUrl, isActive, isMuted, onToggleMute }) 
         playPromise
           .then(() => {
             setPlayerState(PLAYER_STATE.PLAYING);
+            // 2. After play starts, apply the real mute preference
+            video.muted = isMuted;
           })
           .catch((err) => {
-            console.warn('Autoplay initial policy catch, retrying muted:', err);
+            console.warn('Autoplay blocked even muted, retrying:', err);
             video.muted = true;
             video.play()
-              .then(() => setPlayerState(PLAYER_STATE.PLAYING))
+              .then(() => {
+                setPlayerState(PLAYER_STATE.PLAYING);
+                video.muted = isMuted;
+              })
               .catch(() => setPlayerState(PLAYER_STATE.PAUSED));
           });
       }
@@ -295,8 +302,10 @@ function NativePlayer({ videoUrl, posterUrl, isActive, isMuted, onToggleMute }) 
       video.pause();
       setPlayerState(PLAYER_STATE.PAUSED);
     }
-  }, [isActive, videoUrl, isMuted]);
+  }, [isActive, videoUrl]); // eslint-disable-line react-hooks/exhaustive-deps
+  // NOTE: isMuted intentionally excluded — handled by separate effect below
 
+  // ─── MUTE SYNC: Independent of play/pause ────────────────────────────────
   useEffect(() => {
     if (videoRef.current) {
       videoRef.current.muted = isMuted;

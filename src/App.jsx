@@ -2,6 +2,7 @@ import { Routes, Route, useLocation } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { LanguageProvider } from './context/LanguageContext'
 import Navbar from './components/Navbar'
+import DrawerRoot from './components/DrawerMenu'
 import InstallPrompt from './components/InstallPrompt'
 import OnboardingModal from './components/OnboardingModal'
 import AutoUpdater from './components/AutoUpdater'
@@ -68,45 +69,49 @@ export default function App() {
 
   return (
     <LanguageProvider>
-      <ScrollToTop />
-      {!isReelsPage && (
-        <Navbar onOpenOnboarding={() => setShowOnboarding(true)} currentUser={currentUser} />
-      )}
-      <main className={isReelsPage ? 'reels-fullscreen-main' : 'main-content'}>
-        <Routes>
-          <Route path="/" element={<Home currentUser={currentUser} onOpenOnboarding={() => setShowOnboarding(true)} />} />
-          <Route path="/programs" element={<Programs />} />
-          <Route path="/academy" element={<Academy />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/schedule" element={<Schedule />} />
-          <Route path="/contact" element={<Contact />} />
-          <Route path="/gallery" element={<Gallery />} />
-          <Route path="/events" element={<Events />} />
-          <Route path="/pricing" element={<Pricing />} />
-          <Route path="/shop" element={<Shop />} />
-          <Route path="/portal" element={<Portal currentUser={currentUser} />} />
-          <Route path="/coach-portal" element={<CoachPortal currentUser={currentUser} />} />
-          <Route path="/admin" element={<Admin />} />
-          <Route path="/drills" element={<Drills />} />
-          <Route path="/player-cards" element={<PlayerCards />} />
-          <Route path="/weather-status" element={<WeatherStatus />} />
-          <Route path="/feedback" element={<Feedback />} />
-          <Route path="/reels" element={<Reels />} />
-          <Route path="/certificates" element={<Certificates />} />
-        </Routes>
-      </main>
-      <BottomNav />
+      <DrawerRoot currentUser={currentUser}>
+        <ScrollToTop />
+        {!isReelsPage && (
+          <Navbar onOpenOnboarding={() => setShowOnboarding(true)} currentUser={currentUser} />
+        )}
+        <main className={isReelsPage ? 'reels-fullscreen-main' : 'main-content'}>
+          <Routes>
+            <Route path="/" element={<Home currentUser={currentUser} onOpenOnboarding={() => setShowOnboarding(true)} />} />
+            <Route path="/programs" element={<Programs />} />
+            <Route path="/academy" element={<Academy />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/schedule" element={<Schedule />} />
+            <Route path="/contact" element={<Contact />} />
+            <Route path="/gallery" element={<Gallery />} />
+            <Route path="/events" element={<Events />} />
+            <Route path="/pricing" element={<Pricing />} />
+            <Route path="/shop" element={<Shop />} />
+            <Route path="/portal" element={<Portal currentUser={currentUser} />} />
+            <Route path="/coach-portal" element={<CoachPortal currentUser={currentUser} />} />
+            <Route path="/admin" element={<Admin />} />
+            <Route path="/drills" element={<Drills />} />
+            <Route path="/player-cards" element={<PlayerCards />} />
+            <Route path="/weather-status" element={<WeatherStatus />} />
+            <Route path="/feedback" element={<Feedback />} />
+            <Route path="/reels" element={<Reels />} />
+            <Route path="/certificates" element={<Certificates />} />
+          </Routes>
+        </main>
+        <BottomNav />
+
+        {/* FIRST OPENING ONBOARDING MODAL MATCHING SCREENSHOT */}
+        <OnboardingModal
+          isOpen={showOnboarding}
+          onClose={() => setShowOnboarding(false)}
+          onLoginSuccess={handleLoginSuccess}
+        />
+      </DrawerRoot>
+
+      {/* These float above the drawer transform — rendered outside scale wrapper */}
       <AutoUpdater />
       <InstallPrompt />
       <PushNotificationBanner />
       <PWAInstalledNotificationModal />
-
-      {/* FIRST OPENING ONBOARDING MODAL MATCHING SCREENSHOT */}
-      <OnboardingModal
-        isOpen={showOnboarding}
-        onClose={() => setShowOnboarding(false)}
-        onLoginSuccess={handleLoginSuccess}
-      />
     </LanguageProvider>
   )
 }

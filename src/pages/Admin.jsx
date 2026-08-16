@@ -3657,27 +3657,9 @@ export default function Admin() {
                     <span>🔄</span>
                     <span>{subscriberStats.loading ? 'جاري التحديث...' : 'تحديث العداد'}</span>
                   </button>
-                  <a
-                    href="https://dashboard.onesignal.com"
-                    target="_blank"
-                    rel="noreferrer"
-                    style={{
-                      padding: '8px 14px',
-                      borderRadius: '10px',
-                      background: 'rgba(255, 152, 0, 0.15)',
-                      border: '1px solid rgba(255, 152, 0, 0.4)',
-                      color: '#FF9800',
-                      fontSize: '0.8rem',
-                      fontWeight: 700,
-                      textDecoration: 'none',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px'
-                    }}
-                  >
-                    <span>📊</span>
-                    <span>لوحة OneSignal المباشرة</span>
-                  </a>
+                  <span style={{ fontSize: '0.74rem', color: '#5A7A6A', padding: '8px 12px', background: 'rgba(0,230,118,0.05)', borderRadius: '10px', border: '1px solid rgba(0,230,118,0.12)' }}>
+                    ✅ Web Push VAPID مُفعّل
+                  </span>
                 </div>
               </div>
 
@@ -3873,41 +3855,7 @@ export default function Admin() {
                 </button>
               </form>
 
-              {/* Multi-channel Broadcast options */}
-              <div style={{ marginTop: '28px', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '20px' }}>
-                <div style={{ fontSize: '0.85rem', color: '#FFC107', fontWeight: 800, marginBottom: '12px' }}>
-                  💬 أو البث عبر قنوات التواصل المباشرة (WhatsApp & SMS):
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                  <button
-                    onClick={() => {
-                      if (!notifTitle.trim()) { showSuccess('يرجى إدخال عنوان الإشعار أولاً'); return; }
-                      notificationService.sendWhatsAppNotification('+21658263467', `📢 *${notifTitle}*\n\n${notifBody}`);
-                    }}
-                    style={{
-                      background: 'rgba(37,211,102,0.15)', border: '1px solid #25D366', color: '#25D366',
-                      padding: '12px', borderRadius: '12px', fontWeight: 800, cursor: 'pointer', fontSize: '0.82rem',
-                      fontFamily: '"Cairo", "Tajawal", sans-serif', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
-                    }}
-                  >
-                    💬 بث عبر مجموعة WhatsApp
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      if (!notifTitle.trim()) { showSuccess('يرجى إدخال عنوان الإشعار أولاً'); return; }
-                      notificationService.sendSMSAlert('', `${notifTitle}: ${notifBody}`);
-                    }}
-                    style={{
-                      background: 'rgba(0,229,255,0.12)', border: '1px solid #00E5FF', color: '#00E5FF',
-                      padding: '12px', borderRadius: '12px', fontWeight: 800, cursor: 'pointer', fontSize: '0.82rem',
-                      fontFamily: '"Cairo", "Tajawal", sans-serif', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
-                    }}
-                  >
-                    📱 إرسال رسالة نصية SMS
-                  </button>
-                </div>
-              </div>
+              {/* WhatsApp/SMS broadcast removed — مركز الإشعارات is PWA Web Push only */}
 
               {/* ─── NOTIFICATION BRANDING & SOUND STUDIO ────────────────────────── */}
               <div style={{ marginTop: '28px', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '20px' }}>
@@ -4254,6 +4202,7 @@ export default function Admin() {
                     <span>📜</span>
                     <span>سجل الإشعارات المرسلة مؤخراً</span>
                   </h3>
+                  {/* Spec: shows Title, Audience, Date, Sent Count */}
                   <button
                     onClick={async () => {
                       const logs = await notificationService.getNotificationsLog();

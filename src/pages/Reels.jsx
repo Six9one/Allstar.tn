@@ -378,7 +378,9 @@ export default function Reels() {
   const [reels, setReels] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeSlideIndex, setActiveSlideIndex] = useState(0);
-  const [isMuted, setIsMuted] = useState(false); // 🔊 Sound is active and ON by default!
+  // AUTOPLAY FIX: Must start MUTED — browsers block unmuted autoplay.
+  // After first user interaction (scroll/touch), sound can be unlocked.
+  const [isMuted, setIsMuted] = useState(true);
 
   // Automatic global sound activation on first user swipe/touch/interaction
   useEffect(() => {
@@ -658,7 +660,7 @@ export default function Reels() {
           }}
         >
           <span>{isMuted ? '🔇' : '🔊'}</span>
-          <span style={{ fontSize: '0.72rem', fontWeight: 800 }}>{isMuted ? 'تشغيل الصوت' : 'الصوت يعمل'}</span>
+          <span style={{ fontSize: '0.72rem', fontWeight: 800 }}>{isMuted ? 'اضغط للصوت' : 'الصوت يعمل'}</span>
         </button>
       </div>
 

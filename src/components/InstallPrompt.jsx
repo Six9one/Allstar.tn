@@ -28,6 +28,15 @@ export default function InstallPrompt() {
       return
     }
 
+    // iOS/Safari: Auto-display Arabic install instructions after a 3-second delay
+    // (Safari never fires beforeinstallprompt — must show manual instructions)
+    if (isIphone) {
+      const iosTimer = setTimeout(() => {
+        setShowInstructionsModal(true)
+      }, 3000)
+      return () => clearTimeout(iosTimer)
+    }
+
     const handleBeforeInstallPrompt = (e) => {
       e.preventDefault()
       setDeferredPrompt(e)
@@ -228,21 +237,28 @@ export default function InstallPrompt() {
             </p>
 
             {isIOS ? (
-              /* IPHONE / SAFARI STEPS */
+              /* IPHONE / SAFARI STEPS — Arabic per spec */
               <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', textAlign: 'right', marginBottom: '24px' }}>
                 <div style={{ background: 'rgba(255,255,255,0.06)', padding: '14px', borderRadius: '14px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div style={{ background: '#FFC107', color: '#08090C', width: '28px', height: '28px', borderRadius: '50%', fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>1</div>
-                  <div style={{ fontSize: '0.9rem' }}>اضغط على زر المشاركة <strong>Share (⎘)</strong> في أسفل المتصفح Safari</div>
+                  <div style={{ background: '#FFC107', color: '#08090C', width: '28px', height: '28px', borderRadius: '50%', fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>1</div>
+                  <div style={{ fontSize: '0.9rem', lineHeight: 1.4 }}>
+                    اضغط على زر المشاركة <strong style={{ color: '#FFC107' }}>Share (⎘)</strong> في أسفل متصفح Safari
+                  </div>
                 </div>
 
                 <div style={{ background: 'rgba(255,255,255,0.06)', padding: '14px', borderRadius: '14px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div style={{ background: '#FFC107', color: '#08090C', width: '28px', height: '28px', borderRadius: '50%', fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>2</div>
-                  <div style={{ fontSize: '0.9rem' }}>انزل للأسفل واختر <strong>"Add to Home Screen" ➕</strong> (إضافة إلى الشاشة الرئيسية)</div>
+                  <div style={{ background: '#FFC107', color: '#08090C', width: '28px', height: '28px', borderRadius: '50%', fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>2</div>
+                  <div style={{ fontSize: '0.9rem', lineHeight: 1.4 }}>
+                    انزل للأسفل واختر <strong style={{ color: '#FFC107' }}>«أضف إلى الشاشة الرئيسية» ➕</strong>{' '}
+                    <span style={{ opacity: 0.75, fontSize: '0.82rem' }}>(Add to Home Screen)</span>
+                  </div>
                 </div>
 
                 <div style={{ background: 'rgba(255,255,255,0.06)', padding: '14px', borderRadius: '14px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div style={{ background: '#FFC107', color: '#08090C', width: '28px', height: '28px', borderRadius: '50%', fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>3</div>
-                  <div style={{ fontSize: '0.9rem' }}>اضغط على <strong>"Add" (إضافة)</strong> أعلى اليمين ليظهر أيقونة التطبيق مباشرة!</div>
+                  <div style={{ background: '#FFC107', color: '#08090C', width: '28px', height: '28px', borderRadius: '50%', fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>3</div>
+                  <div style={{ fontSize: '0.9rem', lineHeight: 1.4 }}>
+                    اضغط على <strong style={{ color: '#FFC107' }}>«إضافة» (Add)</strong> أعلى اليمين — ستظهر أيقونة التطبيق على شاشتك الرئيسية فوراً!
+                  </div>
                 </div>
               </div>
             ) : (
