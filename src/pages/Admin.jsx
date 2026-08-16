@@ -1719,6 +1719,7 @@ export default function Admin() {
   const [notifConfig, setNotifConfig] = useState(() => notificationService.getNotificationConfig());
   const notifLogoFileInputRef = useRef(null);
   const notifAudioFileInputRef = useRef(null);
+  const notifPostImageInputRef = useRef(null);
   const compressImageFile = (file, maxWidth = 800, quality = 0.75) => {
     return new Promise((resolve) => {
       const reader = new FileReader();
