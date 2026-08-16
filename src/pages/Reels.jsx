@@ -378,7 +378,7 @@ export default function Reels() {
   const [reels, setReels] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeSlideIndex, setActiveSlideIndex] = useState(0);
-  const [isMuted, setIsMuted] = useState(false); // 🔊 Auto audio by default!
+  const [isMuted, setIsMuted] = useState(true); // 🔇 Starts muted for instant autoplay; tap unmutes all videos!
 
   const containerRef = useRef(null);
   const slideRefs = useRef({});
@@ -622,20 +622,25 @@ export default function Reels() {
         {/* Audio Mute/Unmute Toggle */}
         <button
           onClick={() => setIsMuted(m => !m)}
-          aria-label={isMuted ? "Unmute" : "Mute"}
+          aria-label={isMuted ? "Unmute sound" : "Mute sound"}
           style={{
-            width: '40px', height: '40px', borderRadius: '50%',
-            background: isMuted ? 'rgba(0,0,0,0.6)' : 'rgba(255, 193, 7, 0.25)',
+            height: '40px', minWidth: '40px', borderRadius: '20px',
+            background: isMuted ? 'rgba(0,0,0,0.65)' : 'linear-gradient(135deg, rgba(255,193,7,0.35), rgba(255,149,0,0.4))',
             backdropFilter: 'blur(12px)',
             WebkitBackdropFilter: 'blur(12px)',
             border: isMuted ? '1px solid rgba(255,255,255,0.25)' : '1.5px solid #FFC107',
-            color: isMuted ? '#FFF' : '#FFC107', fontSize: '1.1rem', cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 4px 16px rgba(0,0,0,0.6)',
-            pointerEvents: 'auto'
+            color: isMuted ? '#FFF' : '#FFC107', fontSize: '1rem', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+            padding: isMuted ? '0 12px' : '0 14px',
+            boxShadow: isMuted ? '0 4px 16px rgba(0,0,0,0.6)' : '0 4px 20px rgba(255,193,7,0.5)',
+            pointerEvents: 'auto',
+            transition: 'all 0.2s ease',
+            fontFamily: '"Cairo", "Tajawal", sans-serif',
+            fontWeight: 800
           }}
         >
-          {isMuted ? '🔇' : '🔊'}
+          <span>{isMuted ? '🔇' : '🔊'}</span>
+          <span style={{ fontSize: '0.72rem', fontWeight: 800 }}>{isMuted ? 'تشغيل الصوت' : 'الصوت يعمل'}</span>
         </button>
       </div>
 

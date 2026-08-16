@@ -74,7 +74,7 @@ function buildTikTokPlayerUrl(videoId) {
 }
 
 // ─── TIKTOK PLAYER COMPONENT (EVENT-DRIVEN LIFECYCLE) ─────────────────────────
-function TikTokPlayer({ videoId, isActive, isMuted, posterUrl, onReady, onError, showDebug = false }) {
+function TikTokPlayer({ videoId, isActive, isMuted, posterUrl, onReady, onError, onToggleMute }) {
   const iframeRef = useRef(null);
   const isReadyRef = useRef(false);
   const isActiveRef = useRef(isActive);
@@ -240,14 +240,18 @@ function TikTokPlayer({ videoId, isActive, isMuted, posterUrl, onReady, onError,
 
   // Direct user tap un-mutes sound and guarantees play
   const handleTap = () => {
-    if (isMuted) {
-      sendPlayerMessage('unMute');
-      sendPlayerMessage('setVolume', 1);
+    if (onToggleMute) {
+      onToggleMute();
     } else {
-      if (playbackStateRef.current === 'playing') {
-        sendPlayerMessage('pause');
+      if (isMuted) {
+        sendPlayerMessage('unMute');
+        sendPlayerMessage('setVolume', 1);
       } else {
-        sendPlayerMessage('play');
+        if (playbackStateRef.current === 'playing') {
+          sendPlayerMessage('pause');
+        } else {
+          sendPlayerMessage('play');
+        }
       }
     }
   };
@@ -515,6 +519,7 @@ export default function ReelPlayer({
           isActive={isActive}
           isMuted={isMuted}
           posterUrl={posterUrl}
+          onToggleMute={onToggleMute}
         />
       ) : (
         <NativePlayer
