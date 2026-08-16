@@ -1717,9 +1717,53 @@ export default function Admin() {
 
   // ── Notification Appearance & Sound Config ───────────────────────────────
   const [notifConfig, setNotifConfig] = useState(() => notificationService.getNotificationConfig());
+  const [subscriberStats, setSubscriberStats] = useState({ total: 0, ios: 0, android: 0, loading: false });
   const notifLogoFileInputRef = useRef(null);
   const notifAudioFileInputRef = useRef(null);
   const notifPostImageInputRef = useRef(null);
+
+  const fetchSubscriberStats = async () => {
+    setSubscriberStats(prev => ({ ...prev, loading: true }));
+    try {
+      const config = notificationService.getNotificationConfig();
+      const appId = config.oneSignalAppId || 'dedea313-29ed-453f-810f-f7a2a164ad8e';
+      const apiKey = config.oneSignalApiKey;
+      let total = 0;
+      let iosCount = 0;
+      let androidCount = 0;
+
+      if (appId && apiKey) {
+        const authHeader = apiKey.startsWith('os_v2_') ? `Key ${apiKey}` : `Basic ${apiKey}`;
+        const res = await fetch(`https://onesignal.com/api/v1/players?app_id=${appId}`, {
+          headers: { 'Authorization': authHeader }
+        });
+        const data = await res.json();
+        if (data && typeof data.total_count === 'number') {
+          total = data.total_count;
+          if (Array.isArray(data.players)) {
+            data.players.forEach(p => {
+              if (p.device_type === 0 || p.device_type === 14) iosCount++;
+              else if (p.device_type === 1) androidCount++;
+            });
+          }
+        }
+      }
+
+      if (supabase) {
+        const { count } = await supabase.from('push_subscriptions').select('*', { count: 'exact', head: true });
+        if (count && count > total) total = count;
+      }
+
+      setSubscriberStats({ total, ios: iosCount, android: androidCount, loading: false });
+    } catch (e) {
+      console.warn('Error fetching subscriber stats:', e);
+      setSubscriberStats(prev => ({ ...prev, loading: false }));
+    }
+  };
+
+  useEffect(() => {
+    fetchSubscriberStats();
+  }, []);
   const compressImageFile = (file, maxWidth = 800, quality = 0.75) => {
     return new Promise((resolve) => {
       const reader = new FileReader();
@@ -3549,9 +3593,93 @@ export default function Admin() {
                   ● Native PWA Web Push
                 </span>
               </div>
-              <p style={{ color: '#8E9BAE', fontSize: '0.88rem', marginBottom: '24px', lineHeight: 1.6 }}>
+              <p style={{ color: '#8E9BAE', fontSize: '0.88rem', marginBottom: '20px', lineHeight: 1.6 }}>
                 إرسال إشعار فوري يظهر في شريط إشعارات هواتف الأولياء واللاعبين (PWA Web Push) وشاشة القفل بدون الحاجة لفتح التطبيق.
               </p>
+
+              {/* LIVE SUBSCRIBER METRICS & STATUS */}
+              <div style={{
+                background: 'linear-gradient(135deg, rgba(14, 23, 42, 0.9), rgba(15, 23, 42, 0.7))',
+                border: '1px solid rgba(0, 230, 118, 0.3)',
+                borderRadius: '18px',
+                padding: '16px 20px',
+                marginBottom: '22px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: '12px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                  <div style={{
+                    width: '46px',
+                    height: '46px',
+                    borderRadius: '12px',
+                    background: 'rgba(0, 230, 118, 0.15)',
+                    border: '1px solid rgba(0, 230, 118, 0.4)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '1.4rem'
+                  }}>
+                    📲
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '0.78rem', color: '#8E9BAE', fontWeight: 600 }}>إجمالي الهواتف والأجهزة المشتركة الفعالة</div>
+                    <div style={{ fontSize: '1.4rem', fontWeight: 900, color: '#00E676', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span>{subscriberStats.loading ? 'جاري الفحص...' : `${subscriberStats.total} جهاز`}</span>
+                      <span style={{ fontSize: '0.72rem', color: '#FFD700', background: 'rgba(255,215,0,0.12)', padding: '2px 8px', borderRadius: '6px', fontWeight: 700 }}>
+                        جاهز للاستقبال
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <button
+                    type="button"
+                    onClick={fetchSubscriberStats}
+                    disabled={subscriberStats.loading}
+                    style={{
+                      padding: '8px 14px',
+                      borderRadius: '10px',
+                      background: 'rgba(255, 255, 255, 0.08)',
+                      border: '1px solid rgba(255, 255, 255, 0.15)',
+                      color: '#FFF',
+                      fontSize: '0.8rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}
+                  >
+                    <span>🔄</span>
+                    <span>{subscriberStats.loading ? 'جاري التحديث...' : 'تحديث العداد'}</span>
+                  </button>
+                  <a
+                    href="https://dashboard.onesignal.com"
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{
+                      padding: '8px 14px',
+                      borderRadius: '10px',
+                      background: 'rgba(255, 152, 0, 0.15)',
+                      border: '1px solid rgba(255, 152, 0, 0.4)',
+                      color: '#FF9800',
+                      fontSize: '0.8rem',
+                      fontWeight: 700,
+                      textDecoration: 'none',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}
+                  >
+                    <span>📊</span>
+                    <span>لوحة OneSignal المباشرة</span>
+                  </a>
+                </div>
+              </div>
 
               {/* Notification Creation Form */}
               <form onSubmit={handleSendNotification} style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
