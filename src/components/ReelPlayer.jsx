@@ -73,57 +73,97 @@ function buildTikTokPlayerUrl(videoId) {
   return `https://www.tiktok.com/player/v1/${videoId}?${params.toString()}`;
 }
 
-// ─── TIKTOK PLAYER COMPONENT ──────────────────────────────────────────────────
-function TikTokPlayer({ videoId, isActive, isMuted, posterUrl, onReady, onError }) {
+// ─── TIKTOK PLAYER COMPONENT (EVENT-DRIVEN LIFECYCLE) ─────────────────────────
+function TikTokPlayer({ videoId, isActive, isMuted, posterUrl, onReady, onError, showDebug = false }) {
   const iframeRef = useRef(null);
+  const isReadyRef = useRef(false);
+  const isActiveRef = useRef(isActive);
+  const isMutedRef = useRef(isMuted);
+  const playbackStateRef = useRef('loading');
+
   const [playerReady, setPlayerReady] = useState(false);
+  const [playbackState, setPlaybackState] = useState('loading'); // 'loading' | 'ready' | 'playing' | 'paused' | 'buffering'
   const [playerError, setPlayerError] = useState(null);
+  const [autoplayBlocked, setAutoplayBlocked] = useState(false);
 
   const playerUrl = buildTikTokPlayerUrl(videoId);
 
-  // postMessage sender with origin validation
+  // Keep refs in sync with props
+  isActiveRef.current = isActive;
+  isMutedRef.current = isMuted;
+
+  // postMessage sender with origin targeting
   const sendPlayerMessage = useCallback((type, value) => {
-    if (!iframeRef.current?.contentWindow) return;
+    const iframe = iframeRef.current;
+    if (!iframe || !iframe.contentWindow) return;
     try {
       const msg = { 'x-tiktok-player': true, type };
       if (value !== undefined) msg.value = value;
-      iframeRef.current.contentWindow.postMessage(msg, 'https://www.tiktok.com');
+      iframe.contentWindow.postMessage(msg, '*');
     } catch (e) {
       console.warn('TikTok postMessage failed:', e);
     }
   }, []);
 
-  // Listen for TikTok player events
+  // 1. Listen for TikTok player events with STRICT SOURCE ISOLATION
   useEffect(() => {
     const handleMessage = (event) => {
-      if (!event.origin.includes('tiktok.com')) return;
+      // Validate origin
+      if (!event.origin || !event.origin.includes('tiktok.com')) return;
       const data = event.data;
       if (!data || data['x-tiktok-player'] !== true) return;
 
+      // STRICT SOURCE ISOLATION: Ensure message belongs exclusively to THIS iframe
+      if (iframeRef.current && event.source !== iframeRef.current.contentWindow) {
+        return;
+      }
+
       switch (data.type) {
         case 'onPlayerReady':
+          isReadyRef.current = true;
           setPlayerReady(true);
-          sendPlayerMessage('play');
-          if (!isMuted) {
-            sendPlayerMessage('unMute');
-            sendPlayerMessage('setVolume', 1);
+          setPlaybackState('ready');
+
+          // Case A: Reel is ALREADY active when player reports ready
+          if (isActiveRef.current) {
+            // Muted autoplay compliance
+            sendPlayerMessage('mute');
+            sendPlayerMessage('play');
+            if (!isMutedRef.current) {
+              sendPlayerMessage('unMute');
+              sendPlayerMessage('setVolume', 1);
+            }
           }
           if (onReady) onReady();
           break;
+
         case 'onStateChange':
-          if (data.value === 1 || data.value === 3) {
-            if (!isMuted) {
-              sendPlayerMessage('unMute');
-            }
+          // Values: -1 (init), 0 (ended), 1 (playing), 2 (paused), 3 (buffering)
+          if (data.value === 1) {
+            playbackStateRef.current = 'playing';
+            setPlaybackState('playing');
+            setAutoplayBlocked(false);
+          } else if (data.value === 2) {
+            playbackStateRef.current = 'paused';
+            setPlaybackState('paused');
+          } else if (data.value === 3) {
+            playbackStateRef.current = 'buffering';
+            setPlaybackState('buffering');
           }
           break;
+
         case 'onPlayerError':
-          console.warn('TikTok Player notice:', data.value);
+          console.warn(`TikTok Player [${videoId}] event notice:`, data.value);
           if (data.value === 3002 || data.value === 3001) {
+            // Autoplay policy limitation notice — enforce muted playback
             sendPlayerMessage('mute');
             sendPlayerMessage('play');
+          } else if (data.value === 1001 || data.value === 2001) {
+            setPlayerError(data.value);
+            if (onError) onError(data.value);
           }
           break;
+
         default:
           break;
       }
@@ -131,37 +171,46 @@ function TikTokPlayer({ videoId, isActive, isMuted, posterUrl, onReady, onError 
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [onReady, onError, isMuted, sendPlayerMessage]);
+  }, [videoId, onReady, onError, sendPlayerMessage]);
 
-  // Keep sending play ping when active until playing
+  // 2. Lifecycle when active status changes
   useEffect(() => {
+    isActiveRef.current = isActive;
+
     if (!isActive) {
-      sendPlayerMessage('pause');
+      if (isReadyRef.current) {
+        sendPlayerMessage('pause');
+      }
       return;
     }
 
-    sendPlayerMessage('play');
-    if (!isMuted) {
-      sendPlayerMessage('unMute');
+    // Case B: Player was ALREADY ready when reel became active on scroll
+    if (isReadyRef.current) {
+      sendPlayerMessage('mute');
+      sendPlayerMessage('play');
+      if (!isMutedRef.current) {
+        sendPlayerMessage('unMute');
+        sendPlayerMessage('setVolume', 1);
+      }
     }
 
-    // Ping play repeatedly to guarantee smooth instant autoplay on scroll
-    const t1 = setTimeout(() => sendPlayerMessage('play'), 50);
-    const t2 = setTimeout(() => sendPlayerMessage('play'), 180);
-    const t3 = setTimeout(() => sendPlayerMessage('play'), 400);
-    const t4 = setTimeout(() => sendPlayerMessage('play'), 800);
+    // Controlled verification retry if playback hasn't started within 400ms
+    const verifyTimer = setTimeout(() => {
+      if (isActiveRef.current && isReadyRef.current && playbackStateRef.current !== 'playing') {
+        sendPlayerMessage('mute');
+        sendPlayerMessage('play');
+      }
+    }, 400);
 
     return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
-      clearTimeout(t3);
-      clearTimeout(t4);
+      clearTimeout(verifyTimer);
     };
-  }, [isActive, isMuted, sendPlayerMessage]);
+  }, [isActive, sendPlayerMessage]);
 
-  // Sync mute state
+  // 3. Sync mute state
   useEffect(() => {
-    if (!iframeRef.current?.contentWindow) return;
+    isMutedRef.current = isMuted;
+    if (!isReadyRef.current) return;
     if (isMuted) {
       sendPlayerMessage('mute');
     } else {
@@ -170,19 +219,44 @@ function TikTokPlayer({ videoId, isActive, isMuted, posterUrl, onReady, onError 
     }
   }, [isMuted, sendPlayerMessage]);
 
-  // Tap on player directly toggles sound or ensures unMute
+  // 4. Handle Visibility / Tab return
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        if (isReadyRef.current) sendPlayerMessage('pause');
+      } else if (isActiveRef.current && isReadyRef.current) {
+        sendPlayerMessage('mute');
+        sendPlayerMessage('play');
+        if (!isMutedRef.current) {
+          sendPlayerMessage('unMute');
+          sendPlayerMessage('setVolume', 1);
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [sendPlayerMessage]);
+
+  // Direct user tap un-mutes sound and guarantees play
   const handleTap = () => {
     if (isMuted) {
       sendPlayerMessage('unMute');
       sendPlayerMessage('setVolume', 1);
+    } else {
+      if (playbackStateRef.current === 'playing') {
+        sendPlayerMessage('pause');
+      } else {
+        sendPlayerMessage('play');
+      }
     }
   };
 
   const errorMessages = {
-    1001: 'فيديو غير صالح',
-    2001: 'خطأ في الخادم',
-    3001: 'خطأ في التشغيل',
-    3002: 'التشغيل التلقائي غير مدعوم',
+    1001: 'فيديو غير صالح أو خاص',
+    2001: 'خطأ في خادم TikTok',
+    3001: 'تعذر تشغيل الفيديو',
+    3002: 'سياسة التشغيل التلقائي تتطلب كتم الصوت',
   };
 
   return (
@@ -190,12 +264,14 @@ function TikTokPlayer({ videoId, isActive, isMuted, posterUrl, onReady, onError 
       onClick={handleTap}
       style={{ position: 'relative', width: '100%', height: '100%', background: '#000' }}
     >
-      {/* TikTok Player iframe — instant pure video layer */}
+      {/* TikTok Player iframe */}
       <iframe
         ref={iframeRef}
         src={playerUrl}
-        allow="autoplay *; fullscreen *; encrypted-media *"
+        allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
         allowFullScreen
+        playsInline
+        webkit-playsinline="true"
         style={{
           position: 'absolute',
           inset: 0,
@@ -205,8 +281,35 @@ function TikTokPlayer({ videoId, isActive, isMuted, posterUrl, onReady, onError 
           background: '#000',
           zIndex: 1,
         }}
-        title="Academy Reel Video"
+        title={`TikTok Reel ${videoId}`}
       />
+
+      {/* Genuinely blocked fallback only when actual failure occurred */}
+      {autoplayBlocked && isActive && (
+        <div
+          onClick={(e) => {
+            e.stopPropagation();
+            sendPlayerMessage('mute');
+            sendPlayerMessage('play');
+            setAutoplayBlocked(false);
+          }}
+          style={{
+            position: 'absolute', inset: 0, zIndex: 10,
+            background: 'rgba(0,0,0,0.5)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            cursor: 'pointer',
+          }}
+        >
+          <div style={{
+            width: '68px', height: '68px', borderRadius: '50%',
+            background: 'rgba(255,193,7,0.9)', color: '#000',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: '1.8rem', boxShadow: '0 8px 30px rgba(0,0,0,0.8)'
+          }}>
+            ▶
+          </div>
+        </div>
+      )}
 
       {/* Error state */}
       {playerError && (
@@ -226,8 +329,6 @@ function TikTokPlayer({ videoId, isActive, isMuted, posterUrl, onReady, onError 
             onClick={() => {
               setPlayerError(null);
               setPlayerReady(false);
-              setShowPoster(true);
-              // Force reload by remounting
               if (iframeRef.current) {
                 iframeRef.current.src = playerUrl;
               }
