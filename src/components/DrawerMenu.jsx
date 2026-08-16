@@ -165,10 +165,10 @@ function UnderlyingMenuCanvas({ currentUser, onClose, dir, lang, isOpen }) {
         position: 'fixed',
         top: 0,
         bottom: 0,
-        // In AR (RTL, hamburger on left) → menu on LEFT; In EN (LTR, hamburger on right) → menu on RIGHT
+        // In AR (hamburger on RIGHT) → menu on RIGHT; In EN (hamburger on LEFT) → menu on LEFT
         ...(isRTL
-          ? { left: 0, right: 'auto', width: '78vw', maxWidth: '310px' }
-          : { right: 0, left: 'auto', width: '78vw', maxWidth: '310px' }),
+          ? { right: 0, left: 'auto', width: '78vw', maxWidth: '310px' }
+          : { left: 0, right: 'auto', width: '78vw', maxWidth: '310px' }),
         background: 'linear-gradient(160deg, #0D1117 0%, #111827 50%, #0B0F17 100%)',
         display: 'flex',
         flexDirection: 'column',
@@ -458,13 +458,13 @@ export default function DrawerRoot({ children, currentUser }) {
   }, [isOpen, closeDrawer])
 
   // ── 3D Push/Scale Values ───────────────────────────────────────
-  // AR (RTL, hamburger on LEFT):  menu on LEFT  → card slides RIGHT (positive X: 72%)
-  // EN (LTR, hamburger on RIGHT): menu on RIGHT → card slides LEFT  (negative X: -72%)
-  const translateX = dir === 'rtl' ? '72%' : '-72%'
-  const origin = dir === 'rtl' ? 'left center' : 'right center'
+  // AR (hamburger on RIGHT): menu on RIGHT → card slides LEFT  (negative X: -72%)
+  // EN (hamburger on LEFT):  menu on LEFT  → card slides RIGHT (positive X: 72%)
+  const translateX = dir === 'rtl' ? '-72%' : '72%'
+  const origin = dir === 'rtl' ? 'right center' : 'left center'
   const cardShadow = dir === 'rtl'
-    ? '24px 0 60px rgba(0, 0, 0, 0.85)'
-    : '-24px 0 60px rgba(0, 0, 0, 0.85)'
+    ? '-24px 0 60px rgba(0, 0, 0, 0.85)'
+    : '24px 0 60px rgba(0, 0, 0, 0.85)'
 
   return (
     <DrawerContext.Provider value={{ isOpen, openDrawer, closeDrawer, toggleDrawer }}>
