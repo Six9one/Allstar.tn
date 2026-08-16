@@ -75,7 +75,7 @@ export default function Feedback() {
       <div style={{ 
         maxWidth: '480px', 
         margin: '0 auto', 
-        paddingTop: '95px', 
+        paddingTop: '16px', 
         paddingLeft: '16px', 
         paddingRight: '16px', 
         direction: 'rtl' 

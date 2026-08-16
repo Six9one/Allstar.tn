@@ -52,7 +52,7 @@ export default function Pricing(props) {
 
   return (
     <div style={{ backgroundColor: '#08090C', minHeight: '100vh', direction: 'rtl', fontFamily: "'Cairo', 'Tajawal', sans-serif", color: '#FFFFFF', paddingBottom: '40px' }}>
-      <div style={{ maxWidth: '480px', margin: '0 auto', paddingTop: '95px', paddingLeft: '16px', paddingRight: '16px' }}>
+      <div style={{ maxWidth: '480px', margin: '0 auto', paddingTop: '16px', paddingLeft: '16px', paddingRight: '16px' }}>
         
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>

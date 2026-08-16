@@ -78,8 +78,8 @@ export default function Certificates() {
 
   return (
     <div style={{ 
-      paddingTop: '95px', 
-      paddingBottom: '80px', 
+      paddingTop: '16px', 
+      paddingBottom: '24px', 
       maxWidth: '480px', 
       margin: '0 auto', 
       paddingLeft: '16px', 

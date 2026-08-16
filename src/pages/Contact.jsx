@@ -10,7 +10,7 @@ export default function Contact() {
   };
 
   return (
-    <div style={{ paddingTop: '95px', paddingBottom: '40px', minHeight: '100vh', background: '#08090C' }}>
+    <div style={{ paddingTop: '16px', paddingBottom: '24px', minHeight: '100vh', background: '#08090C' }}>
       <div style={{ maxWidth: '480px', margin: '0 auto', padding: '0 16px', direction: 'rtl', fontFamily: '"Cairo", "Tajawal", sans-serif' }}>
         
         {/* Page Header */}

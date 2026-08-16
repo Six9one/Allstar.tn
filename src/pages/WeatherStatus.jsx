@@ -42,7 +42,7 @@ export default function WeatherStatus() {
         direction: 'rtl'
       }}
     >
-      <div style={{ maxWidth: '480px', margin: '0 auto', paddingTop: '95px', paddingBottom: '30px', paddingLeft: '16px', paddingRight: '16px' }}>
+      <div style={{ maxWidth: '480px', margin: '0 auto', paddingTop: '16px', paddingBottom: '24px', paddingLeft: '16px', paddingRight: '16px' }}>
         
         {/* Page Header */}
         <div style={{ textAlign: 'center', marginBottom: '24px' }}>

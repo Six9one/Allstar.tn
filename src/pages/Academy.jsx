@@ -23,7 +23,7 @@ export default function Academy() {
       minHeight: '100vh'
     }}>
       {/* 1. Hero Section */}
-      <div style={{ paddingTop: '95px', padding: '95px 20px 20px 20px' }}>
+      <div style={{ padding: '16px 20px 24px 20px' }}>
         <div className="sleek-card" style={{ 
           textAlign: 'center', 
           padding: '40px 20px',

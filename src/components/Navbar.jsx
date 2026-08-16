@@ -36,13 +36,13 @@ export default function Navbar({ onOpenOnboarding, currentUser }) {
   ]
 
   const langBtnStyle = {
-    minHeight: '38px',
-    padding: '0 9px',
+    minHeight: '36px',
+    padding: '0 10px',
     borderRadius: '10px',
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    border: '1px solid rgba(255,193,7,0.5)',
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    border: '1px solid rgba(255,193,7,0.4)',
     color: '#FFC107',
-    fontWeight: 900,
+    fontWeight: 800,
     fontSize: '0.8rem',
     cursor: 'pointer',
     display: 'inline-flex',
@@ -51,26 +51,28 @@ export default function Navbar({ onOpenOnboarding, currentUser }) {
     fontFamily: '"Cairo","Tajawal",sans-serif',
     whiteSpace: 'nowrap',
     flexShrink: 0,
+    transition: 'all 0.2s ease',
   }
 
   const loginBtnStyle = {
-    minHeight: '38px',
-    padding: '0 12px',
-    borderRadius: '12px',
-    background: 'linear-gradient(135deg,#FFC107 0%,#FF9500 100%)',
+    minHeight: '36px',
+    padding: '0 14px',
+    borderRadius: '10px',
+    background: 'linear-gradient(135deg, #FFC107 0%, #FF9500 100%)',
     border: 'none',
     color: '#08090C',
     fontWeight: 900,
     fontSize: '0.82rem',
     cursor: 'pointer',
     fontFamily: '"Cairo","Tajawal",sans-serif',
-    boxShadow: '0 4px 14px rgba(255,193,7,0.35)',
+    boxShadow: '0 2px 10px rgba(255,193,7,0.3)',
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
     gap: '5px',
     whiteSpace: 'nowrap',
     flexShrink: 0,
+    transition: 'all 0.2s ease',
   }
 
   const UserSection = () =>
@@ -79,13 +81,22 @@ export default function Navbar({ onOpenOnboarding, currentUser }) {
         <button
           onClick={() => navigate(currentUser.role === 'coach' ? '/coach-portal' : '/portal')}
           style={{
-            minHeight: '38px', padding: '0 12px', borderRadius: '12px',
+            minHeight: '36px',
+            padding: '0 12px',
+            borderRadius: '10px',
             background: currentUser.role === 'coach'
-              ? 'linear-gradient(135deg,#FFC107 0%,#FF9500 100%)'
-              : 'linear-gradient(135deg,#00E676 0%,#00B0FF 100%)',
-            border: 'none', color: '#000', fontWeight: 900, fontSize: '0.82rem',
-            cursor: 'pointer', fontFamily: '"Cairo","Tajawal",sans-serif',
-            display: 'inline-flex', alignItems: 'center', gap: '4px', flexShrink: 0,
+              ? 'linear-gradient(135deg, #FFC107 0%, #FF9500 100%)'
+              : 'linear-gradient(135deg, #00E676 0%, #00B0FF 100%)',
+            border: 'none',
+            color: '#08090C',
+            fontWeight: 800,
+            fontSize: '0.82rem',
+            cursor: 'pointer',
+            fontFamily: '"Cairo","Tajawal",sans-serif',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '5px',
+            flexShrink: 0,
           }}
         >
           <span>{currentUser.role === 'coach' ? '⚽' : '👨‍👩‍👧‍👦'}</span>
@@ -95,10 +106,19 @@ export default function Navbar({ onOpenOnboarding, currentUser }) {
           onClick={handleLogout}
           title={isRTL ? 'تسجيل الخروج' : 'Logout'}
           style={{
-            minWidth: '36px', minHeight: '38px', borderRadius: '10px',
-            background: 'rgba(255,61,0,0.15)', border: '1px solid #FF3D00',
-            color: '#FF3D00', fontWeight: 900, cursor: 'pointer', fontSize: '0.82rem',
-            display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+            minWidth: '36px',
+            minHeight: '36px',
+            borderRadius: '10px',
+            background: 'rgba(239,68,68,0.12)',
+            border: '1px solid rgba(239,68,68,0.3)',
+            color: '#EF4444',
+            fontWeight: 900,
+            cursor: 'pointer',
+            fontSize: '0.82rem',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
           }}
         >
           🚪
@@ -116,123 +136,117 @@ export default function Navbar({ onOpenOnboarding, currentUser }) {
     <header
       style={{
         position: 'fixed',
-        top: 'calc(env(safe-area-inset-top,0px) + 8px)',
-        /* Use left+right instead of left+transform so the header itself
-           is never affected by the global html[dir=rtl] */
-        left: '10px',
-        right: '10px',
-        margin: '0 auto',
-        maxWidth: '1320px',
-        zIndex: 999999,
-        backgroundColor: 'rgba(12,15,22,0.95)',
-        backdropFilter: 'blur(18px)',
-        WebkitBackdropFilter: 'blur(18px)',
-        border: '1.5px solid rgba(0,230,118,0.35)',
-        borderRadius: '20px',
-        boxShadow: '0 12px 35px rgba(0,0,0,0.85),0 0 20px rgba(0,230,118,0.15)',
-        padding: '6px 12px',
-        transition: 'all 0.3s ease',
+        top: 0,
+        left: 0,
+        right: 0,
+        zIndex: 50,
+        height: 'calc(3.5rem + env(safe-area-inset-top, 0px))',
+        paddingTop: 'env(safe-area-inset-top, 0px)',
+        backgroundColor: 'rgba(11, 15, 23, 0.90)',
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
+        borderBottom: '1px solid rgba(255, 255, 255, 0.10)',
+        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)',
+        display: 'flex',
+        alignItems: 'center',
         boxSizing: 'border-box',
+        transition: 'background-color 0.3s ease',
       }}
     >
-      {/*
-        Force physical LTR regardless of html[dir].
-        We use explicit `order` on every child so even if a browser
-        ignores the direction override the DOM order still wins.
-      */}
       <div
         style={{
+          width: '100%',
+          maxWidth: '1280px',
+          height: '3.5rem',
+          margin: '0 auto',
+          padding: '0 max(16px, env(safe-area-inset-left, 16px)) 0 max(16px, env(safe-area-inset-right, 16px))',
           display: 'flex',
           alignItems: 'center',
-          gap: '8px',
-          minHeight: '44px',
-          /* Hard-lock to physical left→right */
-          direction: 'ltr',
-          unicodeBidi: 'isolate',
+          justifyContent: 'space-between',
+          gap: '10px',
+          direction: isRTL ? 'rtl' : 'ltr',
+          boxSizing: 'border-box',
+          whiteSpace: 'nowrap',
         }}
       >
-        {/* ── SLOT 1 (order:1) — far physical LEFT ───────────────────────
-            EN: Burger then Logo
-            AR: Logo only (no burger here)
-        ───────────────────────────────────────────────────────────────── */}
+        {/* ── START SECTION (Left in LTR / Right in RTL) ── */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            flexShrink: 0,
+          }}
+        >
+          {/* LTR: Hamburger FIRST */}
+          {!isRTL && <HamburgerButton />}
+
+          {/* Logo */}
+          <Link
+            to="/"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              textDecoration: 'none',
+              height: '36px',
+            }}
+          >
+            <img
+              src={logoMain}
+              alt="All-Star Academy Logo"
+              style={{ height: '36px', width: 'auto', objectFit: 'contain' }}
+            />
+          </Link>
+        </div>
+
+        {/* ── CENTER SPACER / DESKTOP NAV ── */}
+        <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
+          <nav
+            className="desktop-nav"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              flexWrap: 'nowrap',
+            }}
+          >
+            {navLinks.map((link) => {
+              const isActive = location.pathname === link.path
+              return (
+                <Link
+                  key={link.path}
+                  to={link.path}
+                  style={{
+                    minHeight: '36px',
+                    padding: '0 12px',
+                    borderRadius: '10px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    textDecoration: 'none',
+                    color: isActive ? '#00E676' : '#94A3B8',
+                    backgroundColor: isActive ? 'rgba(0, 230, 118, 0.12)' : 'transparent',
+                    border: isActive ? '1px solid rgba(0, 230, 118, 0.3)' : '1px solid transparent',
+                    fontWeight: isActive ? 800 : 600,
+                    fontSize: '0.84rem',
+                    fontFamily: '"Cairo","Tajawal",sans-serif',
+                    transition: 'all 0.2s ease',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {link.label}
+                </Link>
+              )
+            })}
+          </nav>
+        </div>
+
+        {/* ── END SECTION (Right in LTR / Left in RTL) ── */}
         <div
           style={{
             display: 'flex',
             alignItems: 'center',
             gap: '8px',
             flexShrink: 0,
-            order: 1,          /* always leftmost */
-            direction: 'ltr',  /* immune to inheritance */
-          }}
-        >
-          {/* Burger — FIRST child in EN, not rendered in AR */}
-          {!isRTL && (
-            <span style={{ order: 1, display: 'contents' }}>
-              <HamburgerButton />
-            </span>
-          )}
-
-          {/* Logo — SECOND child in EN, FIRST in AR */}
-          <Link
-            to="/"
-            style={{
-              display: 'flex', alignItems: 'center',
-              textDecoration: 'none', minHeight: '44px', padding: '2px 0',
-              order: 2,
-            }}
-          >
-            <img
-              src={logoMain}
-              alt="All-Star Academy Logo"
-              style={{ height: '38px', width: 'auto', objectFit: 'contain' }}
-            />
-          </Link>
-        </div>
-
-        {/* ── SLOT 2 (order:2) — spacer ──────────────────────────────── */}
-        <div style={{ flex: 1, order: 2 }} />
-
-        {/* ── SLOT 3 (order:3) — desktop nav (hidden on mobile) ───────── */}
-        <nav
-          className="desktop-nav"
-          style={{
-            display: 'flex', alignItems: 'center', gap: '6px',
-            flexWrap: 'nowrap', order: 3,
-            direction: isRTL ? 'rtl' : 'ltr',
-          }}
-        >
-          {navLinks.map((link) => {
-            const isActive = location.pathname === link.path
-            return (
-              <Link
-                key={link.path}
-                to={link.path}
-                style={{
-                  minHeight: '40px', padding: '0 12px', borderRadius: '12px',
-                  display: 'inline-flex', alignItems: 'center', textDecoration: 'none',
-                  color: isActive ? '#00E676' : '#B0BEC5',
-                  backgroundColor: isActive ? 'rgba(0,230,118,0.12)' : 'transparent',
-                  border: isActive ? '1px solid rgba(0,230,118,0.3)' : '1px solid transparent',
-                  fontWeight: isActive ? 900 : 700, fontSize: '0.84rem',
-                  fontFamily: '"Cairo","Tajawal",sans-serif',
-                  transition: 'all 0.2s ease', whiteSpace: 'nowrap',
-                }}
-              >
-                {link.label}
-              </Link>
-            )
-          })}
-        </nav>
-
-        {/* ── SLOT 4 (order:4) — far physical RIGHT ──────────────────────
-            EN: [ Login ] [ 🌐 AR ]
-            AR: [ Login ] [ 🌐 EN ] [ Burger ]
-        ───────────────────────────────────────────────────────────────── */}
-        <div
-          style={{
-            display: 'flex', alignItems: 'center', gap: '8px',
-            flexShrink: 0, order: 4,
-            direction: 'ltr',  /* keep physical order intact */
           }}
         >
           <UserSection />
@@ -246,7 +260,7 @@ export default function Navbar({ onOpenOnboarding, currentUser }) {
             <span>{isRTL ? 'EN' : 'AR'}</span>
           </button>
 
-          {/* Burger — rightmost element in AR only */}
+          {/* RTL: Hamburger LAST */}
           {isRTL && <HamburgerButton />}
         </div>
       </div>

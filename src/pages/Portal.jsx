@@ -75,8 +75,8 @@ const Portal = () => {
 
   return (
     <div style={{ 
-      paddingTop: '95px', 
-      paddingBottom: '80px', 
+      paddingTop: '16px', 
+      paddingBottom: '24px', 
       minHeight: '100vh',
       background: '#08090C',
       color: '#FFF',

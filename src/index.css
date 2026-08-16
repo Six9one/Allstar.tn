@@ -118,10 +118,12 @@ img, video, canvas, svg {
   flex-direction: column;
 }
 
-main {
+main, .main-content {
   flex: 1;
-  padding-top: calc(76px + env(safe-area-inset-top, 0px));
-  padding-bottom: calc(90px + var(--safe-bottom));
+  padding-top: calc(3.5rem + env(safe-area-inset-top, 0px));
+  padding-bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
+  min-height: 100vh;
+  box-sizing: border-box;
 }
 
 h1, h2, h3, h4, h5, h6 {

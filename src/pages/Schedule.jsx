@@ -68,8 +68,8 @@ export default function Schedule() {
       minHeight: '100vh', 
       direction: 'rtl', 
       fontFamily: '"Cairo", "Tajawal", sans-serif', 
-      paddingTop: '95px', 
-      paddingBottom: '80px',
+      paddingTop: '16px', 
+      paddingBottom: '24px',
       color: '#FFFFFF'
     }}>
       <div style={{ maxWidth: '480px', margin: '0 auto', padding: '0 20px' }}>

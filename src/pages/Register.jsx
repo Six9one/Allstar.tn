@@ -124,7 +124,7 @@ export default function Register() {
   })
 
   return (
-    <div style={{ paddingTop: '95px', paddingBottom: '60px', background: '#08090C', minHeight: '100vh', direction: 'rtl' }}>
+    <div style={{ paddingTop: '16px', paddingBottom: '24px', background: '#08090C', minHeight: '100vh', direction: 'rtl' }}>
       <div className="container" style={{ maxWidth: '480px', margin: '0 auto', padding: '0 16px' }}>
 
         {/* Page Title */}

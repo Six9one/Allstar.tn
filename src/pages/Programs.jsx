@@ -58,8 +58,8 @@ export default function Programs() {
       <div style={{
         maxWidth: '480px',
         margin: '0 auto',
-        paddingTop: '95px',
-        paddingBottom: '40px',
+        paddingTop: '16px',
+        paddingBottom: '24px',
         paddingLeft: '16px',
         paddingRight: '16px',
         display: 'flex',
