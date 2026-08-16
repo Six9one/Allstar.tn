@@ -378,7 +378,24 @@ export default function Reels() {
   const [reels, setReels] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeSlideIndex, setActiveSlideIndex] = useState(0);
-  const [isMuted, setIsMuted] = useState(true); // 🔇 Starts muted for instant autoplay; tap unmutes all videos!
+  const [isMuted, setIsMuted] = useState(false); // 🔊 Sound is active and ON by default!
+
+  // Automatic global sound activation on first user swipe/touch/interaction
+  useEffect(() => {
+    const unlockSound = () => {
+      setIsMuted(false);
+    };
+    window.addEventListener('touchstart', unlockSound, { passive: true, once: true });
+    window.addEventListener('pointerdown', unlockSound, { passive: true, once: true });
+    window.addEventListener('scroll', unlockSound, { passive: true, once: true });
+    window.addEventListener('keydown', unlockSound, { passive: true, once: true });
+    return () => {
+      window.removeEventListener('touchstart', unlockSound);
+      window.removeEventListener('pointerdown', unlockSound);
+      window.removeEventListener('scroll', unlockSound);
+      window.removeEventListener('keydown', unlockSound);
+    };
+  }, []);
 
   const containerRef = useRef(null);
   const slideRefs = useRef({});

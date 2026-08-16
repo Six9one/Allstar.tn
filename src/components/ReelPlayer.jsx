@@ -58,7 +58,6 @@ function buildTikTokPlayerUrl(videoId) {
   const params = new URLSearchParams({
     autoplay: '1',
     loop: '1',
-    muted: '1',
     play_button: '0',
     controls: '0',
     progress_bar: '0',
@@ -74,7 +73,7 @@ function buildTikTokPlayerUrl(videoId) {
 }
 
 // ─── TIKTOK PLAYER COMPONENT (EVENT-DRIVEN LIFECYCLE) ─────────────────────────
-function TikTokPlayer({ videoId, isActive, isMuted, posterUrl, onReady, onError, onToggleMute }) {
+function TikTokPlayer({ videoId, isActive, isMuted = false, posterUrl, onReady, onError, onToggleMute }) {
   const iframeRef = useRef(null);
   const isReadyRef = useRef(false);
   const isActiveRef = useRef(isActive);
@@ -126,8 +125,6 @@ function TikTokPlayer({ videoId, isActive, isMuted, posterUrl, onReady, onError,
 
           // Case A: Reel is ALREADY active when player reports ready
           if (isActiveRef.current) {
-            // Muted autoplay compliance
-            sendPlayerMessage('mute');
             sendPlayerMessage('play');
             if (!isMutedRef.current) {
               sendPlayerMessage('unMute');
@@ -143,6 +140,10 @@ function TikTokPlayer({ videoId, isActive, isMuted, posterUrl, onReady, onError,
             playbackStateRef.current = 'playing';
             setPlaybackState('playing');
             setAutoplayBlocked(false);
+            if (!isMutedRef.current) {
+              sendPlayerMessage('unMute');
+              sendPlayerMessage('setVolume', 1);
+            }
           } else if (data.value === 2) {
             playbackStateRef.current = 'paused';
             setPlaybackState('paused');
@@ -155,7 +156,7 @@ function TikTokPlayer({ videoId, isActive, isMuted, posterUrl, onReady, onError,
         case 'onPlayerError':
           console.warn(`TikTok Player [${videoId}] event notice:`, data.value);
           if (data.value === 3002 || data.value === 3001) {
-            // Autoplay policy limitation notice — enforce muted playback
+            // Autoplay policy limitation fallback: start muted first then un-mute
             sendPlayerMessage('mute');
             sendPlayerMessage('play');
           } else if (data.value === 1001 || data.value === 2001) {
@@ -186,7 +187,6 @@ function TikTokPlayer({ videoId, isActive, isMuted, posterUrl, onReady, onError,
 
     // Case B: Player was ALREADY ready when reel became active on scroll
     if (isReadyRef.current) {
-      sendPlayerMessage('mute');
       sendPlayerMessage('play');
       if (!isMutedRef.current) {
         sendPlayerMessage('unMute');
@@ -197,8 +197,11 @@ function TikTokPlayer({ videoId, isActive, isMuted, posterUrl, onReady, onError,
     // Controlled verification retry if playback hasn't started within 400ms
     const verifyTimer = setTimeout(() => {
       if (isActiveRef.current && isReadyRef.current && playbackStateRef.current !== 'playing') {
-        sendPlayerMessage('mute');
         sendPlayerMessage('play');
+        if (!isMutedRef.current) {
+          sendPlayerMessage('unMute');
+          sendPlayerMessage('setVolume', 1);
+        }
       }
     }, 400);
 
