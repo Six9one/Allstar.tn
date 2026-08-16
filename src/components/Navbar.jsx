@@ -167,7 +167,7 @@ export default function Navbar({ onOpenOnboarding, currentUser }) {
         WebkitBackdropFilter: 'blur(16px)',
         borderBottom: '1px solid rgba(255, 255, 255, 0.10)',
         boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)',
-        zIndex: 1000,
+        zIndex: 50,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',

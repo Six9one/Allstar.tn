@@ -47,7 +47,7 @@ export default function BottomNav() {
           bottom: 0,
           left: 0,
           right: 0,
-          zIndex: 1000,
+          zIndex: 50,
           height: 'calc(4rem + env(safe-area-inset-bottom, 0px))',
           paddingBottom: 'env(safe-area-inset-bottom, 0px)',
           backgroundColor: 'rgba(11, 15, 23, 0.95)',

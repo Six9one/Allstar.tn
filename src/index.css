@@ -134,8 +134,8 @@ img, video, canvas, svg {
 main, .main-content {
   flex: 1;
   width: 100%;
-  padding-top: calc(4.5rem + env(safe-area-inset-top, 0px));
-  padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px));
+  padding-top: calc(5rem + env(safe-area-inset-top, 0px));
+  padding-bottom: calc(6rem + env(safe-area-inset-bottom, 0px));
   box-sizing: border-box;
 }
 
