@@ -3682,6 +3682,35 @@ export default function Admin() {
                     </>
                   )}
                 </button>
+
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const testTitle = notifTitle.trim() || '🔔 إشعار تجريبي من أكاديمية أولستار';
+                    const testBody = notifBody.trim() || 'تم تأكيد وصول الإشعار إلى هاتفك بنجاح!';
+                    notificationService.showNativePush(testTitle, testBody, notifImageUrl || '/icon.png', { url: notifTargetUrl || '/' });
+                    showSuccess('🧪 تم إطلاق الإشعار التجريبي على هذا الجهاز فوراً!');
+                  }}
+                  style={{
+                    padding: '12px 18px',
+                    background: 'rgba(255, 193, 7, 0.15)',
+                    border: '1.5px solid #FFC107',
+                    borderRadius: '14px',
+                    color: '#FFC107',
+                    fontWeight: 900,
+                    fontSize: '0.88rem',
+                    cursor: 'pointer',
+                    fontFamily: '"Cairo", "Tajawal", sans-serif',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    marginTop: '-6px'
+                  }}
+                >
+                  <span>🧪</span>
+                  <span>تجربة إشعار فوري على هاتفي الآن (Test Push to this Phone)</span>
+                </button>
               </form>
 
               {/* Multi-channel Broadcast options */}

@@ -7,8 +7,8 @@ const NOTIF_KEY = 'allstar_notifications_list';
 const NOTIF_LOG_KEY = 'allstar_notifications_log_cache';
 const PROCESSED_IDS_KEY = 'allstar_processed_announcement_ids';
 
-// Default VAPID Public Key fallback (can be overridden via ENV or dynamic config)
-const DEFAULT_VAPID_PUBLIC_KEY = 'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBKr3qBUYIHBQFLXYp5Nksh8U';
+// Default VAPID Public Key fallback (matching backend Edge Function private key)
+const DEFAULT_VAPID_PUBLIC_KEY = 'BNf5rkYVMwOreTQ5KLFlDgqHCS5OHG3RVwT_IqUzp-TuNo2NXOhQrKmBGJei1Uety9DX03hIdnj_rmWOEZ2cuq8';
 
 const INITIAL_NOTIFS = [
   {
