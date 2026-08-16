@@ -328,8 +328,8 @@ const SEED_SITE_CONTENT = {
     { day: 'السبت', time: '09:00 - 12:00', group: 'All', sport: 'Multi-Sport', coach: 'جميع المدربين' }
   ],
   gallery_images: [
-    { id: 'GAL-1', url: 'https://hsylnrzxeyqxczdalurj.supabase.co/storage/v1/object/public/carousel/live-slide-1-1786751135590.webp', caption: '⚽ تدريبات وبطولات أكاديمية أولستار الرياضية' },
-    { id: 'GAL-2', url: 'https://hsylnrzxeyqxczdalurj.supabase.co/storage/v1/object/public/carousel/live-slide-2-1786751135909.webp', caption: '🏆 افتتاح التسجيل ومشاريع التميز الرياضي والدراسي' }
+    { id: 'GAL-1', url: '/hero-banner.png', caption: '⚽ تدريبات وبطولات أكاديمية أولستار الرياضية بتطاوين' },
+    { id: 'GAL-2', url: '/hero-bg.jpg', caption: '🏆 افتتاح التسجيل ومشاريع التميز الرياضي والدراسي' }
   ],
   shop_products: [
     { id: 'SHOP-1', name: 'قميص أولستار الرسمي', price: '45 DT', description: 'قميص رياضي بألوان الأكاديمية', inStock: true },

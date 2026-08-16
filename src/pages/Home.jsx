@@ -4,8 +4,8 @@ import { db } from '../services/db'
 import { notificationService } from '../services/notifications'
 
 const FALLBACK_SLIDES = [
-  { id: 'SL-1', url: 'https://hsylnrzxeyqxczdalurj.supabase.co/storage/v1/object/public/carousel/live-slide-1-1786751135590.webp', caption: '⚽ تدريبات وبطولات أكاديمية أولستار الرياضية' },
-  { id: 'SL-2', url: 'https://hsylnrzxeyqxczdalurj.supabase.co/storage/v1/object/public/carousel/live-slide-2-1786751135909.webp', caption: '🏆 افتتاح التسجيل ومشاريع التميز الرياضي والدراسي' }
+  { id: 'SL-1', url: '/hero-banner.png', caption: '⚽ تدريبات وبطولات أكاديمية أولستار الرياضية بتطاوين' },
+  { id: 'SL-2', url: '/hero-bg.jpg', caption: '🏆 افتتاح التسجيل ومشاريع التميز الرياضي والدراسي' }
 ]
 
 const getUsableSlides = (galleryImages) => {
@@ -207,13 +207,13 @@ export default function Home() {
           }}
           style={{
             position: 'relative',
-            borderRadius: '24px',
+            borderRadius: '18px',
             overflow: 'hidden',
-            height: 'clamp(230px, 44vh, 480px)',
+            height: 'clamp(140px, 20vh, 220px)',
             width: '100%',
-            background: '#0F131C',
-            border: '1.5px solid rgba(0, 230, 118, 0.35)',
-            boxShadow: '0 14px 40px rgba(0, 0, 0, 0.85), 0 0 25px rgba(0, 230, 118, 0.15)',
+            background: '#0B0F17',
+            border: '1px solid rgba(255, 255, 255, 0.12)',
+            boxShadow: '0 8px 30px rgba(0, 0, 0, 0.65)',
             boxSizing: 'border-box',
             userSelect: 'none',
             WebkitUserSelect: 'none',
@@ -221,7 +221,7 @@ export default function Home() {
             touchAction: 'pan-y'
           }}
         >
-          {/* STACKED CROSS-FADE SLIDES (100% RTL & MOBILE SAFE) */}
+          {/* STACKED CROSS-FADE SLIDES */}
           {slides.map((slide, idx) => {
             const isActive = idx === currentIndex
             return (
@@ -232,7 +232,7 @@ export default function Home() {
                   inset: 0,
                   opacity: isActive ? 1 : 0,
                   pointerEvents: 'none',
-                  transition: 'opacity 0.7s cubic-bezier(0.4, 0, 0.2, 1)',
+                  transition: 'opacity 0.5s ease-in-out',
                   zIndex: isActive ? 2 : 1,
                   transform: 'translateZ(0)',
                   WebkitTransform: 'translateZ(0)',
@@ -262,23 +262,24 @@ export default function Home() {
                     display: 'block',
                     pointerEvents: 'none',
                     userSelect: 'none',
-                    WebkitUserDrag: 'none'
+                    WebkitUserDrag: 'none',
+                    imageRendering: '-webkit-optimize-contrast'
                   }}
                 />
-                {/* DARK GRADIENT OVERLAY */}
+                {/* SUBTLE BOTTOM GRADIENT */}
                 <div
                   style={{
                     position: 'absolute',
                     inset: 0,
                     pointerEvents: 'none',
-                    background: 'linear-gradient(180deg, rgba(8,9,12,0.15) 0%, rgba(8,9,12,0.4) 50%, rgba(8,9,12,0.92) 100%)'
+                    background: 'linear-gradient(180deg, transparent 65%, rgba(6, 9, 15, 0.75) 100%)'
                   }}
                 />
               </div>
             )
           })}
 
-          {/* PREV / NEXT ARROW BUTTONS */}
+          {/* PREV / NEXT COMPACT ARROW BUTTONS */}
           {slides.length > 1 && (
             <>
               <button
@@ -288,20 +289,20 @@ export default function Home() {
                 style={{
                   position: 'absolute',
                   top: '50%',
-                  right: '12px',
+                  right: '8px',
                   transform: 'translateY(-50%)',
                   zIndex: 25,
-                  width: '42px',
-                  height: '42px',
+                  width: '30px',
+                  height: '30px',
                   borderRadius: '50%',
-                  backgroundColor: 'rgba(0, 0, 0, 0.65)',
-                  border: '1.5px solid rgba(255, 255, 255, 0.3)',
+                  backgroundColor: 'rgba(0, 0, 0, 0.55)',
+                  border: '1px solid rgba(255, 255, 255, 0.25)',
                   color: '#FFFFFF',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   cursor: 'pointer',
-                  fontSize: '22px',
+                  fontSize: '16px',
                   backdropFilter: 'blur(6px)',
                   WebkitBackdropFilter: 'blur(6px)',
                   transition: 'all 0.2s ease',
@@ -318,20 +319,20 @@ export default function Home() {
                 style={{
                   position: 'absolute',
                   top: '50%',
-                  left: '12px',
+                  left: '8px',
                   transform: 'translateY(-50%)',
                   zIndex: 25,
-                  width: '42px',
-                  height: '42px',
+                  width: '30px',
+                  height: '30px',
                   borderRadius: '50%',
-                  backgroundColor: 'rgba(0, 0, 0, 0.65)',
-                  border: '1.5px solid rgba(255, 255, 255, 0.3)',
+                  backgroundColor: 'rgba(0, 0, 0, 0.55)',
+                  border: '1px solid rgba(255, 255, 255, 0.25)',
                   color: '#FFFFFF',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   cursor: 'pointer',
-                  fontSize: '22px',
+                  fontSize: '16px',
                   backdropFilter: 'blur(6px)',
                   WebkitBackdropFilter: 'blur(6px)',
                   transition: 'all 0.2s ease',
@@ -348,27 +349,54 @@ export default function Home() {
           <div
             style={{
               position: 'absolute',
-              bottom: '16px',
-              right: '18px',
-              left: '18px',
+              bottom: '10px',
+              right: '12px',
+              left: '12px',
               zIndex: 20,
-              color: '#FFFFFF',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '8px',
               pointerEvents: 'none'
             }}
           >
+            {/* CAPTION PILL */}
             <div
               style={{
-                fontSize: 'clamp(0.88rem, 2.5vw, 1.25rem)',
-                fontWeight: 900,
-                textShadow: '0 2px 10px rgba(0,0,0,0.95)',
-                lineHeight: 1.35
+                fontSize: '0.76rem',
+                fontWeight: 800,
+                color: '#FFFFFF',
+                background: 'rgba(8, 12, 20, 0.75)',
+                backdropFilter: 'blur(8px)',
+                WebkitBackdropFilter: 'blur(8px)',
+                border: '1px solid rgba(255, 255, 255, 0.12)',
+                padding: '3px 10px',
+                borderRadius: '8px',
+                maxWidth: '75%',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                lineHeight: 1.4
               }}
             >
-              {currentSlide?.caption || '📸 ألبوم الصور الرسمية لأكاديمية أولستار بتطاوين'}
+              {currentSlide?.caption || '📸 أكاديمية أولستار الرياضية'}
             </div>
 
-            {/* INDICATOR DOTS WITH LARGE TOUCH TARGETS */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '10px', pointerEvents: 'auto' }}>
+            {/* INDICATOR DOTS */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                background: 'rgba(8, 12, 20, 0.75)',
+                backdropFilter: 'blur(8px)',
+                WebkitBackdropFilter: 'blur(8px)',
+                border: '1px solid rgba(255, 255, 255, 0.12)',
+                padding: '5px 8px',
+                borderRadius: '8px',
+                pointerEvents: 'auto'
+              }}
+            >
               {slides.map((_, i) => (
                 <button
                   type="button"
@@ -379,26 +407,25 @@ export default function Home() {
                   }}
                   aria-label={`Go to slide ${i + 1}`}
                   style={{
-                    height: '28px',
-                    minWidth: '24px',
+                    height: '14px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     background: 'transparent',
                     border: 'none',
                     cursor: 'pointer',
-                    padding: '0 2px',
+                    padding: '0 1px',
                     touchAction: 'manipulation'
                   }}
                 >
                   <span
                     style={{
                       display: 'block',
-                      height: '8px',
-                      width: i === currentIndex ? '26px' : '8px',
-                      borderRadius: '4px',
-                      backgroundColor: i === currentIndex ? '#00E676' : 'rgba(255, 255, 255, 0.45)',
-                      boxShadow: i === currentIndex ? '0 0 8px #00E676' : 'none',
+                      height: '4px',
+                      width: i === currentIndex ? '16px' : '4px',
+                      borderRadius: '2px',
+                      backgroundColor: i === currentIndex ? '#00E676' : 'rgba(255, 255, 255, 0.4)',
+                      boxShadow: i === currentIndex ? '0 0 6px #00E676' : 'none',
                       transition: 'all 0.3s ease'
                     }}
                   />
