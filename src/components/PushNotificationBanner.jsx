@@ -30,7 +30,7 @@ export default function PushNotificationBanner() {
 
   useEffect(() => {
     const handleNewNotification = (latest) => {
-      if (!latest || latest.read || latest.dismissed) return;
+      if (!latest) return;
 
       setActiveNotification(latest);
 
@@ -43,22 +43,27 @@ export default function PushNotificationBanner() {
         }
       }
 
-      // Auto dismiss after 7 seconds like native iOS banner
+      // Auto dismiss after 8 seconds like native iOS banner
       if (autoDismissTimerRef.current) clearTimeout(autoDismissTimerRef.current);
       autoDismissTimerRef.current = setTimeout(() => {
         setActiveNotification(null);
-      }, 7000);
+      }, 8000);
     };
 
+    // 1. Direct Instant Event Listener (0ms)
+    const unsubReceive = notificationService.onReceive((notif) => {
+      handleNewNotification(notif);
+    });
+
+    // 2. Storage / Cloud Polling check
     const checkUnread = () => {
       const allNotifs = notificationService.getNotifications();
-      const latest = allNotifs.find((n) => !n.dismissed && !n.read);
+      const latest = allNotifs.find((n) => !n.dismissed && !n.read && n.id.startsWith('notif-'));
       if (latest && (!activeNotification || activeNotification.id !== latest.id)) {
         handleNewNotification(latest);
       }
     };
 
-    checkUnread();
     const unsubscribe = notificationService.subscribe(() => {
       checkUnread();
     });
@@ -71,6 +76,7 @@ export default function PushNotificationBanner() {
     window.addEventListener('storage', handleStorage);
 
     return () => {
+      unsubReceive();
       unsubscribe();
       window.removeEventListener('storage', handleStorage);
       if (autoDismissTimerRef.current) clearTimeout(autoDismissTimerRef.current);

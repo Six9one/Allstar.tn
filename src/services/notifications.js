@@ -17,7 +17,7 @@ const INITIAL_NOTIFS = [
     body: 'مؤشر الأشعة فوق البنفسجية مرتفع (UV 8). يرجى إحضار الواقي الشمسي وقارورة الماء.',
     date: 'منذ ساعتين',
     type: 'weather',
-    read: false
+    read: true
   },
   {
     id: 'n-2',
@@ -25,7 +25,7 @@ const INITIAL_NOTIFS = [
     body: 'تمرين كرة القدم غداً الساعة 16:00 بالملعب الرئيسي.',
     date: 'اليوم',
     type: 'schedule',
-    read: false
+    read: true
   }
 ];
 
@@ -47,9 +47,17 @@ function urlBase64ToUint8Array(base64String) {
 class NotificationService {
   constructor() {
     this.listeners = [];
+    this.receiveCallbacks = [];
     this.broadcastChannel = null;
     this.realtimeChannel = null;
     this.init();
+  }
+
+  onReceive(callback) {
+    this.receiveCallbacks.push(callback);
+    return () => {
+      this.receiveCallbacks = this.receiveCallbacks.filter(c => c !== callback);
+    };
   }
 
   init() {
@@ -399,6 +407,12 @@ class NotificationService {
       notifs.unshift(notification);
       localStorage.setItem(NOTIF_KEY, JSON.stringify(notifs));
       this.notifyListeners();
+
+      // Direct instant UI pop
+      this.receiveCallbacks.forEach(cb => {
+        try { cb(notification); } catch (e) { console.warn('Receive callback error:', e); }
+      });
+
       this.showNativePush(
         notification.title,
         notification.body,
