@@ -49,6 +49,7 @@ export default defineConfig({
         clientsClaim: true,
         cleanupOutdatedCaches: true,
         navigationPreload: true,
+        importScripts: ['/sw-push.js'],
         globPatterns: ['**/*.{js,css,html,ico,png,jpg,jpeg,svg,webp,woff2}'],
         runtimeCaching: [
           {

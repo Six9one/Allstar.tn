@@ -28,37 +28,52 @@ function playNotificationChime() {
 }
 
 export default function PushNotificationBanner() {
-  const [activeBroadcast, setActiveBroadcast] = useState(null);
+  const [activeNotification, setActiveNotification] = useState(null);
   const [showPermissionPrompt, setShowPermissionPrompt] = useState(false);
+  const [permissionState, setPermissionState] = useState('default');
+  const [isRequesting, setIsRequesting] = useState(false);
+  const [isStandalone, setIsStandalone] = useState(false);
 
   useEffect(() => {
-    // Check notification permission status
-    if ('Notification' in window && Notification.permission === 'default') {
-      // Show polite permission request bar after 3 seconds
-      const timer = setTimeout(() => setShowPermissionPrompt(true), 3000);
-      return () => clearTimeout(timer);
+    // Detect PWA standalone mode
+    const standalone = window.matchMedia('(display-mode: standalone)').matches ||
+                       window.navigator.standalone === true ||
+                       document.referrer.includes('android-app://');
+    setIsStandalone(standalone);
+
+    // Check current notification permission
+    if ('Notification' in window) {
+      setPermissionState(Notification.permission);
+
+      if (Notification.permission === 'default') {
+        setShowPermissionPrompt(true);
+      }
+    } else {
+      // In iOS Safari WebKit before install, Notification object might only exist in standalone
+      if (standalone) {
+        setShowPermissionPrompt(true);
+      }
     }
   }, []);
 
   useEffect(() => {
-    // Check if there is an unread broadcast notification
-    const checkUnreadBroadcasts = () => {
+    const checkUnreadNotifications = () => {
       const allNotifs = notificationService.getNotifications();
-      const latestBroadcast = allNotifs.find(n => (n.type === 'broadcast' || n.type === 'info') && !n.dismissed);
-      if (latestBroadcast && (!activeBroadcast || activeBroadcast.id !== latestBroadcast.id)) {
-        setActiveBroadcast(latestBroadcast);
+      const latest = allNotifs.find(n => !n.dismissed && !n.read);
+      if (latest && (!activeNotification || activeNotification.id !== latest.id)) {
+        setActiveNotification(latest);
         playNotificationChime();
       }
     };
 
-    checkUnreadBroadcasts();
+    checkUnreadNotifications();
     const unsubscribe = notificationService.subscribe(() => {
-      checkUnreadBroadcasts();
+      checkUnreadNotifications();
     });
 
     const handleStorage = (e) => {
-      if (e.key === 'allstar_notifications_list' || e.key === 'allstar_broadcast_announcements') {
-        checkUnreadBroadcasts();
+      if (e.key === 'allstar_notifications_list') {
+        checkUnreadNotifications();
       }
     };
     window.addEventListener('storage', handleStorage);
@@ -67,110 +82,231 @@ export default function PushNotificationBanner() {
       unsubscribe();
       window.removeEventListener('storage', handleStorage);
     };
-  }, []);
+  }, [activeNotification]);
 
-  const handleDismiss = () => {
-    if (activeBroadcast) {
+  const handleDismissAlert = () => {
+    if (activeNotification) {
       const notifs = notificationService.getNotifications().map(n => 
-        n.id === activeBroadcast.id ? { ...n, dismissed: true, read: true } : n
+        n.id === activeNotification.id ? { ...n, dismissed: true, read: true } : n
       );
       localStorage.setItem('allstar_notifications_list', JSON.stringify(notifs));
-      setActiveBroadcast(null);
+      setActiveNotification(null);
     }
   };
 
-  const handleEnablePermission = async () => {
+  const handleDismissPermission = () => {
     setShowPermissionPrompt(false);
-    const granted = await notificationService.requestPermission();
-    if (granted) {
-      playNotificationChime();
+  };
+
+  const handleEnablePermission = async () => {
+    setIsRequesting(true);
+    try {
+      const granted = await notificationService.requestPermission();
+      if (granted) {
+        setPermissionState('granted');
+        setShowPermissionPrompt(false);
+        playNotificationChime();
+        // Show immediate confirmation push
+        notificationService.showNativePush(
+          '🔔 تم تفعيل إشعارات الأكاديمية بنجاح!',
+          'ستصلك التنبيهات المباشرة ومواعيد التمارين والطقس فور صدورها.'
+        );
+      } else {
+        if ('Notification' in window) {
+          setPermissionState(Notification.permission);
+        }
+      }
+    } catch (e) {
+      console.warn('Permission request error:', e);
+    } finally {
+      setIsRequesting(false);
     }
   };
 
   return (
     <>
-      {/* 1. FLOATING PERMISSION REQUEST RIBBON (if not yet granted) */}
-      {showPermissionPrompt && (
+      {/* 1. FLOATING PERMISSION PROMPT (FIXED ABOVE EVERYTHING AT BOTTOM/TOP) */}
+      {showPermissionPrompt && permissionState !== 'granted' && (
         <div style={{
-          position: 'fixed', top: '72px', left: '16px', right: '16px', zIndex: 9998,
-          maxWidth: '600px', margin: '0 auto',
-          background: 'linear-gradient(135deg, rgba(10,31,68,0.96), rgba(6,19,41,0.98))',
-          border: '1.5px solid #FFC107', borderRadius: '16px',
-          padding: '12px 18px', color: '#FFF',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px',
-          boxShadow: '0 10px 30px rgba(255,193,7,0.3)', backdropFilter: 'blur(10px)',
-          direction: 'rtl', fontFamily: '"Cairo", "Tajawal", sans-serif',
-          animation: 'slideDown 0.4s cubic-bezier(0.16, 1, 0.3, 1)'
+          position: 'fixed',
+          bottom: 'calc(env(safe-area-inset-bottom, 0px) + 76px)',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          width: 'calc(100% - 32px)',
+          maxWidth: '560px',
+          zIndex: 2147483647, // Highest possible z-index
+          background: 'linear-gradient(145deg, #0A1628 0%, #060D1A 100%)',
+          border: '2px solid #FFC107',
+          borderRadius: '22px',
+          padding: '18px 20px',
+          color: '#FFF',
+          boxShadow: '0 20px 60px rgba(0, 0, 0, 0.95), 0 0 30px rgba(255, 193, 7, 0.45)',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+          direction: 'rtl',
+          fontFamily: '"Cairo", "Tajawal", sans-serif',
+          animation: 'slideUpRibbon 0.4s cubic-bezier(0.16, 1, 0.3, 1)'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <span style={{ fontSize: '1.4rem' }}>🔔</span>
-            <div>
-              <div style={{ fontWeight: 900, fontSize: '0.85rem', color: '#FFC107' }}>تفعيل إشعارات الأكاديمية المباشرة</div>
-              <div style={{ fontSize: '0.75rem', color: '#B0BEC5' }}>احصل على تنبيهات التمارين والطقس على هاتفك فور صدورها</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '14px' }}>
+            <div style={{
+              width: '48px', height: '48px', borderRadius: '14px',
+              background: 'linear-gradient(135deg, #FFC107, #FF9500)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: '1.5rem', flexShrink: 0,
+              boxShadow: '0 4px 16px rgba(255,193,7,0.5)'
+            }}>
+              🔔
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{
+                display: 'inline-block',
+                background: 'rgba(255,193,7,0.2)',
+                color: '#FFC107',
+                padding: '2px 8px',
+                borderRadius: '6px',
+                fontSize: '0.72rem',
+                fontWeight: 800,
+                marginBottom: '4px'
+              }}>
+                {isStandalone ? 'تطبيق الهاتف (PWA) 📱' : 'تنبيهات فورية 🔔'}
+              </div>
+              <h4 style={{ color: '#FFFFFF', fontSize: '1.05rem', fontWeight: 900, margin: 0 }}>
+                تفعيل إشعارات أكاديمية أولستار على هاتفك
+              </h4>
+              <p style={{ color: '#B0BEC5', fontSize: '0.8rem', margin: '4px 0 0 0', lineHeight: 1.4 }}>
+                احصل على تنبيهات التمارين، بطاقات FUT، وحالة الطقس على شاشة هاتفك فوراً!
+              </p>
             </div>
           </div>
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <button onClick={handleEnablePermission} style={{
-              background: 'linear-gradient(135deg, #FFC107, #FF9500)', border: 'none', color: '#000',
-              padding: '7px 14px', borderRadius: '10px', fontWeight: 900, cursor: 'pointer', fontSize: '0.78rem',
-              fontFamily: '"Cairo", "Tajawal", sans-serif'
-            }}>تفعيل الآن 🚀</button>
-            <button onClick={() => setShowPermissionPrompt(false)} style={{
-              background: 'transparent', border: '1px solid rgba(255,255,255,0.2)', color: '#8E9BAE',
-              padding: '7px 10px', borderRadius: '10px', fontWeight: 700, cursor: 'pointer', fontSize: '0.75rem'
-            }}>إلغاء</button>
+
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button
+              onClick={handleEnablePermission}
+              disabled={isRequesting}
+              style={{
+                flex: 1,
+                background: 'linear-gradient(135deg, #00E676, #00B0FF)',
+                border: 'none',
+                color: '#08090C',
+                padding: '12px',
+                borderRadius: '14px',
+                fontWeight: 900,
+                cursor: isRequesting ? 'wait' : 'pointer',
+                fontSize: '0.92rem',
+                fontFamily: '"Cairo", "Tajawal", sans-serif',
+                boxShadow: '0 4px 16px rgba(0,230,118,0.4)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px'
+              }}
+            >
+              <span>{isRequesting ? '⏳' : '⚡'}</span>
+              <span>{isRequesting ? 'جاري التفعيل...' : 'تفعيل الإشعارات الآن'}</span>
+            </button>
+            <button
+              onClick={handleDismissPermission}
+              style={{
+                background: 'rgba(255,255,255,0.08)',
+                border: '1px solid rgba(255,255,255,0.2)',
+                color: '#90A4AE',
+                padding: '12px 16px',
+                borderRadius: '14px',
+                fontWeight: 700,
+                cursor: 'pointer',
+                fontSize: '0.84rem',
+                fontFamily: '"Cairo", "Tajawal", sans-serif'
+              }}
+            >
+              لاحقاً
+            </button>
           </div>
         </div>
       )}
 
-      {/* 2. URGENT PWA APP PUSH ANNOUNCEMENT MODAL CARD */}
-      {activeBroadcast && (
+      {/* 2. URGENT PWA APP NOTIFICATION MODAL CARD */}
+      {activeNotification && (
         <div style={{
-          position: 'fixed', top: '80px', left: '16px', right: '16px', zIndex: 9999,
-          maxWidth: '540px', margin: '0 auto',
+          position: 'fixed',
+          top: 'calc(env(safe-area-inset-top, 0px) + 80px)',
+          left: '16px',
+          right: '16px',
+          zIndex: 2147483647,
+          maxWidth: '540px',
+          margin: '0 auto',
           background: 'linear-gradient(145deg, #0A1628, #07101E)',
-          border: '2px solid #FF3D00', borderRadius: '24px',
-          padding: '20px 24px', color: '#FFF',
+          border: '2px solid #FF3D00',
+          borderRadius: '24px',
+          padding: '20px 24px',
+          color: '#FFF',
           boxShadow: '0 20px 50px rgba(255,61,0,0.4), 0 0 30px rgba(0,0,0,0.9)',
-          backdropFilter: 'blur(12px)', direction: 'rtl',
+          backdropFilter: 'blur(16px)',
+          WebkitBackdropFilter: 'blur(16px)',
+          direction: 'rtl',
           fontFamily: '"Cairo", "Tajawal", sans-serif',
           animation: 'popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
         }}>
           {/* Header Badge */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
             <div style={{
-              background: 'linear-gradient(90deg, #FF3D00, #FF9500)', color: '#FFF',
-              padding: '4px 12px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 900,
-              display: 'flex', alignItems: 'center', gap: '6px', boxShadow: '0 0 12px rgba(255,61,0,0.6)'
+              background: 'linear-gradient(90deg, #FF3D00, #FF9500)',
+              color: '#FFF',
+              padding: '4px 12px',
+              borderRadius: '12px',
+              fontSize: '0.75rem',
+              fontWeight: 900,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              boxShadow: '0 0 12px rgba(255,61,0,0.6)'
             }}>
               <span className="pulsing-red-dot" />
-              🚨 إشعار عاجل من الإدارة
+              <span>🔔 إشعار فوري من إدارة الأكاديمية</span>
             </div>
-            <span style={{ fontSize: '0.72rem', color: '#8E9BAE' }}>{activeBroadcast.date || 'الآن'}</span>
+            <span style={{ fontSize: '0.72rem', color: '#8E9BAE' }}>{activeNotification.date || 'الآن'}</span>
           </div>
 
           {/* Title & Body */}
           <h3 style={{ color: '#FFF', fontSize: '1.15rem', fontWeight: 900, margin: '0 0 8px 0', lineHeight: 1.3 }}>
-            {activeBroadcast.title}
+            {activeNotification.title}
           </h3>
           <p style={{ color: '#ECEFF1', fontSize: '0.9rem', margin: '0 0 16px 0', lineHeight: 1.6 }}>
-            {activeBroadcast.body}
+            {activeNotification.body}
           </p>
 
           {/* Action Buttons */}
           <div style={{ display: 'flex', gap: '10px' }}>
-            <button onClick={handleDismiss} style={{
-              flex: 1, padding: '12px', background: 'linear-gradient(135deg, #00E676, #00B0FF)',
-              border: 'none', borderRadius: '14px', color: '#000', fontWeight: 900,
-              fontSize: '0.88rem', cursor: 'pointer', fontFamily: '"Cairo", "Tajawal", sans-serif'
-            }}>
+            <button
+              onClick={handleDismissAlert}
+              style={{
+                flex: 1,
+                padding: '12px',
+                background: 'linear-gradient(135deg, #00E676, #00B0FF)',
+                border: 'none',
+                borderRadius: '14px',
+                color: '#000',
+                fontWeight: 900,
+                fontSize: '0.88rem',
+                cursor: 'pointer',
+                fontFamily: '"Cairo", "Tajawal", sans-serif'
+              }}
+            >
               ✅ تم القراءة والموافقة
             </button>
-            <button onClick={handleDismiss} style={{
-              padding: '12px 18px', background: 'rgba(255,255,255,0.08)',
-              border: '1px solid rgba(255,255,255,0.15)', borderRadius: '14px', color: '#B0BEC5',
-              fontWeight: 800, fontSize: '0.85rem', cursor: 'pointer', fontFamily: '"Cairo", "Tajawal", sans-serif'
-            }}>
+            <button
+              onClick={handleDismissAlert}
+              style={{
+                padding: '12px 18px',
+                background: 'rgba(255,255,255,0.08)',
+                border: '1px solid rgba(255,255,255,0.15)',
+                borderRadius: '14px',
+                color: '#B0BEC5',
+                fontWeight: 800,
+                fontSize: '0.85rem',
+                cursor: 'pointer',
+                fontFamily: '"Cairo", "Tajawal", sans-serif'
+              }}
+            >
               إغلاق ✕
             </button>
           </div>
@@ -182,12 +318,12 @@ export default function PushNotificationBanner() {
           0% { opacity: 0; transform: scale(0.85) translateY(-20px); }
           100% { opacity: 1; transform: scale(1) translateY(0); }
         }
-        @keyframes slideDown {
-          0% { opacity: 0; transform: translateY(-30px); }
-          100% { opacity: 1; transform: translateY(0); }
+        @keyframes slideUpRibbon {
+          0% { opacity: 0; transform: translate(-50%, 60px); }
+          100% { opacity: 1; transform: translate(-50%, 0); }
         }
         .pulsing-red-dot {
-          width: 8px; height: 8px; background: #FFF; borderRadius: 50%;
+          width: 8px; height: 8px; background: #FFF; border-radius: 50%;
           display: inline-block; animation: pulseDot 1s infinite alternate;
         }
         @keyframes pulseDot {

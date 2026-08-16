@@ -502,24 +502,25 @@ export default function Reels() {
     };
   }, []);
 
-  // IntersectionObserver for active viewport slide
+  // Viewport IntersectionObserver with threshold: 0.75 (75% visible in viewport)
   useEffect(() => {
     if (reels.length === 0) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            const index = Number(entry.target.getAttribute('data-index'));
-            if (!isNaN(index)) {
-              setActiveSlideIndex(index);
-            }
+          const index = Number(entry.target.getAttribute('data-index'));
+          if (isNaN(index)) return;
+
+          // When Reel N+1 scrolls in (>= 75% visible): Trigger active playback
+          if (entry.intersectionRatio >= 0.75) {
+            setActiveSlideIndex(index);
           }
         });
       },
       {
         root: containerRef.current,
-        threshold: 0.65
+        threshold: [0.5, 0.75]
       }
     );
 

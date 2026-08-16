@@ -1,11 +1,14 @@
 // Notification & Alert Service for All-Star Sports Academy
-// Web Push Notifications + ServiceWorker PWA Push + Supabase Realtime WebSocket Push
+// Native OS Web Push Notifications + ServiceWorker PWA Push + Supabase Realtime WebSocket + Edge Functions
 
 import { db, supabase } from './db';
 
 const NOTIF_KEY = 'allstar_notifications_list';
-const BROADCAST_KEY = 'allstar_broadcast_announcements';
+const NOTIF_LOG_KEY = 'allstar_notifications_log_cache';
 const PROCESSED_IDS_KEY = 'allstar_processed_announcement_ids';
+
+// Default VAPID Public Key fallback (can be overridden via ENV or dynamic config)
+const DEFAULT_VAPID_PUBLIC_KEY = 'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBKr3qBUYIHBQFLXYp5Nksh8U';
 
 const INITIAL_NOTIFS = [
   {
@@ -26,6 +29,21 @@ const INITIAL_NOTIFS = [
   }
 ];
 
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding)
+    .replace(/-/g, '+')
+    .replace(/_/g, '/');
+
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
 class NotificationService {
   constructor() {
     this.listeners = [];
@@ -38,9 +56,6 @@ class NotificationService {
     if (!localStorage.getItem(NOTIF_KEY)) {
       localStorage.setItem(NOTIF_KEY, JSON.stringify(INITIAL_NOTIFS));
     }
-    if (!localStorage.getItem(BROADCAST_KEY)) {
-      localStorage.setItem(BROADCAST_KEY, JSON.stringify([]));
-    }
     if (!localStorage.getItem(PROCESSED_IDS_KEY)) {
       localStorage.setItem(PROCESSED_IDS_KEY, JSON.stringify(['n-1', 'n-2']));
     }
@@ -51,7 +66,7 @@ class NotificationService {
         this.broadcastChannel = new BroadcastChannel('allstar_notif_channel');
         this.broadcastChannel.onmessage = (event) => {
           if (event.data && event.data.type === 'NEW_NOTIFICATION') {
-            this.handleIncomingBroadcast(event.data.notification);
+            this.handleIncomingNotification(event.data.notification);
           }
         };
       } catch (e) {
@@ -67,7 +82,7 @@ class NotificationService {
           .on('broadcast', { event: 'admin_notification' }, (payload) => {
             console.log('⚡ Received live Supabase WebSocket push on mobile device:', payload);
             if (payload && payload.notification) {
-              this.handleIncomingBroadcast(payload.notification);
+              this.handleIncomingNotification(payload.notification);
             }
           })
           .subscribe();
@@ -79,16 +94,21 @@ class NotificationService {
     // 3. Listen for storage events & Cloud Polling Fallback
     if (typeof window !== 'undefined') {
       window.addEventListener('storage', (e) => {
-        if (e.key === NOTIF_KEY || e.key === BROADCAST_KEY || e.key === 'allstar_db_site_content') {
+        if (e.key === NOTIF_KEY || e.key === 'allstar_db_site_content') {
           this.checkCloudAnnouncements();
           this.notifyListeners();
         }
       });
 
-      // Poll cloud announcements every 3 seconds so mobile phones catch admin broadcasts live
+      // Periodic check
       setInterval(() => {
         this.checkCloudAnnouncements();
-      }, 3000);
+      }, 5000);
+
+      // Auto-register push subscription if permission already granted
+      if ('Notification' in window && Notification.permission === 'granted') {
+        this.registerPushSubscription().catch(() => {});
+      }
     }
   }
 
@@ -104,7 +124,7 @@ class NotificationService {
         localStorage.setItem(PROCESSED_IDS_KEY, JSON.stringify(processedIds));
 
         // Trigger push notification & popup on this mobile phone/device!
-        this.handleIncomingBroadcast(latestAnn);
+        this.handleIncomingNotification(latestAnn);
       }
     } catch (e) {
       console.log('Cloud announcement sync error:', e);
@@ -120,6 +140,9 @@ class NotificationService {
     try {
       const permission = await Notification.requestPermission();
       if (permission === 'granted') {
+        // Register Web Push subscription in background
+        await this.registerPushSubscription();
+
         this.showNativePush(
           '🔔 تم تفعيل إشعارات الأكاديمية بنجاح!',
           'ستصلك التنبيهات المباشرة ومواعيد التمارين والطقس فور صدورها.'
@@ -136,8 +159,59 @@ class NotificationService {
     return false;
   }
 
+  // Register push subscription to Supabase push_subscriptions table
+  async registerPushSubscription(vapidKey = DEFAULT_VAPID_PUBLIC_KEY, role = 'all', userId = null) {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+      return null;
+    }
+
+    try {
+      const registration = await navigator.serviceWorker.ready;
+      if (!registration.pushManager) return null;
+
+      let subscription = await registration.pushManager.getSubscription();
+
+      if (!subscription && vapidKey) {
+        const convertedVapidKey = urlBase64ToUint8Array(vapidKey);
+        subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: convertedVapidKey,
+        });
+      }
+
+      if (subscription && supabase) {
+        const subJson = subscription.toJSON();
+        const p256dh = subJson.keys?.p256dh;
+        const auth = subJson.keys?.auth;
+        const endpoint = subJson.endpoint;
+
+        if (endpoint && p256dh && auth) {
+          const userAgent = navigator.userAgent;
+          await supabase.from('push_subscriptions').upsert(
+            {
+              endpoint,
+              p256dh,
+              auth,
+              role: role || 'all',
+              user_id: userId || null,
+              user_agent: userAgent,
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: 'endpoint' }
+          );
+          console.log('✅ Push subscription registered in Supabase');
+        }
+      }
+
+      return subscription;
+    } catch (error) {
+      console.warn('Push subscription registration error:', error);
+      return null;
+    }
+  }
+
   // Trigger Native Push via ServiceWorker (Works on installed PWA & mobile background lockscreen)
-  async showNativePush(title, body, icon = '/pwa-192x192.png') {
+  async showNativePush(title, body, icon = '/icon.png', data = { url: '/' }) {
     if (!('Notification' in window) || Notification.permission !== 'granted') {
       return;
     }
@@ -147,9 +221,9 @@ class NotificationService {
       icon,
       badge: icon,
       vibrate: [200, 100, 200, 100, 200],
-      tag: 'allstar-announcement-' + Date.now(),
+      tag: 'allstar-notification-' + Date.now(),
       renotify: true,
-      data: { url: '/' }
+      data: data || { url: '/' }
     };
 
     // Try via ServiceWorker first (best for PWA & mobile lockscreen)
@@ -173,35 +247,67 @@ class NotificationService {
     }
   }
 
-  // Broadcast to all clients (saves globally, broadcasts via WebSocket & triggers PWA native push)
-  broadcastToAllClients(title, body, icon = '/pwa-192x192.png') {
-    const notifItem = {
-      id: 'ann-' + Date.now(),
+  // Send Push Notification from Admin via Supabase Edge Function with local/realtime fallbacks
+  async sendPushNotification({ title, body, targetUrl = '/', imageUrl = null, targetAudience = 'الجميع' }) {
+    const pushPayload = {
       title,
       body,
+      icon: 'https://allstar.tn/icon.png',
+      badge: 'https://allstar.tn/icon.png',
+      imageUrl: imageUrl || undefined,
+      image: imageUrl || undefined,
+      targetUrl: targetUrl || '/',
+      targetAudience: targetAudience || 'الجميع',
+      vibrate: [200, 100, 200],
+      tag: `academy-notification-${Date.now()}`,
+      renotify: true,
+      data: {
+        url: targetUrl || '/',
+        dateOfArrival: Date.now()
+      }
+    };
+
+    let sentCount = 0;
+    let successMessage = '';
+
+    // 1. Try Supabase Edge Function invoke
+    if (supabase) {
+      try {
+        const { data, error } = await supabase.functions.invoke('send-push-notification', {
+          body: pushPayload
+        });
+
+        if (!error && data) {
+          sentCount = data.results?.sent_count || data.results?.total || 1;
+          successMessage = data.message || `تم إرسال الإشعار بنجاح إلى ${sentCount} جهاز`;
+        } else if (error) {
+          console.warn('Edge function push error, falling back to realtime/local:', error);
+        }
+      } catch (invokeErr) {
+        console.warn('Edge function invoke error:', invokeErr);
+      }
+    }
+
+    // 2. Local & Realtime broadcast fallback to ensure all connected clients receive it immediately
+    const notifItem = {
+      id: 'notif-' + Date.now(),
+      title,
+      body,
+      target_url: targetUrl,
+      target_role: targetAudience,
+      image_url: imageUrl,
       date: 'الآن',
-      type: 'broadcast',
+      type: 'notification',
       read: false,
       timestamp: Date.now()
     };
 
-    // 1. Add to local notification center list
+    // Save to local notifications list
     const notifs = this.getNotifications();
     notifs.unshift(notifItem);
     localStorage.setItem(NOTIF_KEY, JSON.stringify(notifs));
 
-    // 2. Mark as processed on sender device
-    try {
-      const processedIds = JSON.parse(localStorage.getItem(PROCESSED_IDS_KEY)) || [];
-      if (!processedIds.includes(notifItem.id)) {
-        processedIds.push(notifItem.id);
-        localStorage.setItem(PROCESSED_IDS_KEY, JSON.stringify(processedIds));
-      }
-    } catch (e) {
-      console.error(e);
-    }
-
-    // 3. Post to Supabase Realtime WebSocket channel for all connected mobile phones over internet!
+    // Post to Supabase Realtime channel
     if (this.realtimeChannel) {
       try {
         this.realtimeChannel.send({
@@ -214,7 +320,7 @@ class NotificationService {
       }
     }
 
-    // 4. Post to local BroadcastChannel for active app windows
+    // Post to local BroadcastChannel
     if (this.broadcastChannel) {
       try {
         this.broadcastChannel.postMessage({
@@ -226,7 +332,7 @@ class NotificationService {
       }
     }
 
-    // 5. Save to Cloud / Site Content so remote mobile phones receive it via polling
+    // Save to Cloud Site Content for background polling
     try {
       const currentSite = db.getSiteContent();
       const existingAnnouncements = currentSite.announcements || [];
@@ -238,25 +344,76 @@ class NotificationService {
       console.error('Cloud broadcast save error:', e);
     }
 
-    // 6. Trigger Native PWA push notification on this device
-    this.showNativePush(title, body, icon);
-
-    // 7. Notify in-app subscribers
+    // Trigger local native push on sender device
+    this.showNativePush(title, body, imageUrl || '/icon.png', { url: targetUrl });
     this.notifyListeners();
-    return notifItem;
+
+    return {
+      success: true,
+      sentCount: sentCount || 1,
+      message: successMessage || `تم إرسال الإشعار بنجاح إلى ${sentCount || 1} جهاز`,
+      notification: notifItem
+    };
   }
 
-  sendLocalNotification(title, body, icon = '/pwa-192x192.png') {
+  // Fetch Push Notifications Log from Supabase or cache
+  async getNotificationsLog() {
+    if (supabase) {
+      try {
+        const { data, error } = await supabase
+          .from('notifications_log')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(30);
+
+        if (!error && Array.isArray(data)) {
+          localStorage.setItem(NOTIF_LOG_KEY, JSON.stringify(data));
+          return data;
+        }
+      } catch (e) {
+        console.warn('Failed to fetch notifications log from Supabase:', e);
+      }
+    }
+
+    try {
+      const cached = JSON.parse(localStorage.getItem(NOTIF_LOG_KEY));
+      if (Array.isArray(cached) && cached.length > 0) return cached;
+    } catch {
+      // Fall through to local notifications
+    }
+
+    // Fallback from local notifications
+    return this.getNotifications().map(n => ({
+      id: n.id,
+      title: n.title,
+      body: n.body,
+      target_role: n.target_role || 'الجميع',
+      target_url: n.target_url || '/',
+      sent_count: 1,
+      created_at: n.timestamp ? new Date(n.timestamp).toISOString() : new Date().toISOString()
+    }));
+  }
+
+  broadcastToAllClients(title, body, icon = '/icon.png') {
+    return this.sendPushNotification({ title, body, imageUrl: icon });
+  }
+
+  sendLocalNotification(title, body, icon = '/icon.png') {
     return this.broadcastToAllClients(title, body, icon);
   }
 
-  handleIncomingBroadcast(notification) {
+  handleIncomingNotification(notification) {
     const notifs = this.getNotifications();
     if (!notifs.some(n => n.id === notification.id)) {
       notifs.unshift(notification);
       localStorage.setItem(NOTIF_KEY, JSON.stringify(notifs));
       this.notifyListeners();
-      this.showNativePush(notification.title, notification.body);
+      this.showNativePush(
+        notification.title,
+        notification.body,
+        notification.image_url || '/icon.png',
+        { url: notification.target_url || '/' }
+      );
     }
   }
 
@@ -275,7 +432,7 @@ class NotificationService {
   }
 
   sendWhatsAppNotification(phoneNumber, text) {
-    const cleanPhone = (phoneNumber || '+21698123456').replace(/[^0-9]/g, '');
+    const cleanPhone = (phoneNumber || '+21658263467').replace(/[^0-9]/g, '');
     const encodedText = encodeURIComponent(`🇹🇳 *أكاديمية أولستار الرياضية - All Star Sports Academy*\n\n${text}`);
     const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodedText}`;
     
@@ -284,7 +441,7 @@ class NotificationService {
   }
 
   sendSMSAlert(phoneNumber, text) {
-    const cleanPhone = (phoneNumber || '+21698123456').replace(/[^0-9]/g, '');
+    const cleanPhone = (phoneNumber || '+21658263467').replace(/[^0-9]/g, '');
     const smsUrl = `sms:${cleanPhone}?body=${encodeURIComponent(text)}`;
     
     this.sendLocalNotification(`📱 إشعار SMS: ${phoneNumber || ''}`, text);

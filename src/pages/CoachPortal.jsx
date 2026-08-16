@@ -112,6 +112,62 @@ export default function CoachPortal({ currentUser }) {
           </div>
         </div>
 
+        {/* NOTIFICATION STATUS BAR */}
+        <div style={{
+          background: 'rgba(255, 255, 255, 0.04)',
+          border: '1px solid rgba(255, 255, 255, 0.08)',
+          borderRadius: '16px',
+          padding: '12px 16px',
+          marginBottom: '20px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '10px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem' }}>
+            <span>🔔</span>
+            <span style={{ color: '#B0BEC5' }}>إشعارات الهاتف للمدرب (PWA Web Push):</span>
+          </div>
+          {'Notification' in window && Notification.permission === 'granted' ? (
+            <span style={{
+              background: 'rgba(0, 230, 118, 0.15)',
+              border: '1px solid #00E676',
+              color: '#00E676',
+              padding: '4px 10px',
+              borderRadius: '8px',
+              fontSize: '0.75rem',
+              fontWeight: 800
+            }}>
+              ✅ مفعلة بنجاح
+            </span>
+          ) : (
+            <button
+              onClick={async () => {
+                const granted = await notificationService.requestPermission();
+                if (granted) {
+                  showToast('✅ تم تفعيل إشعارات الهاتف بنجاح!');
+                  window.location.reload();
+                }
+              }}
+              style={{
+                background: 'linear-gradient(135deg, #FFC107, #FF9500)',
+                border: 'none',
+                color: '#08090C',
+                padding: '6px 14px',
+                borderRadius: '10px',
+                fontWeight: 900,
+                fontSize: '0.78rem',
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+                boxShadow: '0 4px 12px rgba(255,193,7,0.3)'
+              }}
+            >
+              ⚡ تفعيل الإشعارات الآن
+            </button>
+          )}
+        </div>
+
         {/* TOAST NOTIFICATION */}
         {toastMsg && (
           <div

@@ -6,6 +6,7 @@ import InstallPrompt from './components/InstallPrompt'
 import OnboardingModal from './components/OnboardingModal'
 import AutoUpdater from './components/AutoUpdater'
 import PushNotificationBanner from './components/PushNotificationBanner'
+import PWAInstalledNotificationModal from './components/PWAInstalledNotificationModal'
 import { notificationService } from './services/notifications'
 import Home from './pages/Home'
 import Programs from './pages/Programs'
@@ -96,6 +97,9 @@ export default function App() {
       </main>
       <BottomNav />
       <AutoUpdater />
+      <InstallPrompt />
+      <PushNotificationBanner />
+      <PWAInstalledNotificationModal />
 
       {/* FIRST OPENING ONBOARDING MODAL MATCHING SCREENSHOT */}
       <OnboardingModal

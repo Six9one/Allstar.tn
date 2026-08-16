@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import logoMain from '../assets/logo-light.png'
 import { db } from '../services/db'
-import ReelPlayer, { parseVideoUrl } from '../components/ReelPlayer'
+import { notificationService } from '../services/notifications'
+import ReelPlayer from '../components/ReelPlayer'
 
 const FALLBACK_SLIDES = [
   { id: 'SL-1', url: 'https://hsylnrzxeyqxczdalurj.supabase.co/storage/v1/object/public/carousel/live-slide-1-1786751135590.webp', caption: '⚽ تدريبات وبطولات أكاديمية أولستار الرياضية' },
@@ -127,6 +127,66 @@ export default function Home() {
           boxSizing: 'border-box'
         }}
       >
+        {/* PWA WEB PUSH ACTIVATION BANNER */}
+        {'Notification' in window && Notification.permission !== 'granted' && (
+          <div style={{
+            background: 'linear-gradient(135deg, rgba(255, 193, 7, 0.15), rgba(255, 149, 0, 0.08))',
+            border: '1.5px solid #FFC107',
+            borderRadius: '18px',
+            padding: '14px 18px',
+            marginBottom: '18px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '12px',
+            boxShadow: '0 8px 25px rgba(0, 0, 0, 0.65)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{
+                width: '42px', height: '42px', borderRadius: '12px',
+                background: 'linear-gradient(135deg, #FFC107, #FF9500)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: '1.3rem', flexShrink: 0,
+                boxShadow: '0 4px 12px rgba(255,193,7,0.4)'
+              }}>
+                🔔
+              </div>
+              <div>
+                <div style={{ fontWeight: 900, fontSize: '0.95rem', color: '#FFC107' }}>
+                  تفعيل إشعارات الهاتف المباشرة (PWA Push)
+                </div>
+                <div style={{ fontSize: '0.8rem', color: '#B0BEC5', marginTop: '2px' }}>
+                  اضغط هنا لتصلك تنبيهات التمارين والبطولات والطقس فور صدورها!
+                </div>
+              </div>
+            </div>
+            <button
+              onClick={async () => {
+                const granted = await notificationService.requestPermission();
+                if (granted) {
+                  alert('✅ تم تفعيل إشعارات الهاتف بنجاح!');
+                  window.location.reload();
+                }
+              }}
+              style={{
+                background: 'linear-gradient(135deg, #00E676, #00B0FF)',
+                border: 'none',
+                color: '#08090C',
+                padding: '10px 20px',
+                borderRadius: '12px',
+                fontWeight: 900,
+                fontSize: '0.88rem',
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+                boxShadow: '0 4px 14px rgba(0,230,118,0.4)'
+              }}
+            >
+              ⚡ تفعيل الإشعارات الآن
+            </button>
+          </div>
+        )}
+
         {/* CAROUSEL CARD WRAPPER - BULLETPROOF CROSS-FADE & TOUCH SWIPE */}
         <div
           onPointerEnter={(e) => {

@@ -1122,9 +1122,14 @@ export default function Admin() {
   const [qrCodeInput, setQrCodeInput] = useState('');
   const [scanResultMsg, setScanResultMsg] = useState(null);
 
-  // Announcements
-  const [announcementTitle, setAnnouncementTitle] = useState('');
-  const [announcementText, setAnnouncementText] = useState('');
+  // Notification Center
+  const [notifTitle, setNotifTitle] = useState('');
+  const [notifBody, setNotifBody] = useState('');
+  const [notifTargetUrl, setNotifTargetUrl] = useState('/');
+  const [notifImageUrl, setNotifImageUrl] = useState('');
+  const [notifAudience, setNotifAudience] = useState('الجميع');
+  const [isSendingPush, setIsSendingPush] = useState(false);
+  const [notifLogs, setNotifLogs] = useState([]);
   const [registrations, setRegistrations] = useState(() => db.getRegistrations());
 
   // Reels
@@ -1203,6 +1208,12 @@ export default function Admin() {
         if (syncState) setTikTokSyncState(syncState);
       } catch (e) {
         console.warn('TikTok sync state not ready:', e);
+      }
+      try {
+        const logs = await notificationService.getNotificationsLog();
+        if (Array.isArray(logs)) setNotifLogs(logs);
+      } catch (e) {
+        console.warn('Notifications log load notice:', e);
       }
     };
     loadAcademyData();
@@ -1671,15 +1682,37 @@ export default function Admin() {
     }
   };
 
-  // ── Broadcast handler ──────────────────────────────────────────────────────
-  const handleSendBroadcast = (e) => {
+  // ── Notification Center Web Push Handler ──────────────────────────────────
+  const handleSendNotification = async (e) => {
     e.preventDefault();
-    if (!announcementTitle.trim()) return;
-    const notifText = announcementText || 'تنبيه جديد من إدارة أكاديمية أولستار الرياضية بتطاوين';
-    notificationService.broadcastToAllClients(announcementTitle, notifText);
-    showSuccess('📢 تم إرسال الإشعار والتنبيه الفوري لجميع الهواتف والأجهزة الممثلة في التطبيق بنجاح!');
-    setAnnouncementTitle('');
-    setAnnouncementText('');
+    if (!notifTitle.trim() || !notifBody.trim()) {
+      showSuccess('❌ يرجى إدخال عنوان ونص الإشعار');
+      return;
+    }
+
+    setIsSendingPush(true);
+    try {
+      const result = await notificationService.sendPushNotification({
+        title: notifTitle.trim(),
+        body: notifBody.trim(),
+        targetUrl: notifTargetUrl.trim() || '/',
+        imageUrl: notifImageUrl.trim() || null,
+        targetAudience: notifAudience || 'الجميع',
+      });
+
+      const updatedLogs = await notificationService.getNotificationsLog();
+      setNotifLogs(updatedLogs);
+
+      showSuccess(`🚀 ${result.message || `تم إرسال الإشعار بنجاح إلى ${result.sentCount} جهاز`}`);
+      setNotifTitle('');
+      setNotifBody('');
+      setNotifImageUrl('');
+      setNotifTargetUrl('/');
+    } catch (err) {
+      showSuccess('❌ فشل إرسال الإشعار: ' + (err.message || err));
+    } finally {
+      setIsSendingPush(false);
+    }
   };
 
   // ── Account Management Handlers ───────────────────────────────────────────
@@ -1776,10 +1809,10 @@ export default function Admin() {
     { id: 'accounts',       icon: '🔐', label: 'Credentials',      color: '#00E676', badge: accounts.length },
     { id: 'coaches',        icon: '🏅', label: 'Coaches',          color: '#FF9500', badge: coaches.length },
     { id: 'players',        icon: '⚽', label: 'Players',          color: '#00E676', badge: players.length },
-    { id: 'reels',          icon: '🎬', label: 'Reels',            color: '#FF3D00', badge: reels.length },
+    { id: 'reels',          icon: '🎬', label: 'Reels & TikTok',   color: '#FF3D00', badge: academyReels.length || reels.length },
     { id: 'siteeditor',     icon: '🌐', label: 'Website Content',  color: '#00E5FF', badge: 0 },
     { id: 'qrscanner',      icon: '📱', label: 'QR Scanner',       color: '#E040FB', badge: 0 },
-    { id: 'announcements',  icon: '📢', label: 'Broadcast Push',   color: '#FF3D00', badge: 0 },
+    { id: 'notifications',  icon: '🔔', label: 'مركز الإشعارات',   color: '#FF3D00', badge: 0 },
   ];
 
   const tabMeta = {
@@ -1792,7 +1825,7 @@ export default function Admin() {
     reels:          { title: '🎬 Reels',           subtitle: 'إدارة مقاطع الفيديو المعروضة للأهالي' },
     siteeditor:     { title: 'محتوى الموقع',       subtitle: 'تعديل محتوى الصفحة الرئيسية' },
     qrscanner:      { title: 'ماسح QR',            subtitle: 'تسجيل الحضور بالرمز المربع' },
-    announcements:  { title: 'البث المباشر',       subtitle: 'إرسال إشعارات لجميع المستخدمين' },
+    notifications:  { title: 'مركز الإشعارات',   subtitle: 'إرسال إشعار فوري يظهر في شريط إشعارات هواتف الأولياء واللاعبين (PWA Web Push)' },
   };
 
   return (
@@ -2058,7 +2091,7 @@ export default function Admin() {
                     { tab: 'coaches', label: '🏅 إضافة مدرب جديد', bg: 'rgba(255,149,0,0.15)', border: '#FF9500', color: '#FF9500' },
                     { tab: 'players', label: '⚽ إضافة لاعب جديد', bg: 'rgba(0,230,118,0.12)', border: '#00E676', color: '#00E676' },
                     { tab: 'siteeditor', label: '🌐 تعديل محتوى الموقع', bg: 'rgba(0,229,255,0.12)', border: '#00E5FF', color: '#00E5FF' },
-                    { tab: 'announcements', label: '📢 إرسال إعلان فوري', bg: 'rgba(255,61,0,0.12)', border: '#FF3D00', color: '#FF3D00' },
+                    { tab: 'notifications', label: '🔔 مركز الإشعارات — إرسال إشعار فوري', bg: 'rgba(255,61,0,0.12)', border: '#FF3D00', color: '#FF3D00' },
                     { tab: 'qrscanner', label: '📱 تسجيل حضور QR', bg: 'rgba(224,64,251,0.12)', border: '#E040FB', color: '#E040FB' },
                   ].map(a => (
                     <button key={a.tab} onClick={() => setActiveTab(a.tab)} style={{
@@ -3419,54 +3452,139 @@ export default function Admin() {
         )}
 
         {/* ═══════════════════════════════════════════════════════════════════ */}
-        {/* TAB: ANNOUNCEMENTS                                                  */}
+        {/* TAB: NOTIFICATION CENTER (PWA WEB PUSH & REALTIME)                   */}
         {/* ═══════════════════════════════════════════════════════════════════ */}
-        {activeTab === 'announcements' && (
-          <div style={{ maxWidth: '750px', margin: '0 auto' }}>
+        {activeTab === 'notifications' && (
+          <div style={{ maxWidth: '850px', margin: '0 auto', direction: 'rtl', textAlign: 'right' }}>
             <div style={cardStyle}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                <h2 style={{ color: '#FF3D00', fontSize: '1.4rem', fontWeight: 900, margin: 0 }}>📢 إرسال الإعلانات والتنبيهات المباشرة</h2>
-                <span style={{ background: 'rgba(0,230,118,0.15)', border: '1px solid #00E676', color: '#00E676', padding: '4px 10px', borderRadius: '10px', fontSize: '0.75rem', fontWeight: 800 }}>
-                  ● PWA Web Push Active
+              {/* Header Badge & Title */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '10px' }}>
+                <h2 style={{ color: '#FF3D00', fontSize: '1.4rem', fontWeight: 900, margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span>🔔</span>
+                  <span>مركز الإشعارات — إرسال إشعارات فورية للهواتف</span>
+                </h2>
+                <span style={{ background: 'rgba(0,230,118,0.15)', border: '1px solid #00E676', color: '#00E676', padding: '5px 12px', borderRadius: '10px', fontSize: '0.78rem', fontWeight: 800 }}>
+                  ● Native PWA Web Push
                 </span>
               </div>
-              <p style={{ color: '#8E9BAE', fontSize: '0.88rem', marginBottom: '24px', lineHeight: 1.5 }}>
-                إرسال إشعار فوري يصل مباشرة إلى هواتف الأولياء واللاعبين الذين قاموا بتنزيل وتثبيت تطبيق الأكاديمية (PWA) أو زيارة الموقع
+              <p style={{ color: '#8E9BAE', fontSize: '0.88rem', marginBottom: '24px', lineHeight: 1.6 }}>
+                إرسال إشعار فوري يظهر في شريط إشعارات هواتف الأولياء واللاعبين (PWA Web Push) وشاشة القفل بدون الحاجة لفتح التطبيق.
               </p>
 
-              <form onSubmit={handleSendBroadcast} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {/* Notification Creation Form */}
+              <form onSubmit={handleSendNotification} style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
                 <div>
-                  <label style={labelStyle}>عنوان الإشعار *</label>
-                  <input type="text" required value={announcementTitle} onChange={e => setAnnouncementTitle(e.target.value)}
-                    placeholder="مثال: تذكير بموعد المباراة الودية يوم السبت"
-                    style={inputStyle} />
-                </div>
-                <div>
-                  <label style={labelStyle}>نص الإشعار والتفاصيل</label>
-                  <textarea rows={4} value={announcementText} onChange={e => setAnnouncementText(e.target.value)}
-                    placeholder="اكتب تفاصيل التنبيه هنا..."
-                    style={{ ...inputStyle, resize: 'none' }} />
+                  <label style={labelStyle}>عنوان الإشعار (Title) *</label>
+                  <input
+                    type="text"
+                    required
+                    value={notifTitle}
+                    onChange={e => setNotifTitle(e.target.value)}
+                    placeholder="مثال: ⚽ تذكير بموعد تدريب كرة القدم غداً الساعة 16:00"
+                    style={inputStyle}
+                  />
                 </div>
 
-                <button type="submit" style={{
-                  padding: '16px', background: 'linear-gradient(135deg, #FF3D00, #FF9500)',
-                  border: 'none', borderRadius: '16px', color: '#FFF', fontWeight: 900, fontSize: '1rem', cursor: 'pointer',
-                  fontFamily: '"Cairo", "Tajawal", sans-serif', boxShadow: '0 8px 25px rgba(255,61,0,0.3)'
-                }}>
-                  🚀 إرسال التنبيه الفوري لجميع الهواتف (PWA Web Push)
+                <div>
+                  <label style={labelStyle}>نص الإشعار (Message Body) *</label>
+                  <textarea
+                    rows={4}
+                    required
+                    value={notifBody}
+                    onChange={e => setNotifBody(e.target.value)}
+                    placeholder="اكتب تفاصيل التنبيه أو التوجيهات لأولياء الأمور واللاعبين..."
+                    style={{ ...inputStyle, resize: 'none' }}
+                  />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px' }}>
+                  <div>
+                    <label style={labelStyle}>الفئة المستهدفة (Target Audience)</label>
+                    <select
+                      value={notifAudience}
+                      onChange={e => setNotifAudience(e.target.value)}
+                      style={inputStyle}
+                    >
+                      <option value="الجميع">👥 الجميع (الأولياء والمدربون واللاعبون)</option>
+                      <option value="الأولياء فقط">👨‍👩‍👧 الأولياء فقط</option>
+                      <option value="المدربون فقط">🏅 المدربون فقط</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label style={labelStyle}>رابط التوجيه عند الضغط (Target Route / URL)</label>
+                    <input
+                      type="text"
+                      value={notifTargetUrl}
+                      onChange={e => setNotifTargetUrl(e.target.value)}
+                      placeholder="مثال: / أو /schedule أو /reels أو /portal"
+                      style={inputStyle}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label style={labelStyle}>صورة الإشعار (Banner Image URL — اختياري)</label>
+                  <input
+                    type="url"
+                    value={notifImageUrl}
+                    onChange={e => setNotifImageUrl(e.target.value)}
+                    placeholder="https://allstar.tn/hero-banner.png أو رابط صورة مخصص"
+                    style={inputStyle}
+                  />
+                </div>
+
+                {/* Submit Action Button */}
+                <button
+                  type="submit"
+                  disabled={isSendingPush}
+                  style={{
+                    padding: '16px 24px',
+                    background: isSendingPush ? '#555' : 'linear-gradient(135deg, #FF3D00, #FF9500)',
+                    border: 'none',
+                    borderRadius: '16px',
+                    color: '#FFF',
+                    fontWeight: 900,
+                    fontSize: '1.05rem',
+                    cursor: isSendingPush ? 'not-allowed' : 'pointer',
+                    fontFamily: '"Cairo", "Tajawal", sans-serif',
+                    boxShadow: '0 8px 25px rgba(255,61,0,0.35)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '10px',
+                    transition: 'all 0.2s ease',
+                  }}
+                >
+                  {isSendingPush ? (
+                    <>
+                      <div style={{
+                        width: '20px', height: '20px',
+                        border: '2px solid rgba(255,255,255,0.3)',
+                        borderTopColor: '#FFF', borderRadius: '50%',
+                        animation: 'spin 0.8s linear infinite'
+                      }} />
+                      <span>جاري إرسال الإشعار لجميع الهواتف...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>🚀</span>
+                      <span>إرسال الإشعار الفوري لجميع الهواتف</span>
+                    </>
+                  )}
                 </button>
               </form>
 
               {/* Multi-channel Broadcast options */}
-              <div style={{ marginTop: '24px', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '20px' }}>
+              <div style={{ marginTop: '28px', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '20px' }}>
                 <div style={{ fontSize: '0.85rem', color: '#FFC107', fontWeight: 800, marginBottom: '12px' }}>
                   💬 أو البث عبر قنوات التواصل المباشرة (WhatsApp & SMS):
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                   <button
                     onClick={() => {
-                      if (!announcementTitle.trim()) { alert('يرجى إدخال عنوان الإشعار أولاً'); return; }
-                      notificationService.sendWhatsAppNotification('+21658263467', `📢 *${announcementTitle}*\n\n${announcementText}`);
+                      if (!notifTitle.trim()) { showSuccess('يرجى إدخال عنوان الإشعار أولاً'); return; }
+                      notificationService.sendWhatsAppNotification('+21658263467', `📢 *${notifTitle}*\n\n${notifBody}`);
                     }}
                     style={{
                       background: 'rgba(37,211,102,0.15)', border: '1px solid #25D366', color: '#25D366',
@@ -3479,8 +3597,8 @@ export default function Admin() {
 
                   <button
                     onClick={() => {
-                      if (!announcementTitle.trim()) { alert('يرجى إدخال عنوان الإشعار أولاً'); return; }
-                      notificationService.sendSMSAlert('', `${announcementTitle}: ${announcementText}`);
+                      if (!notifTitle.trim()) { showSuccess('يرجى إدخال عنوان الإشعار أولاً'); return; }
+                      notificationService.sendSMSAlert('', `${notifTitle}: ${notifBody}`);
                     }}
                     style={{
                       background: 'rgba(0,229,255,0.12)', border: '1px solid #00E5FF', color: '#00E5FF',
@@ -3493,19 +3611,68 @@ export default function Admin() {
                 </div>
               </div>
 
-              {/* Broadcast Log History */}
-              <div style={{ marginTop: '24px', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '16px' }}>
-                <div style={{ fontSize: '0.85rem', color: '#8E9BAE', fontWeight: 800, marginBottom: '12px' }}>
-                  📜 سجل التنبيهات الصادرة مؤخراً:
+              {/* Sent Notifications Log History */}
+              <div style={{ marginTop: '28px', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '20px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                  <h3 style={{ fontSize: '0.95rem', color: '#FFF', fontWeight: 900, margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span>📜</span>
+                    <span>سجل الإشعارات المرسلة مؤخراً</span>
+                  </h3>
+                  <button
+                    onClick={async () => {
+                      const logs = await notificationService.getNotificationsLog();
+                      setNotifLogs(logs);
+                    }}
+                    style={{
+                      background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)',
+                      color: '#FFC107', padding: '4px 10px', borderRadius: '8px', fontSize: '0.72rem',
+                      cursor: 'pointer', fontFamily: '"Cairo", "Tajawal", sans-serif', fontWeight: 700
+                    }}
+                  >
+                    🔄 تحديث السجل
+                  </button>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '200px', overflowY: 'auto' }}>
-                  {notificationService.getNotifications().slice(0, 5).map((n) => (
-                    <div key={n.id} style={{ background: 'rgba(255,255,255,0.03)', padding: '10px 14px', borderRadius: '10px', borderRight: '3px solid #FF3D00' }}>
-                      <div style={{ fontWeight: 800, fontSize: '0.85rem', color: '#FFF' }}>{n.title}</div>
-                      <div style={{ fontSize: '0.78rem', color: '#B0BEC5', marginTop: '2px' }}>{n.body}</div>
-                      <div style={{ fontSize: '0.68rem', color: '#78909C', marginTop: '4px' }}>{n.date}</div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '280px', overflowY: 'auto' }}>
+                  {notifLogs.length === 0 ? (
+                    <div style={{ textAlign: 'center', color: '#78909C', fontSize: '0.82rem', padding: '16px' }}>
+                      لا يوجد إشعارات مرسلة بعد. قم بإنشاء إشعارك الأول أعلاه.
                     </div>
-                  ))}
+                  ) : (
+                    notifLogs.map((log) => (
+                      <div
+                        key={log.id}
+                        style={{
+                          background: 'rgba(255,255,255,0.03)',
+                          padding: '12px 16px',
+                          borderRadius: '12px',
+                          borderRight: '4px solid #FF3D00',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '4px',
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div style={{ fontWeight: 800, fontSize: '0.9rem', color: '#FFF' }}>{log.title}</div>
+                          <span style={{
+                            background: 'rgba(255,193,7,0.15)',
+                            color: '#FFC107',
+                            padding: '2px 8px',
+                            borderRadius: '6px',
+                            fontSize: '0.68rem',
+                            fontWeight: 800
+                          }}>
+                            {log.target_role || 'الجميع'}
+                          </span>
+                        </div>
+                        <div style={{ fontSize: '0.82rem', color: '#B0BEC5', lineHeight: 1.4 }}>{log.body}</div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px', fontSize: '0.7rem', color: '#78909C' }}>
+                          <span>📅 {log.created_at ? new Date(log.created_at).toLocaleString('ar-TN') : 'الآن'}</span>
+                          <span>📱 تم الإرسال إلى {log.sent_count || 1} جهاز</span>
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
 
@@ -3634,32 +3801,54 @@ export default function Admin() {
                 <button
                   onClick={handleConnectTikTok}
                   style={{
-                    padding: '10px 20px', borderRadius: '10px',
+                    padding: '12px 22px', borderRadius: '12px',
                     background: tikTokSyncState?.connected_username
-                      ? 'rgba(255,255,255,0.06)' : 'linear-gradient(135deg, #FF3D00, #FF6E40)',
+                      ? 'rgba(255,255,255,0.08)' : 'linear-gradient(135deg, #FE2C55, #FF0050)',
                     border: tikTokSyncState?.connected_username
-                      ? '1px solid rgba(255,255,255,0.15)' : 'none',
-                    color: '#FFF', fontWeight: 800, fontSize: '0.84rem',
-                    cursor: 'pointer', fontFamily: '"Cairo", "Tajawal", sans-serif'
+                      ? '1px solid rgba(255,255,255,0.2)' : 'none',
+                    color: '#FFF', fontWeight: 900, fontSize: '0.88rem',
+                    cursor: 'pointer', fontFamily: '"Cairo", "Tajawal", sans-serif',
+                    boxShadow: '0 4px 16px rgba(254,44,85,0.3)',
+                    display: 'flex', alignItems: 'center', gap: '8px'
                   }}
                 >
-                  {tikTokSyncState?.connected_username ? '🔄 إعادة ربط TikTok' : '🔗 ربط حساب TikTok'}
+                  <span>🔗</span>
+                  <span>{tikTokSyncState?.connected_username ? '🔄 إعادة ربط TikTok (@allstar.sports.ac)' : 'Connect TikTok (@allstar.sports.ac)'}</span>
                 </button>
 
                 <button
                   onClick={handleTikTokSync}
                   disabled={isSyncing}
                   style={{
-                    padding: '10px 20px', borderRadius: '10px',
+                    padding: '12px 22px', borderRadius: '12px',
                     background: isSyncing ? 'rgba(255,255,255,0.06)' : 'linear-gradient(135deg, #FFC107, #FF9500)',
                     border: 'none', color: isSyncing ? '#8E9BAE' : '#000',
-                    fontWeight: 900, fontSize: '0.84rem',
+                    fontWeight: 900, fontSize: '0.88rem',
                     cursor: isSyncing ? 'wait' : 'pointer',
-                    fontFamily: '"Cairo", "Tajawal", sans-serif'
+                    fontFamily: '"Cairo", "Tajawal", sans-serif',
+                    display: 'flex', alignItems: 'center', gap: '8px'
                   }}
                 >
-                  {isSyncing ? '⏳ جاري المزامنة...' : '🔄 مزامنة الآن'}
+                  <span>🔄</span>
+                  <span>{isSyncing ? '⏳ جاري المزامنة...' : 'مزامنة الفيديوهات الآن'}</span>
                 </button>
+              </div>
+
+              {/* TikTok Developer Setup Checklist */}
+              <div style={{
+                marginTop: '16px', padding: '14px', borderRadius: '12px',
+                background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)',
+                fontSize: '0.78rem', color: '#B0BEC5'
+              }}>
+                <div style={{ fontWeight: 800, color: '#FFC107', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span>📋</span>
+                  <span>قائمة إعداد TikTok Developer Portal (@allstar.sports.ac):</span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', lineHeight: 1.5 }}>
+                  <div>• <strong>Redirect URI:</strong> <code style={{ color: '#00E5FF', background: 'rgba(0,0,0,0.4)', padding: '2px 6px', borderRadius: '4px' }}>https://hsylnrzxeyqxczdalurj.supabase.co/functions/v1/tiktok-oauth</code></div>
+                  <div>• <strong>Scopes المطلوبة:</strong> <code style={{ color: '#00E676', background: 'rgba(0,0,0,0.4)', padding: '2px 6px', borderRadius: '4px' }}>user.info.basic, video.list</code></div>
+                  <div>• <strong>Edge Function Secrets:</strong> <code style={{ color: '#FF9500', background: 'rgba(0,0,0,0.4)', padding: '2px 6px', borderRadius: '4px' }}>TIKTOK_CLIENT_KEY, TIKTOK_CLIENT_SECRET, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, APP_URL</code></div>
+                </div>
               </div>
 
               {/* Sync Result */}
