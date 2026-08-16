@@ -1719,6 +1719,18 @@ export default function Admin() {
   const [notifConfig, setNotifConfig] = useState(() => notificationService.getNotificationConfig());
   const notifLogoFileInputRef = useRef(null);
   const notifAudioFileInputRef = useRef(null);
+  const notifPostImageInputRef = useRef(null);
+
+  const handleNotifPostImageUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      setNotifImageUrl(ev.target.result);
+      showSuccess('🖼️ تم اختيار صورة الإشعار بنجاح (تظهر في المعاينة الآن)!');
+    };
+    reader.readAsDataURL(file);
+  };
 
   const handleSaveNotifConfig = (e) => {
     e?.preventDefault();
@@ -3562,14 +3574,73 @@ export default function Admin() {
                 </div>
 
                 <div>
-                  <label style={labelStyle}>صورة الإشعار (Banner Image URL — اختياري)</label>
-                  <input
-                    type="url"
-                    value={notifImageUrl}
-                    onChange={e => setNotifImageUrl(e.target.value)}
-                    placeholder="https://allstar.tn/hero-banner.png أو رابط صورة مخصص"
-                    style={inputStyle}
-                  />
+                  <label style={labelStyle}>🖼️ صورة الإشعار (Notification Banner Image — اختياري)</label>
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <input
+                      type="text"
+                      value={notifImageUrl}
+                      onChange={e => setNotifImageUrl(e.target.value)}
+                      placeholder="رابط صورة الإشعار (https://... أو رفع صورة)"
+                      style={{ ...inputStyle, flex: 1, minWidth: '220px' }}
+                    />
+                    <input
+                      type="file"
+                      ref={notifPostImageInputRef}
+                      accept="image/*"
+                      onChange={handleNotifPostImageUpload}
+                      style={{ display: 'none' }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => notifPostImageInputRef.current?.click()}
+                      style={{
+                        padding: '12px 18px', borderRadius: '12px',
+                        background: 'linear-gradient(135deg, #00E676, #00B0FF)',
+                        border: 'none', color: '#000', fontWeight: 900, fontSize: '0.84rem',
+                        cursor: 'pointer', fontFamily: '"Cairo", "Tajawal", sans-serif',
+                        display: 'flex', alignItems: 'center', gap: '6px'
+                      }}
+                    >
+                      <span>📁</span>
+                      <span>رفع صورة من هاتفك/جهازك</span>
+                    </button>
+                  </div>
+
+                  {/* Image Presets */}
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '8px' }}>
+                    <button
+                      type="button"
+                      onClick={() => setNotifImageUrl('/hero-banner.png')}
+                      style={{
+                        background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
+                        color: '#FFC107', padding: '4px 10px', borderRadius: '8px', fontSize: '0.72rem', cursor: 'pointer'
+                      }}
+                    >
+                      ⚽ بانر التدريب الرسمي
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setNotifImageUrl('/hero-bg.jpg')}
+                      style={{
+                        background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
+                        color: '#00E676', padding: '4px 10px', borderRadius: '8px', fontSize: '0.72rem', cursor: 'pointer'
+                      }}
+                    >
+                      🏆 صورة البطولات
+                    </button>
+                    {notifImageUrl && (
+                      <button
+                        type="button"
+                        onClick={() => setNotifImageUrl('')}
+                        style={{
+                          background: 'rgba(255,82,82,0.15)', border: '1px solid #FF5252',
+                          color: '#FF5252', padding: '4px 10px', borderRadius: '8px', fontSize: '0.72rem', cursor: 'pointer'
+                        }}
+                      >
+                        ✕ إزالة الصورة
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 {/* Submit Action Button */}
@@ -3717,6 +3788,22 @@ export default function Admin() {
                     <div style={{ fontSize: '0.78rem', color: '#CFD8DC' }}>
                       {notifBody || 'سيتم إجراء الحصة التدريبية بالملعب الرئيسي في تمام الساعة 16:00.'}
                     </div>
+
+                    {notifImageUrl && (
+                      <div style={{
+                        marginTop: '6px',
+                        borderRadius: '12px',
+                        overflow: 'hidden',
+                        maxHeight: '140px',
+                        border: '1px solid rgba(255,255,255,0.15)'
+                      }}>
+                        <img
+                          src={notifImageUrl}
+                          alt="Banner Preview"
+                          style={{ width: '100%', height: '100%', maxHeight: '140px', objectFit: 'cover', display: 'block' }}
+                        />
+                      </div>
+                    )}
                   </div>
                 </div>
 

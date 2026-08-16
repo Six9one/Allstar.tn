@@ -277,6 +277,34 @@ export default function PushNotificationBanner() {
             >
               {activeNotification.body}
             </p>
+
+            {/* Rich Media Banner Image inside Notification */}
+            {(activeNotification.image_url || activeNotification.imageUrl || activeNotification.image) && (
+              <div
+                style={{
+                  marginTop: '10px',
+                  borderRadius: '16px',
+                  overflow: 'hidden',
+                  maxHeight: '180px',
+                  width: '100%',
+                  border: '1px solid rgba(255, 255, 255, 0.15)',
+                  boxShadow: '0 4px 16px rgba(0,0,0,0.6)',
+                }}
+              >
+                <img
+                  src={activeNotification.image_url || activeNotification.imageUrl || activeNotification.image}
+                  alt="Notification Attachment"
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    maxHeight: '180px',
+                    objectFit: 'cover',
+                    display: 'block',
+                  }}
+                  onError={(e) => { e.target.style.display = 'none'; }}
+                />
+              </div>
+            )}
           </div>
 
           {/* Swipe indicator bar at bottom */}
