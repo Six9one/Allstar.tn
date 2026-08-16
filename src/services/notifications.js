@@ -505,7 +505,7 @@ class NotificationService {
           },
           body: JSON.stringify({
             app_id: appId,
-            included_segments: ['Total Subscriptions'],
+            included_segments: ['Subscribed Users', 'Active Subscriptions', 'Total Subscriptions', 'All'],
             headings: { en: title, ar: title },
             contents: { en: body, ar: body },
             url: targetUrl.startsWith('http') ? targetUrl : `https://allstar.tn${targetUrl}`,

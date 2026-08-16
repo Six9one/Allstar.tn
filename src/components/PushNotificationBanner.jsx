@@ -123,6 +123,16 @@ export default function PushNotificationBanner() {
   const handleEnablePermission = async () => {
     setIsRequesting(true);
     try {
+      if (typeof window !== 'undefined') {
+        window.OneSignalDeferred = window.OneSignalDeferred || [];
+        window.OneSignalDeferred.push(async function(OneSignal) {
+          try {
+            await OneSignal.Notifications.requestPermission();
+          } catch (e) {
+            console.log('OneSignal banner click prompt error:', e);
+          }
+        });
+      }
       const granted = await notificationService.requestPermission();
       if (granted) {
         setPermissionState('granted');

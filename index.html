@@ -57,7 +57,17 @@
             appId: "dedea313-29ed-453f-810f-f7a2a164ad8e",
             notifyButton: { enable: false },
             allowLocalhostAsSecureOrigin: true,
+            serviceWorkerParam: { scope: "/" },
+            serviceWorkerPath: "sw.js",
+            serviceWorkerUpdaterPath: "sw.js",
           });
+          
+          // Request permission on standalone PWA launch
+          if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) {
+            if (OneSignal.Notifications && !OneSignal.Notifications.permission) {
+              OneSignal.Notifications.requestPermission();
+            }
+          }
         } catch (err) {
           console.warn("OneSignal init notice:", err);
         }
