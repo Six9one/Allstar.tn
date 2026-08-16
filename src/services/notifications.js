@@ -244,12 +244,18 @@ class NotificationService {
         // Register Web Push subscription in background
         await this.registerPushSubscription();
 
-        if (window.OneSignal?.Notifications) {
-          try {
-            await window.OneSignal.Notifications.requestPermission();
-          } catch (e) {
-            console.log('OneSignal permission hook:', e);
-          }
+        if (typeof window !== 'undefined') {
+          window.OneSignalDeferred = window.OneSignalDeferred || [];
+          window.OneSignalDeferred.push(async function(OneSignal) {
+            try {
+              if (OneSignal?.Notifications) {
+                await OneSignal.Notifications.requestPermission();
+                console.log('✅ OneSignal subscription confirmed with Apple APNs');
+              }
+            } catch (err) {
+              console.warn('OneSignal permission hook notice:', err);
+            }
+          });
         }
 
         // Show single welcome notification if not already shown
