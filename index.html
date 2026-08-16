@@ -47,9 +47,22 @@
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="أكاديمية أولستار الرياضية | All-Star Sports Academy" />
     <meta name="twitter:description" content="تدريب رياضي متعدد + دعم دراسي + تطوير المهارات الحياتية للأطفال بتطاوين" />
-    <meta name="twitter:image" content="https://allstar.tn/hero-banner.png" />
     <!-- OneSignal iOS 16.4+ / Android Lock-Screen Background Web Push Engine -->
     <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+    <script>
+      window.OneSignalDeferred = window.OneSignalDeferred || [];
+      OneSignalDeferred.push(async function(OneSignal) {
+        try {
+          await OneSignal.init({
+            appId: "dedea313-29ed-453f-810f-f7a2a164ad8e",
+            notifyButton: { enable: false },
+            allowLocalhostAsSecureOrigin: true,
+          });
+        } catch (err) {
+          console.warn("OneSignal init notice:", err);
+        }
+      });
+    </script>
   </head>
   <body>
     <div id="root"></div>

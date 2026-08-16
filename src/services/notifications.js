@@ -220,6 +220,14 @@ class NotificationService {
         // Register Web Push subscription in background
         await this.registerPushSubscription();
 
+        if (window.OneSignal?.Notifications) {
+          try {
+            await window.OneSignal.Notifications.requestPermission();
+          } catch (e) {
+            console.log('OneSignal permission hook:', e);
+          }
+        }
+
         // Show single welcome notification if not already shown
         if (!localStorage.getItem('allstar_welcome_notif_sent')) {
           localStorage.setItem('allstar_welcome_notif_sent', 'true');
@@ -433,14 +441,15 @@ class NotificationService {
     // 4. OneSignal REST API Broadcast to closed devices/iPhones
     try {
       const config = this.getNotificationConfig();
-      const appId = config.oneSignalAppId;
+      const appId = config.oneSignalAppId || 'dedea313-29ed-453f-810f-f7a2a164ad8e';
       const apiKey = config.oneSignalApiKey;
       if (appId && apiKey) {
+        const authHeader = apiKey.startsWith('os_v2_') ? `Key ${apiKey}` : `Basic ${apiKey}`;
         const response = await fetch('https://onesignal.com/api/v1/notifications', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json; charset=utf-8',
-            'Authorization': `Basic ${apiKey}`
+            'Authorization': authHeader
           },
           body: JSON.stringify({
             app_id: appId,
@@ -453,9 +462,10 @@ class NotificationService {
           })
         });
         const osData = await response.json();
-        if (osData?.recipients) {
-          sentCount = Math.max(sentCount, osData.recipients);
-          successMessage = `تم بث الإشعار إلى ${sentCount} جهاز بنجاح (شامل الهواتف المغلقة)`;
+        console.log('⚡ OneSignal Push Response:', osData);
+        if (osData?.recipients || osData?.id) {
+          sentCount = Math.max(sentCount, osData.recipients || 1);
+          successMessage = `تم بث الإشعار إلى ${sentCount} جهاز بنجاح (بما في ذلك الهواتف المقفلة)`;
         }
       }
     } catch (osErr) {
@@ -597,10 +607,20 @@ class NotificationService {
     try {
       const siteContent = db.getSiteContent();
       if (siteContent?.notification_config) {
-        return siteContent.notification_config;
+        return {
+          ...siteContent.notification_config,
+          oneSignalAppId: siteContent.notification_config.oneSignalAppId || 'dedea313-29ed-453f-810f-f7a2a164ad8e',
+          oneSignalApiKey: siteContent.notification_config.oneSignalApiKey || '',
+        };
       }
       const local = JSON.parse(localStorage.getItem('allstar_notification_config'));
-      if (local) return local;
+      if (local) {
+        return {
+          ...local,
+          oneSignalAppId: local.oneSignalAppId || 'dedea313-29ed-453f-810f-f7a2a164ad8e',
+          oneSignalApiKey: local.oneSignalApiKey || '',
+        };
+      }
     } catch {}
     return {
       logoUrl: '',
@@ -608,7 +628,7 @@ class NotificationService {
       customSoundUrl: '',
       appTitle: 'ALL-STAR SPORTS ACADEMY',
       appSubtitle: 'أكاديمية أولستار تطاوين 🇹🇳',
-      oneSignalAppId: '',
+      oneSignalAppId: 'dedea313-29ed-453f-810f-f7a2a164ad8e',
       oneSignalApiKey: ''
     };
   }
