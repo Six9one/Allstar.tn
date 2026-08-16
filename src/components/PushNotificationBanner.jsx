@@ -1,7 +1,69 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { notificationService } from '../services/notifications';
+import logoLight from '../assets/logo-light.png';
 import logoBadge from '../assets/logo-badge.jpg';
+
+// High-Definition Logo source: uses crisp logoLight transparent PNG with logoBadge fallback
+const HD_NOTIFICATION_LOGO = logoLight || logoBadge || '/icon.png';
+
+// ─── LUXURY CHIME SOUND ENGINE (Apple Tri-Tone Harmonic Chord + Custom MP3 Support) ───
+function playNotificationChime() {
+  // 1. Try custom MP3 in /public folder first
+  try {
+    const audio = new Audio('/notification.mp3');
+    audio.volume = 0.6;
+    const playPromise = audio.play();
+    if (playPromise !== undefined) {
+      playPromise.catch(() => {
+        // Fallback to Web Audio Harmonic Bell Chime
+        playAcousticBellChime();
+      });
+      return;
+    }
+  } catch {
+    playAcousticBellChime();
+  }
+}
+
+function playAcousticBellChime() {
+  try {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return;
+    const ctx = new AudioContext();
+
+    // Silky Apple Tri-Tone Chord: G5 (784Hz), B5 (987.7Hz), E6 (1318.5Hz)
+    const notes = [
+      { freq: 783.99, delay: 0.0,  duration: 0.35, gain: 0.22 },
+      { freq: 987.77, delay: 0.08, duration: 0.40, gain: 0.20 },
+      { freq: 1318.51, delay: 0.16, duration: 0.65, gain: 0.28 },
+    ];
+
+    const masterGain = ctx.createGain();
+    masterGain.gain.setValueAtTime(0.7, ctx.currentTime);
+    masterGain.connect(ctx.destination);
+
+    notes.forEach(({ freq, delay, duration, gain }) => {
+      const osc = ctx.createOscillator();
+      const noteGain = ctx.createGain();
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, ctx.currentTime + delay);
+
+      noteGain.gain.setValueAtTime(0.001, ctx.currentTime + delay);
+      noteGain.gain.exponentialRampToValueAtTime(gain, ctx.currentTime + delay + 0.02);
+      noteGain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + delay + duration);
+
+      osc.connect(noteGain);
+      noteGain.connect(masterGain);
+
+      osc.start(ctx.currentTime + delay);
+      osc.stop(ctx.currentTime + delay + duration + 0.05);
+    });
+  } catch (e) {
+    console.log('Audio chime error:', e);
+  }
+}
 
 export default function PushNotificationBanner() {
   const [activeNotification, setActiveNotification] = useState(null);
@@ -34,7 +96,10 @@ export default function PushNotificationBanner() {
 
       setActiveNotification(latest);
 
-      // Trigger subtle haptic vibration if supported on phone
+      // Play our new crystal-clear luxury chime
+      playNotificationChime();
+
+      // Trigger subtle haptic vibration on phone
       if ('vibrate' in navigator) {
         try {
           navigator.vibrate([40, 60, 40]);
@@ -117,6 +182,7 @@ export default function PushNotificationBanner() {
       if (granted) {
         setPermissionState('granted');
         setShowPermissionPrompt(false);
+        playNotificationChime();
       } else if ('Notification' in window) {
         setPermissionState(Notification.permission);
       }
@@ -143,13 +209,13 @@ export default function PushNotificationBanner() {
             width: 'calc(100% - 24px)',
             maxWidth: '430px',
             zIndex: 2147483647, // Above everything on screen
-            background: 'rgba(16, 22, 34, 0.95)',
-            backdropFilter: 'blur(30px)',
-            WebkitBackdropFilter: 'blur(30px)',
-            borderRadius: '24px',
-            border: '1.5px solid rgba(255, 193, 7, 0.4)',
-            boxShadow: '0 16px 45px rgba(0, 0, 0, 0.85), 0 0 25px rgba(255, 193, 7, 0.25)',
-            padding: '12px 16px',
+            background: 'rgba(14, 20, 32, 0.96)',
+            backdropFilter: 'blur(35px)',
+            WebkitBackdropFilter: 'blur(35px)',
+            borderRadius: '26px',
+            border: '1.5px solid rgba(255, 193, 7, 0.45)',
+            boxShadow: '0 20px 50px rgba(0, 0, 0, 0.9), 0 0 30px rgba(255, 193, 7, 0.3)',
+            padding: '14px 18px',
             color: '#FFFFFF',
             cursor: 'pointer',
             direction: 'rtl',
@@ -160,56 +226,78 @@ export default function PushNotificationBanner() {
             WebkitUserSelect: 'none',
           }}
         >
-          {/* Top Row: App Badge + Title + Time */}
+          {/* Top Row: Crisp HD App Badge + Title + Time */}
           <div
             style={{
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              marginBottom: '8px',
+              marginBottom: '10px',
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <img
-                src={logoBadge}
-                alt="All-Star"
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div
                 style={{
-                  width: '24px',
-                  height: '24px',
-                  borderRadius: '7px',
-                  border: '1px solid #FFC107',
-                }}
-              />
-              <span
-                style={{
-                  fontSize: '0.74rem',
-                  fontWeight: 900,
-                  color: '#FFC107',
-                  letterSpacing: '0.5px',
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '10px',
+                  background: 'linear-gradient(135deg, rgba(255, 193, 7, 0.25), rgba(0, 0, 0, 0.8))',
+                  border: '1.5px solid #FFC107',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 2px 10px rgba(255, 193, 7, 0.4)',
+                  overflow: 'hidden',
+                  flexShrink: 0,
                 }}
               >
-                ALL-STAR SPORTS ACADEMY
-              </span>
+                <img
+                  src={HD_NOTIFICATION_LOGO}
+                  alt="All-Star Logo"
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'contain',
+                    imageRendering: '-webkit-optimize-contrast',
+                  }}
+                />
+              </div>
+              <div>
+                <span
+                  style={{
+                    fontSize: '0.78rem',
+                    fontWeight: 900,
+                    color: '#FFC107',
+                    letterSpacing: '0.4px',
+                    display: 'block',
+                    lineHeight: 1.2,
+                  }}
+                >
+                  ALL-STAR SPORTS ACADEMY
+                </span>
+                <span style={{ fontSize: '0.68rem', color: '#90A4AE', fontWeight: 600 }}>أكاديمية أولستار تطاوين 🇹🇳</span>
+              </div>
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '0.7rem', color: '#8E9BAE', fontWeight: 600 }}>الآن • Now</span>
+              <span style={{ fontSize: '0.7rem', color: '#8E9BAE', fontWeight: 700 }}>الآن • Now</span>
               <button
                 type="button"
                 onClick={handleDismissAlert}
                 style={{
-                  background: 'rgba(255, 255, 255, 0.1)',
+                  background: 'rgba(255, 255, 255, 0.12)',
                   border: 'none',
-                  color: '#B0BEC5',
-                  width: '22px',
-                  height: '22px',
+                  color: '#CFD8DC',
+                  width: '24px',
+                  height: '24px',
                   borderRadius: '50%',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  fontSize: '0.75rem',
+                  fontSize: '0.8rem',
                   cursor: 'pointer',
                   padding: 0,
+                  transition: 'background 0.2s',
                 }}
               >
                 ✕
@@ -218,24 +306,24 @@ export default function PushNotificationBanner() {
           </div>
 
           {/* Main Notification Content */}
-          <div style={{ paddingRight: '2px' }}>
+          <div style={{ paddingRight: '4px' }}>
             <h4
               style={{
-                fontSize: '0.98rem',
+                fontSize: '1.02rem',
                 fontWeight: 900,
                 color: '#FFFFFF',
                 margin: '0 0 4px 0',
-                lineHeight: 1.3,
+                lineHeight: 1.35,
               }}
             >
               {activeNotification.title}
             </h4>
             <p
               style={{
-                fontSize: '0.84rem',
-                color: '#CFD8DC',
+                fontSize: '0.86rem',
+                color: '#ECEFF1',
                 margin: 0,
-                lineHeight: 1.45,
+                lineHeight: 1.5,
               }}
             >
               {activeNotification.body}
@@ -245,11 +333,11 @@ export default function PushNotificationBanner() {
           {/* Swipe indicator bar at bottom */}
           <div
             style={{
-              width: '36px',
+              width: '38px',
               height: '4px',
               borderRadius: '2px',
-              background: 'rgba(255, 255, 255, 0.25)',
-              margin: '8px auto 0 auto',
+              background: 'rgba(255, 255, 255, 0.3)',
+              margin: '10px auto 0 auto',
             }}
           />
         </div>
@@ -270,8 +358,8 @@ export default function PushNotificationBanner() {
             zIndex: 2147483646,
             background: 'linear-gradient(145deg, #0A1628 0%, #060D1A 100%)',
             border: '2px solid #FFC107',
-            borderRadius: '22px',
-            padding: '16px 18px',
+            borderRadius: '24px',
+            padding: '18px 20px',
             color: '#FFF',
             boxShadow: '0 20px 60px rgba(0, 0, 0, 0.95), 0 0 30px rgba(255, 193, 7, 0.35)',
             backdropFilter: 'blur(20px)',
@@ -282,17 +370,17 @@ export default function PushNotificationBanner() {
             boxSizing: 'border-box',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '14px' }}>
             <div
               style={{
-                width: '44px',
-                height: '44px',
+                width: '46px',
+                height: '46px',
                 borderRadius: '14px',
                 background: 'linear-gradient(135deg, #FFC107, #FF9500)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: '1.4rem',
+                fontSize: '1.45rem',
                 flexShrink: 0,
                 boxShadow: '0 4px 14px rgba(255,193,7,0.4)',
               }}
@@ -314,10 +402,10 @@ export default function PushNotificationBanner() {
               >
                 {isStandalone ? 'تطبيق الهاتف (PWA) 📱' : 'تنبيهات فورية 🔔'}
               </div>
-              <h4 style={{ color: '#FFFFFF', fontSize: '0.98rem', fontWeight: 900, margin: 0 }}>
+              <h4 style={{ color: '#FFFFFF', fontSize: '1rem', fontWeight: 900, margin: 0 }}>
                 تفعيل إشعارات أكاديمية أولستار على هاتفك
               </h4>
-              <p style={{ color: '#B0BEC5', fontSize: '0.78rem', margin: '2px 0 0 0', lineHeight: 1.35 }}>
+              <p style={{ color: '#B0BEC5', fontSize: '0.8rem', margin: '2px 0 0 0', lineHeight: 1.35 }}>
                 تنبيهات التمارين، بطاقات FUT، وحالة الطقس على شاشة هاتفك فوراً!
               </p>
             </div>
@@ -332,11 +420,11 @@ export default function PushNotificationBanner() {
                 background: 'linear-gradient(135deg, #00E676, #00B0FF)',
                 border: 'none',
                 color: '#08090C',
-                padding: '11px',
-                borderRadius: '12px',
+                padding: '12px',
+                borderRadius: '14px',
                 fontWeight: 900,
                 cursor: isRequesting ? 'wait' : 'pointer',
-                fontSize: '0.88rem',
+                fontSize: '0.9rem',
                 fontFamily: '"Cairo", "Tajawal", sans-serif',
                 boxShadow: '0 4px 14px rgba(0,230,118,0.4)',
                 display: 'flex',
@@ -354,11 +442,11 @@ export default function PushNotificationBanner() {
                 background: 'rgba(255,255,255,0.08)',
                 border: '1px solid rgba(255,255,255,0.2)',
                 color: '#90A4AE',
-                padding: '11px 16px',
-                borderRadius: '12px',
+                padding: '12px 16px',
+                borderRadius: '14px',
                 fontWeight: 700,
                 cursor: 'pointer',
-                fontSize: '0.82rem',
+                fontSize: '0.84rem',
                 fontFamily: '"Cairo", "Tajawal", sans-serif',
               }}
             >
@@ -372,7 +460,7 @@ export default function PushNotificationBanner() {
         @keyframes iosBannerSlideDown {
           0% {
             opacity: 0;
-            transform: translate(-50%, -40px) scale(0.92);
+            transform: translate(-50%, -45px) scale(0.92);
           }
           100% {
             opacity: 1;
