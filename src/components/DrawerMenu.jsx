@@ -1,5 +1,6 @@
 import React, { useState, useEffect, createContext, useContext, useCallback, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useLanguage } from '../context/LanguageContext';
 
 // ─── DRAWER CONTEXT ───────────────────────────────────────────────────────────
 const DrawerContext = createContext({ isOpen: false, openDrawer: () => {}, closeDrawer: () => {}, toggleDrawer: () => {} });
@@ -82,6 +83,7 @@ export function HamburgerButton({ style = {} }) {
 function UnderlyingMenuCanvas({ currentUser, isOpen, onClose, dir }) {
   const navigate = useNavigate();
   const location = useLocation();
+  const { lang, setLang } = useLanguage();
   const navLinks = getNavLinks(currentUser);
 
   const handleNav = (path) => {
@@ -215,6 +217,26 @@ function UnderlyingMenuCanvas({ currentUser, isOpen, onClose, dir }) {
           <span style={{ fontSize: '1.1rem' }}>🔔</span>
           <span>مركز الإشعارات</span>
         </button>
+
+        {/* Language Switcher */}
+        <button
+          onClick={() => setLang(lang === 'ar' ? 'en' : 'ar')}
+          style={{
+            width: '100%',
+            display: 'flex', alignItems: 'center', gap: '12px',
+            padding: '13px 16px', borderRadius: '14px',
+            border: '1px solid rgba(255, 193, 7, 0.3)',
+            background: 'rgba(255, 193, 7, 0.08)',
+            color: '#FFC107', cursor: 'pointer',
+            textAlign: 'right', marginTop: '8px', marginBottom: '4px',
+            fontFamily: '"Cairo", "Tajawal", sans-serif',
+            fontWeight: 800, fontSize: '0.92rem',
+            transition: 'all 0.18s ease',
+          }}
+        >
+          <span style={{ fontSize: '1.1rem' }}>🌐</span>
+          <span>{lang === 'ar' ? 'English (🇬🇧)' : 'العربية (🇹🇳)'}</span>
+        </button>
       </nav>
 
       {/* ── Bottom: Logout ────────────────────────────────────────── */}
@@ -257,11 +279,10 @@ function UnderlyingMenuCanvas({ currentUser, isOpen, onClose, dir }) {
 export default function DrawerRoot({ children, currentUser }) {
   const [isOpen, setIsOpen] = useState(false);
   const wrapperRef = useRef(null);
+  const { lang } = useLanguage();
 
   // Detect document direction (RTL Arabic default for this app)
-  const dir = typeof document !== 'undefined'
-    ? (document.documentElement.dir || 'rtl')
-    : 'rtl';
+  const dir = lang === 'ar' ? 'rtl' : 'ltr';
 
   const openDrawer = useCallback(() => setIsOpen(true), []);
   const closeDrawer = useCallback(() => setIsOpen(false), []);

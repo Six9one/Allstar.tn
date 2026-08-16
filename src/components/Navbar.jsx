@@ -2,14 +2,20 @@ import React from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import logoMain from '../assets/logo-light.png'
 import { HamburgerButton } from './DrawerMenu'
+import { useLanguage } from '../context/LanguageContext'
 
 export default function Navbar({ onOpenOnboarding, currentUser }) {
   const location = useLocation()
   const navigate = useNavigate()
+  const { lang, setLang } = useLanguage()
 
   const handleLogout = () => {
     localStorage.removeItem('allstar_user_session')
     window.location.href = '/'
+  }
+
+  const toggleLanguage = () => {
+    setLang(lang === 'ar' ? 'en' : 'ar')
   }
 
   const navLinks = [
@@ -121,8 +127,34 @@ export default function Navbar({ onOpenOnboarding, currentUser }) {
           })}
         </nav>
 
-        {/* TOP RIGHT: USER BUTTON + 3D DRAWER HAMBURGER */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', direction: 'rtl' }}>
+        {/* TOP RIGHT: USER BUTTON + LANGUAGE SWITCHER + 3D DRAWER HAMBURGER */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', direction: 'rtl' }}>
+          {/* LANGUAGE SWITCHER BUTTON (AR ↔ EN) */}
+          <button
+            onClick={toggleLanguage}
+            title={lang === 'ar' ? 'Switch to English' : 'التحويل إلى العربية'}
+            style={{
+              minHeight: '40px',
+              padding: '0 11px',
+              borderRadius: '12px',
+              backgroundColor: 'rgba(255, 255, 255, 0.08)',
+              border: '1px solid rgba(255, 193, 7, 0.4)',
+              color: '#FFC107',
+              fontWeight: 800,
+              fontSize: '0.82rem',
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontFamily: '"Cairo", "Tajawal", sans-serif',
+              whiteSpace: 'nowrap',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            <span>🌐</span>
+            <span>{lang === 'ar' ? 'EN' : 'العربية'}</span>
+          </button>
+
           {/* 3D DRAWER HAMBURGER — opens the scale-down sliding drawer on mobile */}
           <HamburgerButton className="mobile-toggle" />
 
