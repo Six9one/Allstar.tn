@@ -247,8 +247,54 @@ class NotificationService {
     }
   }
 
-  // Send Push Notification from Admin via Supabase Edge Function with local/realtime fallbacks
+  // Send Push Notification from Admin via Supabase Edge Function with instant local/realtime dispatch
   async sendPushNotification({ title, body, targetUrl = '/', imageUrl = null, targetAudience = 'الجميع' }) {
+    const notifItem = {
+      id: 'notif-' + Date.now(),
+      title,
+      body,
+      target_url: targetUrl || '/',
+      target_role: targetAudience || 'الجميع',
+      image_url: imageUrl,
+      date: 'الآن',
+      type: 'notification',
+      read: false,
+      timestamp: Date.now()
+    };
+
+    // 1. INSTANT LOCAL & REALTIME DISPATCH (0ms latency for all open apps/phones)
+    const notifs = this.getNotifications();
+    notifs.unshift(notifItem);
+    localStorage.setItem(NOTIF_KEY, JSON.stringify(notifs));
+
+    if (this.realtimeChannel) {
+      try {
+        this.realtimeChannel.send({
+          type: 'broadcast',
+          event: 'admin_notification',
+          payload: { notification: notifItem }
+        });
+      } catch (e) {
+        console.log('Supabase Realtime broadcast error:', e);
+      }
+    }
+
+    if (this.broadcastChannel) {
+      try {
+        this.broadcastChannel.postMessage({
+          type: 'NEW_NOTIFICATION',
+          notification: notifItem
+        });
+      } catch (e) {
+        console.log('Broadcast postMessage error:', e);
+      }
+    }
+
+    // Trigger local native push on sender device immediately
+    this.showNativePush(title, body, imageUrl || '/icon.png', { url: targetUrl });
+    this.notifyListeners();
+
+    // 2. PARALLEL EDGE FUNCTION DISPATCH (for locked screens & background devices)
     const pushPayload = {
       title,
       body,
@@ -267,12 +313,19 @@ class NotificationService {
       }
     };
 
-    let sentCount = 0;
+    let sentCount = 1;
     let successMessage = '';
 
-    // 1. Try Supabase Edge Function invoke
     if (supabase) {
       try {
+        // Save to Cloud Site Content for background polling
+        const currentSite = db.getSiteContent();
+        const existingAnnouncements = currentSite.announcements || [];
+        db.saveSiteContent({
+          announcements: [notifItem, ...existingAnnouncements],
+          latest_announcement: notifItem
+        });
+
         const { data, error } = await supabase.functions.invoke('send-push-notification', {
           body: pushPayload
         });
@@ -280,73 +333,11 @@ class NotificationService {
         if (!error && data) {
           sentCount = data.results?.sent_count || data.results?.total || 1;
           successMessage = data.message || `تم إرسال الإشعار بنجاح إلى ${sentCount} جهاز`;
-        } else if (error) {
-          console.warn('Edge function push error, falling back to realtime/local:', error);
         }
       } catch (invokeErr) {
         console.warn('Edge function invoke error:', invokeErr);
       }
     }
-
-    // 2. Local & Realtime broadcast fallback to ensure all connected clients receive it immediately
-    const notifItem = {
-      id: 'notif-' + Date.now(),
-      title,
-      body,
-      target_url: targetUrl,
-      target_role: targetAudience,
-      image_url: imageUrl,
-      date: 'الآن',
-      type: 'notification',
-      read: false,
-      timestamp: Date.now()
-    };
-
-    // Save to local notifications list
-    const notifs = this.getNotifications();
-    notifs.unshift(notifItem);
-    localStorage.setItem(NOTIF_KEY, JSON.stringify(notifs));
-
-    // Post to Supabase Realtime channel
-    if (this.realtimeChannel) {
-      try {
-        this.realtimeChannel.send({
-          type: 'broadcast',
-          event: 'admin_notification',
-          payload: { notification: notifItem }
-        });
-      } catch (e) {
-        console.log('Supabase Realtime broadcast error:', e);
-      }
-    }
-
-    // Post to local BroadcastChannel
-    if (this.broadcastChannel) {
-      try {
-        this.broadcastChannel.postMessage({
-          type: 'NEW_NOTIFICATION',
-          notification: notifItem
-        });
-      } catch (e) {
-        console.log('Broadcast postMessage error:', e);
-      }
-    }
-
-    // Save to Cloud Site Content for background polling
-    try {
-      const currentSite = db.getSiteContent();
-      const existingAnnouncements = currentSite.announcements || [];
-      db.saveSiteContent({
-        announcements: [notifItem, ...existingAnnouncements],
-        latest_announcement: notifItem
-      });
-    } catch (e) {
-      console.error('Cloud broadcast save error:', e);
-    }
-
-    // Trigger local native push on sender device
-    this.showNativePush(title, body, imageUrl || '/icon.png', { url: targetUrl });
-    this.notifyListeners();
 
     return {
       success: true,

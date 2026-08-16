@@ -1,31 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { notificationService } from '../services/notifications';
-
-// Web Audio API chime for app-like notification sound
-function playNotificationChime() {
-  try {
-    const AudioContext = window.AudioContext || window.webkitAudioContext;
-    if (!AudioContext) return;
-    const ctx = new AudioContext();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
-    osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.15); // A5
-
-    gain.gain.setValueAtTime(0.3, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.35);
-
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-
-    osc.start();
-    osc.stop(ctx.currentTime + 0.35);
-  } catch (e) {
-    console.log('Audio chime error:', e);
-  }
-}
+import logoBadge from '../assets/logo-badge.jpg';
 
 export default function PushNotificationBanner() {
   const [activeNotification, setActiveNotification] = useState(null);
@@ -33,47 +9,63 @@ export default function PushNotificationBanner() {
   const [permissionState, setPermissionState] = useState('default');
   const [isRequesting, setIsRequesting] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
+  const autoDismissTimerRef = useRef(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     // Detect PWA standalone mode
-    const standalone = window.matchMedia('(display-mode: standalone)').matches ||
-                       window.navigator.standalone === true ||
-                       document.referrer.includes('android-app://');
+    const standalone =
+      window.matchMedia('(display-mode: standalone)').matches ||
+      window.navigator.standalone === true ||
+      document.referrer.includes('android-app://');
     setIsStandalone(standalone);
 
-    // Check current notification permission
     if ('Notification' in window) {
       setPermissionState(Notification.permission);
-
       if (Notification.permission === 'default') {
-        setShowPermissionPrompt(true);
-      }
-    } else {
-      // In iOS Safari WebKit before install, Notification object might only exist in standalone
-      if (standalone) {
         setShowPermissionPrompt(true);
       }
     }
   }, []);
 
   useEffect(() => {
-    const checkUnreadNotifications = () => {
+    const handleNewNotification = (latest) => {
+      if (!latest || latest.read || latest.dismissed) return;
+
+      setActiveNotification(latest);
+
+      // Trigger subtle haptic vibration if supported on phone
+      if ('vibrate' in navigator) {
+        try {
+          navigator.vibrate([40, 60, 40]);
+        } catch {
+          // Ignore
+        }
+      }
+
+      // Auto dismiss after 7 seconds like native iOS banner
+      if (autoDismissTimerRef.current) clearTimeout(autoDismissTimerRef.current);
+      autoDismissTimerRef.current = setTimeout(() => {
+        setActiveNotification(null);
+      }, 7000);
+    };
+
+    const checkUnread = () => {
       const allNotifs = notificationService.getNotifications();
-      const latest = allNotifs.find(n => !n.dismissed && !n.read);
+      const latest = allNotifs.find((n) => !n.dismissed && !n.read);
       if (latest && (!activeNotification || activeNotification.id !== latest.id)) {
-        setActiveNotification(latest);
-        playNotificationChime();
+        handleNewNotification(latest);
       }
     };
 
-    checkUnreadNotifications();
+    checkUnread();
     const unsubscribe = notificationService.subscribe(() => {
-      checkUnreadNotifications();
+      checkUnread();
     });
 
     const handleStorage = (e) => {
       if (e.key === 'allstar_notifications_list') {
-        checkUnreadNotifications();
+        checkUnread();
       }
     };
     window.addEventListener('storage', handleStorage);
@@ -81,16 +73,30 @@ export default function PushNotificationBanner() {
     return () => {
       unsubscribe();
       window.removeEventListener('storage', handleStorage);
+      if (autoDismissTimerRef.current) clearTimeout(autoDismissTimerRef.current);
     };
   }, [activeNotification]);
 
-  const handleDismissAlert = () => {
+  const handleDismissAlert = (e) => {
+    if (e) e.stopPropagation();
     if (activeNotification) {
-      const notifs = notificationService.getNotifications().map(n => 
+      const notifs = notificationService.getNotifications().map((n) =>
         n.id === activeNotification.id ? { ...n, dismissed: true, read: true } : n
       );
       localStorage.setItem('allstar_notifications_list', JSON.stringify(notifs));
       setActiveNotification(null);
+    }
+  };
+
+  const handleBannerClick = () => {
+    if (!activeNotification) return;
+    const targetUrl = activeNotification.target_url || activeNotification.targetUrl || '/';
+    handleDismissAlert();
+
+    if (targetUrl.startsWith('http')) {
+      window.open(targetUrl, '_blank');
+    } else {
+      navigate(targetUrl);
     }
   };
 
@@ -105,16 +111,8 @@ export default function PushNotificationBanner() {
       if (granted) {
         setPermissionState('granted');
         setShowPermissionPrompt(false);
-        playNotificationChime();
-        // Show immediate confirmation push
-        notificationService.showNativePush(
-          '🔔 تم تفعيل إشعارات الأكاديمية بنجاح!',
-          'ستصلك التنبيهات المباشرة ومواعيد التمارين والطقس فور صدورها.'
-        );
-      } else {
-        if ('Notification' in window) {
-          setPermissionState(Notification.permission);
-        }
+      } else if ('Notification' in window) {
+        setPermissionState(Notification.permission);
       }
     } catch (e) {
       console.warn('Permission request error:', e);
@@ -125,56 +123,196 @@ export default function PushNotificationBanner() {
 
   return (
     <>
-      {/* 1. FLOATING PERMISSION PROMPT (FIXED ABOVE EVERYTHING AT BOTTOM/TOP) */}
-      {showPermissionPrompt && permissionState !== 'granted' && (
-        <div style={{
-          position: 'fixed',
-          bottom: 'calc(env(safe-area-inset-bottom, 0px) + 76px)',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          width: 'calc(100% - 32px)',
-          maxWidth: '560px',
-          zIndex: 2147483647, // Highest possible z-index
-          background: 'linear-gradient(145deg, #0A1628 0%, #060D1A 100%)',
-          border: '2px solid #FFC107',
-          borderRadius: '22px',
-          padding: '18px 20px',
-          color: '#FFF',
-          boxShadow: '0 20px 60px rgba(0, 0, 0, 0.95), 0 0 30px rgba(255, 193, 7, 0.45)',
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
-          direction: 'rtl',
-          fontFamily: '"Cairo", "Tajawal", sans-serif',
-          animation: 'slideUpRibbon 0.4s cubic-bezier(0.16, 1, 0.3, 1)'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '14px' }}>
-            <div style={{
-              width: '48px', height: '48px', borderRadius: '14px',
-              background: 'linear-gradient(135deg, #FFC107, #FF9500)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: '1.5rem', flexShrink: 0,
-              boxShadow: '0 4px 16px rgba(255,193,7,0.5)'
-            }}>
+      {/* ───────────────────────────────────────────────────────────────── */}
+      {/* 1. NATIVE iOS-STYLE DROP-DOWN PUSH NOTIFICATION BANNER             */}
+      {/* ───────────────────────────────────────────────────────────────── */}
+      {activeNotification && (
+        <div
+          onClick={handleBannerClick}
+          style={{
+            position: 'fixed',
+            top: 'calc(env(safe-area-inset-top, 0px) + 10px)',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            width: 'calc(100% - 24px)',
+            maxWidth: '430px',
+            zIndex: 2147483647, // Above everything on screen
+            background: 'rgba(16, 22, 34, 0.95)',
+            backdropFilter: 'blur(30px)',
+            WebkitBackdropFilter: 'blur(30px)',
+            borderRadius: '24px',
+            border: '1.5px solid rgba(255, 193, 7, 0.4)',
+            boxShadow: '0 16px 45px rgba(0, 0, 0, 0.85), 0 0 25px rgba(255, 193, 7, 0.25)',
+            padding: '12px 16px',
+            color: '#FFFFFF',
+            cursor: 'pointer',
+            direction: 'rtl',
+            fontFamily: '"Cairo", "Tajawal", -apple-system, BlinkMacSystemFont, sans-serif',
+            animation: 'iosBannerSlideDown 0.45s cubic-bezier(0.16, 1, 0.3, 1)',
+            boxSizing: 'border-box',
+            userSelect: 'none',
+            WebkitUserSelect: 'none',
+          }}
+        >
+          {/* Top Row: App Badge + Title + Time */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: '8px',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <img
+                src={logoBadge}
+                alt="All-Star"
+                style={{
+                  width: '24px',
+                  height: '24px',
+                  borderRadius: '7px',
+                  border: '1px solid #FFC107',
+                }}
+              />
+              <span
+                style={{
+                  fontSize: '0.74rem',
+                  fontWeight: 900,
+                  color: '#FFC107',
+                  letterSpacing: '0.5px',
+                }}
+              >
+                ALL-STAR SPORTS ACADEMY
+              </span>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '0.7rem', color: '#8E9BAE', fontWeight: 600 }}>الآن • Now</span>
+              <button
+                type="button"
+                onClick={handleDismissAlert}
+                style={{
+                  background: 'rgba(255, 255, 255, 0.1)',
+                  border: 'none',
+                  color: '#B0BEC5',
+                  width: '22px',
+                  height: '22px',
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '0.75rem',
+                  cursor: 'pointer',
+                  padding: 0,
+                }}
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+
+          {/* Main Notification Content */}
+          <div style={{ paddingRight: '2px' }}>
+            <h4
+              style={{
+                fontSize: '0.98rem',
+                fontWeight: 900,
+                color: '#FFFFFF',
+                margin: '0 0 4px 0',
+                lineHeight: 1.3,
+              }}
+            >
+              {activeNotification.title}
+            </h4>
+            <p
+              style={{
+                fontSize: '0.84rem',
+                color: '#CFD8DC',
+                margin: 0,
+                lineHeight: 1.45,
+              }}
+            >
+              {activeNotification.body}
+            </p>
+          </div>
+
+          {/* Swipe indicator bar at bottom */}
+          <div
+            style={{
+              width: '36px',
+              height: '4px',
+              borderRadius: '2px',
+              background: 'rgba(255, 255, 255, 0.25)',
+              margin: '8px auto 0 auto',
+            }}
+          />
+        </div>
+      )}
+
+      {/* ───────────────────────────────────────────────────────────────── */}
+      {/* 2. FLOATING BOTTOM PROMPT (ONLY IF PERMISSION IS DEFAULT)          */}
+      {/* ───────────────────────────────────────────────────────────────── */}
+      {showPermissionPrompt && permissionState === 'default' && (
+        <div
+          style={{
+            position: 'fixed',
+            bottom: 'calc(env(safe-area-inset-bottom, 0px) + 76px)',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            width: 'calc(100% - 32px)',
+            maxWidth: '540px',
+            zIndex: 2147483646,
+            background: 'linear-gradient(145deg, #0A1628 0%, #060D1A 100%)',
+            border: '2px solid #FFC107',
+            borderRadius: '22px',
+            padding: '16px 18px',
+            color: '#FFF',
+            boxShadow: '0 20px 60px rgba(0, 0, 0, 0.95), 0 0 30px rgba(255, 193, 7, 0.35)',
+            backdropFilter: 'blur(20px)',
+            WebkitBackdropFilter: 'blur(20px)',
+            direction: 'rtl',
+            fontFamily: '"Cairo", "Tajawal", sans-serif',
+            animation: 'slideUpRibbon 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
+            boxSizing: 'border-box',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '12px' }}>
+            <div
+              style={{
+                width: '44px',
+                height: '44px',
+                borderRadius: '14px',
+                background: 'linear-gradient(135deg, #FFC107, #FF9500)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '1.4rem',
+                flexShrink: 0,
+                boxShadow: '0 4px 14px rgba(255,193,7,0.4)',
+              }}
+            >
               🔔
             </div>
             <div style={{ flex: 1 }}>
-              <div style={{
-                display: 'inline-block',
-                background: 'rgba(255,193,7,0.2)',
-                color: '#FFC107',
-                padding: '2px 8px',
-                borderRadius: '6px',
-                fontSize: '0.72rem',
-                fontWeight: 800,
-                marginBottom: '4px'
-              }}>
+              <div
+                style={{
+                  display: 'inline-block',
+                  background: 'rgba(255,193,7,0.2)',
+                  color: '#FFC107',
+                  padding: '2px 8px',
+                  borderRadius: '6px',
+                  fontSize: '0.72rem',
+                  fontWeight: 800,
+                  marginBottom: '2px',
+                }}
+              >
                 {isStandalone ? 'تطبيق الهاتف (PWA) 📱' : 'تنبيهات فورية 🔔'}
               </div>
-              <h4 style={{ color: '#FFFFFF', fontSize: '1.05rem', fontWeight: 900, margin: 0 }}>
+              <h4 style={{ color: '#FFFFFF', fontSize: '0.98rem', fontWeight: 900, margin: 0 }}>
                 تفعيل إشعارات أكاديمية أولستار على هاتفك
               </h4>
-              <p style={{ color: '#B0BEC5', fontSize: '0.8rem', margin: '4px 0 0 0', lineHeight: 1.4 }}>
-                احصل على تنبيهات التمارين، بطاقات FUT، وحالة الطقس على شاشة هاتفك فوراً!
+              <p style={{ color: '#B0BEC5', fontSize: '0.78rem', margin: '2px 0 0 0', lineHeight: 1.35 }}>
+                تنبيهات التمارين، بطاقات FUT، وحالة الطقس على شاشة هاتفك فوراً!
               </p>
             </div>
           </div>
@@ -188,17 +326,17 @@ export default function PushNotificationBanner() {
                 background: 'linear-gradient(135deg, #00E676, #00B0FF)',
                 border: 'none',
                 color: '#08090C',
-                padding: '12px',
-                borderRadius: '14px',
+                padding: '11px',
+                borderRadius: '12px',
                 fontWeight: 900,
                 cursor: isRequesting ? 'wait' : 'pointer',
-                fontSize: '0.92rem',
+                fontSize: '0.88rem',
                 fontFamily: '"Cairo", "Tajawal", sans-serif',
-                boxShadow: '0 4px 16px rgba(0,230,118,0.4)',
+                boxShadow: '0 4px 14px rgba(0,230,118,0.4)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                gap: '8px'
+                gap: '8px',
               }}
             >
               <span>{isRequesting ? '⏳' : '⚡'}</span>
@@ -210,12 +348,12 @@ export default function PushNotificationBanner() {
                 background: 'rgba(255,255,255,0.08)',
                 border: '1px solid rgba(255,255,255,0.2)',
                 color: '#90A4AE',
-                padding: '12px 16px',
-                borderRadius: '14px',
+                padding: '11px 16px',
+                borderRadius: '12px',
                 fontWeight: 700,
                 cursor: 'pointer',
-                fontSize: '0.84rem',
-                fontFamily: '"Cairo", "Tajawal", sans-serif'
+                fontSize: '0.82rem',
+                fontFamily: '"Cairo", "Tajawal", sans-serif',
               }}
             >
               لاحقاً
@@ -224,111 +362,26 @@ export default function PushNotificationBanner() {
         </div>
       )}
 
-      {/* 2. URGENT PWA APP NOTIFICATION MODAL CARD */}
-      {activeNotification && (
-        <div style={{
-          position: 'fixed',
-          top: 'calc(env(safe-area-inset-top, 0px) + 80px)',
-          left: '16px',
-          right: '16px',
-          zIndex: 2147483647,
-          maxWidth: '540px',
-          margin: '0 auto',
-          background: 'linear-gradient(145deg, #0A1628, #07101E)',
-          border: '2px solid #FF3D00',
-          borderRadius: '24px',
-          padding: '20px 24px',
-          color: '#FFF',
-          boxShadow: '0 20px 50px rgba(255,61,0,0.4), 0 0 30px rgba(0,0,0,0.9)',
-          backdropFilter: 'blur(16px)',
-          WebkitBackdropFilter: 'blur(16px)',
-          direction: 'rtl',
-          fontFamily: '"Cairo", "Tajawal", sans-serif',
-          animation: 'popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
-        }}>
-          {/* Header Badge */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-            <div style={{
-              background: 'linear-gradient(90deg, #FF3D00, #FF9500)',
-              color: '#FFF',
-              padding: '4px 12px',
-              borderRadius: '12px',
-              fontSize: '0.75rem',
-              fontWeight: 900,
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              boxShadow: '0 0 12px rgba(255,61,0,0.6)'
-            }}>
-              <span className="pulsing-red-dot" />
-              <span>🔔 إشعار فوري من إدارة الأكاديمية</span>
-            </div>
-            <span style={{ fontSize: '0.72rem', color: '#8E9BAE' }}>{activeNotification.date || 'الآن'}</span>
-          </div>
-
-          {/* Title & Body */}
-          <h3 style={{ color: '#FFF', fontSize: '1.15rem', fontWeight: 900, margin: '0 0 8px 0', lineHeight: 1.3 }}>
-            {activeNotification.title}
-          </h3>
-          <p style={{ color: '#ECEFF1', fontSize: '0.9rem', margin: '0 0 16px 0', lineHeight: 1.6 }}>
-            {activeNotification.body}
-          </p>
-
-          {/* Action Buttons */}
-          <div style={{ display: 'flex', gap: '10px' }}>
-            <button
-              onClick={handleDismissAlert}
-              style={{
-                flex: 1,
-                padding: '12px',
-                background: 'linear-gradient(135deg, #00E676, #00B0FF)',
-                border: 'none',
-                borderRadius: '14px',
-                color: '#000',
-                fontWeight: 900,
-                fontSize: '0.88rem',
-                cursor: 'pointer',
-                fontFamily: '"Cairo", "Tajawal", sans-serif'
-              }}
-            >
-              ✅ تم القراءة والموافقة
-            </button>
-            <button
-              onClick={handleDismissAlert}
-              style={{
-                padding: '12px 18px',
-                background: 'rgba(255,255,255,0.08)',
-                border: '1px solid rgba(255,255,255,0.15)',
-                borderRadius: '14px',
-                color: '#B0BEC5',
-                fontWeight: 800,
-                fontSize: '0.85rem',
-                cursor: 'pointer',
-                fontFamily: '"Cairo", "Tajawal", sans-serif'
-              }}
-            >
-              إغلاق ✕
-            </button>
-          </div>
-        </div>
-      )}
-
       <style>{`
-        @keyframes popIn {
-          0% { opacity: 0; transform: scale(0.85) translateY(-20px); }
-          100% { opacity: 1; transform: scale(1) translateY(0); }
+        @keyframes iosBannerSlideDown {
+          0% {
+            opacity: 0;
+            transform: translate(-50%, -40px) scale(0.92);
+          }
+          100% {
+            opacity: 1;
+            transform: translate(-50%, 0) scale(1);
+          }
         }
         @keyframes slideUpRibbon {
-          0% { opacity: 0; transform: translate(-50%, 60px); }
-          100% { opacity: 1; transform: translate(-50%, 0); }
-        }
-        .pulsing-red-dot {
-          width: 8px; height: 8px; background: #FFF; border-radius: 50%;
-          display: inline-block; animation: pulseDot 1s infinite alternate;
-        }
-        @keyframes pulseDot {
-          0% { opacity: 0.3; transform: scale(0.8); }
-          100% { opacity: 1; transform: scale(1.3); }
+          0% {
+            opacity: 0;
+            transform: translate(-50%, 50px);
+          }
+          100% {
+            opacity: 1;
+            transform: translate(-50%, 0);
+          }
         }
       `}</style>
     </>
