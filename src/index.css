@@ -56,8 +56,8 @@
 
 html {
   scroll-behavior: smooth;
-  direction: rtl;
   background-color: var(--bg-dark);
+  min-height: 100%;
 }
 
 body {
@@ -65,11 +65,11 @@ body {
   background-color: var(--bg-dark);
   color: var(--text-main);
   line-height: 1.6;
-  overflow-x: hidden;
   min-height: 100vh;
-  padding-left: var(--safe-left);
-  padding-right: var(--safe-right);
+  margin: 0;
+  padding: 0;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 /* Defensive Media & Overflow Prevention */
@@ -114,15 +114,28 @@ img, video, canvas, svg {
 
 #root {
   min-height: 100vh;
+  width: 100%;
   display: flex;
   flex-direction: column;
+  position: relative;
+  background-color: var(--bg-dark);
+}
+
+.app-root-layout {
+  min-height: 100vh;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  background-color: var(--bg-dark);
+  color: var(--text-main);
 }
 
 main, .main-content {
   flex: 1;
+  width: 100%;
   padding-top: calc(4.5rem + env(safe-area-inset-top, 0px));
-  padding-bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
-  min-height: 100vh;
+  padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px));
   box-sizing: border-box;
 }
 
@@ -332,9 +345,13 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /* Global Anti-Overflow Guard */
-body, #root, header, main, footer {
-  max-width: 100vw !important;
-  overflow-x: hidden !important;
+html, body {
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
+.app-root-layout {
+  overflow-x: clip;
 }
 
 @keyframes spin {

@@ -30,175 +30,119 @@ export default function Navbar({ onOpenOnboarding, currentUser }) {
       path: currentUser?.role === 'coach' ? '/coach-portal' : '/portal',
       label: currentUser?.role === 'coach'
         ? (isRTL ? 'تطبيق المدرب' : 'Coach Portal')
-        : (isRTL ? 'بوابة الأولياء' : 'Parent Portal')
+        : (isRTL ? 'بوابة الأولياء' : 'Parent Portal'),
     },
-    { path: '/admin', label: isRTL ? 'إدارة النظام' : 'Admin' }
+    ...(currentUser?.role === 'admin' || currentUser?.role === 'coach'
+      ? [{ path: '/admin', label: isRTL ? 'إدارة النظام' : 'Admin' }]
+      : []),
   ]
 
   const langBtnStyle = {
-    minHeight: '38px',
-    padding: '0 9px',
+    height: '38px',
+    padding: '0 10px',
     borderRadius: '10px',
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    border: '1px solid rgba(255,193,7,0.5)',
+    backgroundColor: 'rgba(255, 193, 7, 0.1)',
+    border: '1px solid rgba(255, 193, 7, 0.45)',
     color: '#FFC107',
-    fontWeight: 900,
+    fontWeight: 800,
     fontSize: '0.8rem',
     cursor: 'pointer',
     display: 'inline-flex',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: '4px',
-    fontFamily: '"Cairo","Tajawal",sans-serif',
+    fontFamily: '"Cairo", "Tajawal", sans-serif',
     whiteSpace: 'nowrap',
     flexShrink: 0,
+    transition: 'all 0.2s ease',
   }
 
   const loginBtnStyle = {
-    minHeight: '38px',
+    height: '38px',
     padding: '0 12px',
-    borderRadius: '12px',
-    background: 'linear-gradient(135deg,#FFC107 0%,#FF9500 100%)',
+    borderRadius: '10px',
+    background: 'linear-gradient(135deg, #FFC107 0%, #FF9500 100%)',
     border: 'none',
     color: '#08090C',
-    fontWeight: 900,
+    fontWeight: 800,
     fontSize: '0.82rem',
     cursor: 'pointer',
-    fontFamily: '"Cairo","Tajawal",sans-serif',
-    boxShadow: '0 4px 14px rgba(255,193,7,0.35)',
+    fontFamily: '"Cairo", "Tajawal", sans-serif',
+    boxShadow: '0 4px 14px rgba(255, 193, 7, 0.35)',
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
     gap: '5px',
     whiteSpace: 'nowrap',
     flexShrink: 0,
+    transition: 'all 0.2s ease',
   }
-
-  const UserSection = () =>
-    currentUser ? (
-      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-        <button
-          onClick={() => navigate(currentUser.role === 'coach' ? '/coach-portal' : '/portal')}
-          style={{
-            minHeight: '38px', padding: '0 12px', borderRadius: '12px',
-            background: currentUser.role === 'coach'
-              ? 'linear-gradient(135deg,#FFC107 0%,#FF9500 100%)'
-              : 'linear-gradient(135deg,#00E676 0%,#00B0FF 100%)',
-            border: 'none', color: '#000', fontWeight: 900, fontSize: '0.82rem',
-            cursor: 'pointer', fontFamily: '"Cairo","Tajawal",sans-serif',
-            display: 'inline-flex', alignItems: 'center', gap: '4px', flexShrink: 0,
-          }}
-        >
-          <span>{currentUser.role === 'coach' ? '⚽' : '👨‍👩‍👧‍👦'}</span>
-          <span>{currentUser.name}</span>
-        </button>
-        <button
-          onClick={handleLogout}
-          title={isRTL ? 'تسجيل الخروج' : 'Logout'}
-          style={{
-            minWidth: '36px', minHeight: '38px', borderRadius: '10px',
-            background: 'rgba(255,61,0,0.15)', border: '1px solid #FF3D00',
-            color: '#FF3D00', fontWeight: 900, cursor: 'pointer', fontSize: '0.82rem',
-            display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-          }}
-        >
-          🚪
-        </button>
-      </div>
-    ) : (
-      <button onClick={onOpenOnboarding} style={loginBtnStyle}>
-        <span>🔐</span>
-        <span className="btn-label-desktop">{isRTL ? 'تسجيل الدخول' : 'Login'}</span>
-        <span className="btn-label-mobile">{isRTL ? 'دخول' : 'Login'}</span>
-      </button>
-    )
 
   return (
     <header
       style={{
         position: 'fixed',
-        top: 'calc(env(safe-area-inset-top,0px) + 8px)',
-        /* Use left+right instead of left+transform so the header itself
-           is never affected by the global html[dir=rtl] */
-        left: '10px',
-        right: '10px',
-        margin: '0 auto',
-        maxWidth: '1320px',
-        zIndex: 999999,
-        backgroundColor: 'rgba(12,15,22,0.95)',
-        backdropFilter: 'blur(18px)',
-        WebkitBackdropFilter: 'blur(18px)',
-        border: '1.5px solid rgba(0,230,118,0.35)',
-        borderRadius: '20px',
-        boxShadow: '0 12px 35px rgba(0,0,0,0.85),0 0 20px rgba(0,230,118,0.15)',
-        padding: '6px 12px',
-        transition: 'all 0.3s ease',
+        top: 0,
+        left: 0,
+        right: 0,
+        width: '100%',
+        height: 'calc(4rem + env(safe-area-inset-top, 0px))',
+        paddingTop: 'env(safe-area-inset-top, 0px)',
+        backgroundColor: 'rgba(11, 15, 23, 0.92)',
+        backdropFilter: 'blur(16px)',
+        WebkitBackdropFilter: 'blur(16px)',
+        borderBottom: '1px solid rgba(255, 255, 255, 0.10)',
+        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)',
+        zIndex: 1000,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
         boxSizing: 'border-box',
       }}
     >
-      {/*
-        Force physical LTR regardless of html[dir].
-        We use explicit `order` on every child so even if a browser
-        ignores the direction override the DOM order still wins.
-      */}
       <div
         style={{
+          width: '100%',
+          maxWidth: '1320px',
+          padding: '0 16px',
+          height: '100%',
           display: 'flex',
           alignItems: 'center',
-          gap: '8px',
-          minHeight: '44px',
-          /* Hard-lock to physical left→right */
-          direction: 'ltr',
-          unicodeBidi: 'isolate',
+          justifyContent: 'space-between',
+          gap: '10px',
+          boxSizing: 'border-box',
         }}
       >
-        {/* ── SLOT 1 (order:1) — far physical LEFT ───────────────────────
-            EN: Burger then Logo
-            AR: Logo only (no burger here)
-        ───────────────────────────────────────────────────────────────── */}
-        <div
+        {/* ── 1. LOGO BRAND (START) ─────────────────────────────────── */}
+        <Link
+          to="/"
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '8px',
+            textDecoration: 'none',
             flexShrink: 0,
-            order: 1,          /* always leftmost */
-            direction: 'ltr',  /* immune to inheritance */
           }}
         >
-          {/* Burger — FIRST child in EN, not rendered in AR */}
-          {!isRTL && (
-            <span style={{ order: 1, display: 'contents' }}>
-              <HamburgerButton />
-            </span>
-          )}
-
-          {/* Logo — SECOND child in EN, FIRST in AR */}
-          <Link
-            to="/"
+          <img
+            src={logoMain}
+            alt="All-Star Academy Logo"
             style={{
-              display: 'flex', alignItems: 'center',
-              textDecoration: 'none', minHeight: '44px', padding: '2px 0',
-              order: 2,
+              height: '36px',
+              maxWidth: '130px',
+              width: 'auto',
+              objectFit: 'contain',
             }}
-          >
-            <img
-              src={logoMain}
-              alt="All-Star Academy Logo"
-              style={{ height: '38px', width: 'auto', objectFit: 'contain' }}
-            />
-          </Link>
-        </div>
+          />
+        </Link>
 
-        {/* ── SLOT 2 (order:2) — spacer ──────────────────────────────── */}
-        <div style={{ flex: 1, order: 2 }} />
-
-        {/* ── SLOT 3 (order:3) — desktop nav (hidden on mobile) ───────── */}
+        {/* ── 2. DESKTOP NAV LINKS (CENTER) ─────────────────────────── */}
         <nav
           className="desktop-nav"
           style={{
-            display: 'flex', alignItems: 'center', gap: '6px',
-            flexWrap: 'nowrap', order: 3,
-            direction: isRTL ? 'rtl' : 'ltr',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            flexWrap: 'nowrap',
           }}
         >
           {navLinks.map((link) => {
@@ -208,14 +152,20 @@ export default function Navbar({ onOpenOnboarding, currentUser }) {
                 key={link.path}
                 to={link.path}
                 style={{
-                  minHeight: '40px', padding: '0 12px', borderRadius: '12px',
-                  display: 'inline-flex', alignItems: 'center', textDecoration: 'none',
+                  height: '36px',
+                  padding: '0 12px',
+                  borderRadius: '10px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  textDecoration: 'none',
                   color: isActive ? '#00E676' : '#B0BEC5',
-                  backgroundColor: isActive ? 'rgba(0,230,118,0.12)' : 'transparent',
-                  border: isActive ? '1px solid rgba(0,230,118,0.3)' : '1px solid transparent',
-                  fontWeight: isActive ? 900 : 700, fontSize: '0.84rem',
-                  fontFamily: '"Cairo","Tajawal",sans-serif',
-                  transition: 'all 0.2s ease', whiteSpace: 'nowrap',
+                  backgroundColor: isActive ? 'rgba(0, 230, 118, 0.12)' : 'transparent',
+                  border: isActive ? '1px solid rgba(0, 230, 118, 0.3)' : '1px solid transparent',
+                  fontWeight: isActive ? 800 : 600,
+                  fontSize: '0.84rem',
+                  fontFamily: '"Cairo", "Tajawal", sans-serif',
+                  transition: 'all 0.2s ease',
+                  whiteSpace: 'nowrap',
                 }}
               >
                 {link.label}
@@ -224,21 +174,92 @@ export default function Navbar({ onOpenOnboarding, currentUser }) {
           })}
         </nav>
 
-        {/* ── SLOT 4 (order:4) — far physical RIGHT ──────────────────────
-            EN: [ Login ] [ 🌐 AR ]
-            AR: [ Login ] [ 🌐 EN ] [ Burger ]
-        ───────────────────────────────────────────────────────────────── */}
+        {/* ── 3. ACTIONS (END: USER/LOGIN + LANG + BURGER) ──────────── */}
         <div
           style={{
-            display: 'flex', alignItems: 'center', gap: '8px',
-            flexShrink: 0, order: 4,
-            direction: 'ltr',  /* keep physical order intact */
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            flexShrink: 0,
           }}
         >
-          <UserSection />
+          {currentUser ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <button
+                onClick={() =>
+                  navigate(currentUser.role === 'coach' ? '/coach-portal' : '/portal')
+                }
+                style={{
+                  height: '38px',
+                  padding: '0 12px',
+                  borderRadius: '10px',
+                  background:
+                    currentUser.role === 'coach'
+                      ? 'linear-gradient(135deg, #FFC107 0%, #FF9500 100%)'
+                      : 'linear-gradient(135deg, #00E676 0%, #00B0FF 100%)',
+                  border: 'none',
+                  color: '#000000',
+                  fontWeight: 800,
+                  fontSize: '0.82rem',
+                  cursor: 'pointer',
+                  fontFamily: '"Cairo", "Tajawal", sans-serif',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  flexShrink: 0,
+                  maxWidth: '120px',
+                }}
+              >
+                <span>{currentUser.role === 'coach' ? '⚽' : '👨‍👩‍👧'}</span>
+                <span
+                  style={{
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {currentUser.name}
+                </span>
+              </button>
+              <button
+                onClick={handleLogout}
+                type="button"
+                title={isRTL ? 'تسجيل الخروج' : 'Logout'}
+                style={{
+                  width: '36px',
+                  height: '38px',
+                  borderRadius: '10px',
+                  background: 'rgba(255, 61, 0, 0.12)',
+                  border: '1px solid rgba(255, 61, 0, 0.4)',
+                  color: '#FF3D00',
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  fontSize: '0.82rem',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                }}
+              >
+                🚪
+              </button>
+            </div>
+          ) : (
+            <button onClick={onOpenOnboarding} type="button" style={loginBtnStyle}>
+              <span>🔐</span>
+              <span className="btn-label-desktop">
+                {isRTL ? 'تسجيل الدخول' : 'Login'}
+              </span>
+              <span className="btn-label-mobile">
+                {isRTL ? 'دخول' : 'Login'}
+              </span>
+            </button>
+          )}
 
+          {/* Language Switcher */}
           <button
             onClick={toggleLanguage}
+            type="button"
             title={isRTL ? 'Switch to English' : 'التحويل إلى العربية'}
             style={langBtnStyle}
           >
@@ -246,8 +267,8 @@ export default function Navbar({ onOpenOnboarding, currentUser }) {
             <span>{isRTL ? 'EN' : 'AR'}</span>
           </button>
 
-          {/* Burger — rightmost element in AR only */}
-          {isRTL && <HamburgerButton />}
+          {/* Hamburger Menu Button */}
+          <HamburgerButton />
         </div>
       </div>
     </header>

@@ -5,27 +5,20 @@ import { notificationService } from '../services/notifications'
 
 const FALLBACK_SLIDES = [
   { id: 'SL-1', url: '/hero-banner.png', caption: '⚽ تدريبات وبطولات أكاديمية أولستار الرياضية بتطاوين' },
-  { id: 'SL-2', url: '/hero-bg.jpg', caption: '🏆 افتتاح التسجيل ومشاريع التميز الرياضي والدراسي' }
+  { id: 'SL-2', url: '/logo-badge.jpg', caption: '🏆 افتتاح التسجيل ومشاريع التميز الرياضي والدراسي' }
 ]
-
-const HD_UPGRADES = {
-  'https://hsylnrzxeyqxczdalurj.supabase.co/storage/v1/object/public/carousel/live-slide-1-1786751135590.webp': '/hero-banner.png',
-  'https://hsylnrzxeyqxczdalurj.supabase.co/storage/v1/object/public/carousel/live-slide-2-1786751135909.webp': '/hero-bg.jpg',
-};
 
 const getUsableSlides = (galleryImages) => {
   if (!Array.isArray(galleryImages)) return []
   return galleryImages
     .map(image => {
       if (!image) return null;
-      let url = image?.url?.trim?.() || (typeof image?.url === 'string' ? image.url : '');
-      if (HD_UPGRADES[url]) {
-        url = HD_UPGRADES[url];
-      }
-      return { ...image, url };
+      const url = typeof image === 'string' ? image.trim() : (image?.url?.trim?.() || (typeof image?.url === 'string' ? image.url : ''));
+      const caption = image?.caption || 'صور الأكاديمية';
+      return { id: image.id || `SL-${Math.random().toString(36).slice(2)}`, url, caption };
     })
     .filter((image) => {
-      const url = image?.url?.trim?.() || (typeof image?.url === 'string' ? image.url : '')
+      const url = image?.url || ''
       return url.length > 0 && (/^(https?:\/\/|data:image\/|\/|blob:)/i.test(url))
     })
 }

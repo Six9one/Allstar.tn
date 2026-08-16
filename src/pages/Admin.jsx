@@ -1311,6 +1311,7 @@ export default function Admin() {
 
   // Customizer / Website Editor
   const [siteForm, setSiteForm] = useState({});
+  const [isSavingCarousel, setIsSavingCarousel] = useState(false);
 
   useEffect(() => {
     // Initial sync load
@@ -2540,29 +2541,33 @@ export default function Admin() {
                 </button>
                 <button
                   type="button"
+                  disabled={isSavingCarousel}
                   onClick={async () => {
-                    const validImages = (siteForm.gallery_images || []).filter(img => img.url && img.url.trim());
-                    showSuccess('⚡ جاري نشر وتأكيد صور الكاروسيل على جميع الهواتف...');
+                    setIsSavingCarousel(true);
+                    const validImages = (siteForm.gallery_images || []).filter(img => img && img.url && String(img.url).trim());
+                    showSuccess('⚡ جاري حفظ ونشر الكاروسيل مباشرة على الموقع لجميع الأجهزة...');
                     try {
                       const updated = await db.saveSiteContent({ ...siteForm, gallery_images: validImages });
                       setSiteForm(updated);
                       setSiteContent(updated);
-                      showSuccess(`✅ تم نشر وتحديث ${validImages.length} شرائح بنجاح!`);
+                      showSuccess(`✅ تم نشر وتحديث ${validImages.length} شرائح بنجاح على الموقع!`);
                     } catch (e) {
                       console.error('Publish error:', e);
-                      showSuccess('❌ خطأ في النشر - يرجى المحاولة ثانية');
+                      showSuccess('❌ خطأ في النشر - يرجى التحقق من الملفات والاتصال');
+                    } finally {
+                      setIsSavingCarousel(false);
                     }
                   }}
                   style={{
-                    background: 'linear-gradient(135deg, #00E676, #00B0FF)',
+                    background: isSavingCarousel ? 'rgba(255,255,255,0.1)' : 'linear-gradient(135deg, #00E676, #00B0FF)',
                     border: 'none', color: '#000', padding: '12px 24px', borderRadius: '14px',
-                    fontWeight: 900, cursor: 'pointer', fontSize: '0.9rem',
+                    fontWeight: 900, cursor: isSavingCarousel ? 'wait' : 'pointer', fontSize: '0.9rem',
                     boxShadow: '0 4px 15px rgba(0, 230, 118, 0.35)',
                     display: 'flex', alignItems: 'center', gap: '8px'
                   }}
                 >
-                  <span>💾</span>
-                  <span>Save & Publish Live Carousel</span>
+                  <span>{isSavingCarousel ? '⏳' : '💾'}</span>
+                  <span>{isSavingCarousel ? 'جاري الحفظ والنشر...' : 'Save & Publish Live Carousel'}</span>
                 </button>
               </div>
             </div>
@@ -2575,58 +2580,29 @@ export default function Admin() {
                   img={img}
                   idx={idx}
                   total={(siteForm.gallery_images || []).length}
-                  onUpdate={async (newSlide) => {
+                  onUpdate={(newSlide) => {
                     const g = [...(siteForm.gallery_images || [])];
                     g[idx] = newSlide;
                     setSiteForm(f => ({ ...f, gallery_images: g }));
-                    try {
-                      const updated = await db.saveSiteContent({ ...siteForm, gallery_images: g });
-                      setSiteForm(updated);
-                      setSiteContent(updated);
-                    } catch (err) {
-                      console.error('Slide update error:', err);
-                    }
                   }}
-                  onDelete={async () => {
+                  onDelete={() => {
                     const g = siteForm.gallery_images.filter((_, i) => i !== idx);
                     setSiteForm(f => ({ ...f, gallery_images: g }));
-                    try {
-                      const updated = await db.saveSiteContent({ ...siteForm, gallery_images: g });
-                      setSiteForm(updated);
-                      setSiteContent(updated);
-                      showSuccess(`🗑️ تم حذف الشريحة #${idx + 1} وتحديث الموقع فوراً!`);
-                    } catch (err) {
-                      console.error('Slide delete error:', err);
-                      showSuccess('❌ خطأ في الحذف');
-                    }
+                    showSuccess(`🗑️ تم حذف الشريحة #${idx + 1} - اضغط "Save & Publish" لتطبيق التغيير على الموقع`);
                   }}
-                  onMoveUp={idx > 0 ? async () => {
+                  onMoveUp={idx > 0 ? () => {
                     const g = [...(siteForm.gallery_images || [])];
                     const [moved] = g.splice(idx, 1);
                     g.splice(idx - 1, 0, moved);
                     setSiteForm(f => ({ ...f, gallery_images: g }));
-                    try {
-                      const updated = await db.saveSiteContent({ ...siteForm, gallery_images: g });
-                      setSiteForm(updated);
-                      setSiteContent(updated);
-                      showSuccess('⬆️ تم تقديم الشريحة');
-                    } catch (err) {
-                      console.error('Reorder error:', err);
-                    }
+                    showSuccess('⬆️ تم تقديم الشريحة');
                   } : null}
-                  onMoveDown={idx < (siteForm.gallery_images || []).length - 1 ? async () => {
+                  onMoveDown={idx < (siteForm.gallery_images || []).length - 1 ? () => {
                     const g = [...(siteForm.gallery_images || [])];
                     const [moved] = g.splice(idx, 1);
                     g.splice(idx + 1, 0, moved);
                     setSiteForm(f => ({ ...f, gallery_images: g }));
-                    try {
-                      const updated = await db.saveSiteContent({ ...siteForm, gallery_images: g });
-                      setSiteForm(updated);
-                      setSiteContent(updated);
-                      showSuccess('⬇️ تم تأخير الشريحة');
-                    } catch (err) {
-                      console.error('Reorder error:', err);
-                    }
+                    showSuccess('⬇️ تم تأخير الشريحة');
                   } : null}
                   showSuccess={showSuccess}
                 />
@@ -2641,36 +2617,9 @@ export default function Admin() {
               }}>
                 <span style={{ fontSize: '3rem', display: 'block', marginBottom: '12px' }}>🖼️</span>
                 <h3 style={{ color: '#FFF', fontSize: '1.2rem', fontWeight: 800, margin: 0 }}>لا توجد شرائح حالياً في المعرض</h3>
-                <p style={{ color: '#8E9BAE', fontSize: '0.88rem', marginTop: '6px' }}>اضغط على زر "Add New Carousel Slide" لإضافة شرائح جديدة</p>
+                <p style={{ color: '#8E9BAE', fontSize: '0.88rem', marginTop: '6px' }}>اضغط على زر "Add New Carousel Slide" لإضافة شرائح جديدة ثم اضغط Save & Publish</p>
               </div>
             )}
-
-            <div style={{ marginTop: '24px' }}>
-              <button
-                type="button"
-                onClick={async () => {
-                  const validImages = (siteForm.gallery_images || []).filter(img => img.url && img.url.trim());
-                  showSuccess('⚡ جاري نشر وتأكيد صور الكاروسيل على جميع الهواتف...');
-                  try {
-                    const updated = await db.saveSiteContent({ ...siteForm, gallery_images: validImages });
-                    setSiteForm(updated);
-                    setSiteContent(updated);
-                    showSuccess(`✅ تم نشر وتحديث ${validImages.length} شرائح بنجاح!`);
-                  } catch (e) {
-                    console.error('Publish error:', e);
-                    showSuccess('❌ خطأ في النشر - يرجى المحاولة ثانية');
-                  }
-                }}
-                style={{
-                  width: '100%', padding: '16px', borderRadius: '16px',
-                  background: 'linear-gradient(135deg, #00E676 0%, #00B0FF 100%)',
-                  border: 'none', color: '#000', fontWeight: 900, fontSize: '1rem',
-                  cursor: 'pointer', boxShadow: '0 6px 20px rgba(0,230,118,0.35)'
-                }}
-              >
-                🚀 Publish All Carousel Slides Live to Homepage
-              </button>
-            </div>
           </div>
         )}
 
